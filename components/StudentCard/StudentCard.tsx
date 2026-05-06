@@ -19,8 +19,7 @@ function intToRoman(value?: string) {
 }
 
 function buildQrData(s: Student, issue: string, expiry: string) {
-  const dob = (s.dob || '').toString();
-  return `Name: ${s.fullName || ''}\nFather Name: ${s.fatherName || ''}\nRoll No: ${s.rollNumber || ''}\nGR NO: ${s.grNumber || ''}\nDOB: ${dob}\nIssue: ${issue || ''}\nExpiry: ${expiry || ''}\nPhone: ${s.phoneNumber || ''}`;
+  return s.grNumber || '';
 }
 
 function getQrSrc(s: Student, issue: string, expiry: string, size = 80) {

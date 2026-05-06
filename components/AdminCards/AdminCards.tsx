@@ -87,7 +87,7 @@ const toTransparentPng = (img: HTMLImageElement) => {
   }
 };
 
-const AdminCards = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
+const AdminCards = ({ genderFilter, onLoadingChange }: { genderFilter?: string; onLoadingChange?: (loading: boolean) => void }) => {
   const { selectedSession } = useSession();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,7 +112,10 @@ const AdminCards = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
       if (!selectedSession) return;
       setLoading(true);
       onLoadingChange?.(true);
-      const data: Student[] = await client.fetch(getAllStudentsQuery, { session: selectedSession });
+      const data: Student[] = await client.fetch(getAllStudentsQuery, { 
+        session: selectedSession,
+        gender: genderFilter || null 
+      });
       setStudents(data);
     } catch (error) {
       toast.error("Failed to load students");
@@ -121,7 +124,7 @@ const AdminCards = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
       setLoading(false);
       onLoadingChange?.(false);
     }
-  }, [onLoadingChange, selectedSession]);
+  }, [onLoadingChange, selectedSession, genderFilter]);
 
   useEffect(() => {
     loadStudents();
@@ -302,10 +305,7 @@ const AdminCards = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
 
           try {
             const buildQrData = (s: Student) => {
-              const dob = (s.dob || '').toString();
-              const iss = (s as any).issueDate || issue || '';
-              const exp = (s as any).expiryDate || expiry || '';
-              return `Name: ${s.fullName || ''}\nFather Name: ${s.fatherName || ''}\nRoll No: ${s.rollNumber || ''}\nGR NO: ${s.grNumber || ''}\nDOB: ${dob}\nIssue: ${iss}\nExpiry: ${exp}\nPhone: ${s.phoneNumber || ''}`;
+              return s.grNumber || '';
             };
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(buildQrData(s))}`;
             const qr = await loadImage(qrUrl);

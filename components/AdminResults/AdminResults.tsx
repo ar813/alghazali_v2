@@ -37,7 +37,7 @@ type Result = {
   questionOrder?: number[];
 };
 
-const AdminResults = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
+const AdminResults = ({ genderFilter, onLoadingChange }: { genderFilter?: string; onLoadingChange?: (loading: boolean) => void }) => {
   const { selectedSession } = useSession();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [selectedQuizId, setSelectedQuizId] = useState<string>('');
@@ -70,7 +70,15 @@ const AdminResults = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean
     if (!quizId || !selectedSession) { setResults([]); return; }
     setLoading(true); onLoadingChange?.(true);
     try {
-      const res = await fetch(`/api/quiz-results?quizId=${encodeURIComponent(quizId)}&limit=500&session=${encodeURIComponent(selectedSession)}`, { cache: 'no-store' });
+      const url = new URL('/api/quiz-results', window.location.origin);
+      url.searchParams.set('quizId', quizId);
+      url.searchParams.set('limit', '500');
+      url.searchParams.set('session', selectedSession);
+      if (genderFilter) {
+        url.searchParams.set('gender', genderFilter);
+      }
+      
+      const res = await fetch(url.toString(), { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
 
@@ -94,10 +102,10 @@ const AdminResults = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean
     } catch (err: any) {
       console.error('Error loading results:', err);
     } finally { setLoading(false); onLoadingChange?.(false); }
-  }, [onLoadingChange, selectedSession]);
+  }, [onLoadingChange, selectedSession, genderFilter]);
 
   useEffect(() => { loadQuizzes(); }, [loadQuizzes, selectedSession]);
-  useEffect(() => { loadResults(selectedQuizId); }, [selectedQuizId, loadResults, selectedSession]);
+  useEffect(() => { loadResults(selectedQuizId); }, [selectedQuizId, loadResults, selectedSession, genderFilter]);
 
   // Fetch full quiz detail when a result is opened (for question text)
   useEffect(() => {

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { LayoutDashboard, Users as UsersIcon, BarChart3, Calendar, IdCard, Banknote, Megaphone, Smartphone, MessageSquare, FileQuestion, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Users as UsersIcon, BarChart3, Calendar, IdCard, Banknote, Megaphone, Smartphone, MessageSquare, FileQuestion, ClipboardList, Printer } from 'lucide-react';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import AccessDeniedDialog from '@/components/Auth/AccessDeniedDialog';
@@ -22,11 +22,22 @@ const AdminResults = dynamic(() => import('@/components/AdminResults/AdminResult
 const AdminMobileAttendance = dynamic(() => import('@/components/AdminMobileAttendance/AdminMobileAttendance'), { ssr: false });
 const AdminChatBot = dynamic(() => import('@/components/AdminChatBot/AdminChatBot'), { ssr: false });
 const AdminUsers = dynamic(() => import('@/components/AdminUsers/AdminUsers'), { ssr: false });
+const AdminAdmitCards = dynamic(() => import('@/components/AdminAdmitCards/AdminAdmitCards'), { ssr: false });
 
-const AdminPortal = ({ isBlurred = false, onLoadingChange, childLoading }: { isBlurred?: boolean; onLoadingChange?: (loading: boolean) => void; childLoading?: boolean }) => {
+const AdminPortal = ({ 
+    isBlurred = false, 
+    onLoadingChange, 
+    childLoading, 
+    gender 
+}: { 
+    isBlurred?: boolean; 
+    onLoadingChange?: (loading: boolean) => void; 
+    childLoading?: boolean;
+    gender?: "male" | "female";
+}) => {
     // useAuth hook for global state
     const { loading: authLoading, isSuperAdmin, logout } = useAuth();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'schedule' | 'reports' | 'cards' | 'fees' | 'notice' | 'quiz' | 'results' | 'examResults' | 'mobile-attendance' | 'chatbot' | 'users'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'schedule' | 'reports' | 'cards' | 'admit-cards' | 'fees' | 'notice' | 'quiz' | 'results' | 'examResults' | 'mobile-attendance' | 'chatbot' | 'users'>('dashboard');
     const [showAccessDenied, setShowAccessDenied] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -41,6 +52,7 @@ const AdminPortal = ({ isBlurred = false, onLoadingChange, childLoading }: { isB
             { id: 'schedule', label: 'Schedule', icon: Calendar },
             { id: 'reports', label: 'Reports', icon: BarChart3 },
             { id: 'cards', label: 'Cards', icon: IdCard },
+            { id: 'admit-cards', label: 'Admit Cards', icon: Printer },
             { id: 'fees', label: 'Fees', icon: Banknote },
             { id: 'notice', label: 'Notice', icon: Megaphone },
             { id: 'quiz', label: 'Quiz', icon: FileQuestion },
@@ -138,15 +150,16 @@ const AdminPortal = ({ isBlurred = false, onLoadingChange, childLoading }: { isB
                             </div>
                         </div>
 
-                        {activeTab === 'dashboard' && <AdminDashboard onLoadingChange={onLoadingChange} />}
-                        {activeTab === 'students' && <AdminStudents onLoadingChange={onLoadingChange} />}
+                        {activeTab === 'dashboard' && <AdminDashboard onLoadingChange={onLoadingChange} genderFilter={gender} />}
+                        {activeTab === 'students' && <AdminStudents onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'schedule' && <AdminSchedule onLoadingChange={onLoadingChange} />}
-                        {activeTab === 'reports' && <AdminReports onLoadingChange={onLoadingChange} />}
-                        {activeTab === 'cards' && <AdminCards onLoadingChange={onLoadingChange} />}
-                        {activeTab === 'fees' && <AdminFees onLoadingChange={onLoadingChange} />}
+                        {activeTab === 'reports' && <AdminReports onLoadingChange={onLoadingChange} genderFilter={gender} />}
+                        {activeTab === 'cards' && <AdminCards onLoadingChange={onLoadingChange} genderFilter={gender} />}
+                        {activeTab === 'admit-cards' && <AdminAdmitCards onLoadingChange={onLoadingChange} genderFilter={gender} />}
+                        {activeTab === 'fees' && <AdminFees onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'notice' && <AdminNotice onLoadingChange={onLoadingChange} />}
                         {activeTab === 'quiz' && <AdminQuiz onLoadingChange={onLoadingChange} />}
-                        {activeTab === 'results' && <AdminResults onLoadingChange={onLoadingChange} />}
+                        {activeTab === 'results' && <AdminResults onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'mobile-attendance' && <AdminMobileAttendance onLoadingChange={onLoadingChange} />}
                         {activeTab === 'chatbot' && <AdminChatBot />}
                         {activeTab === 'users' && isSuperAdmin && <AdminUsers onLoadingChange={onLoadingChange} />}

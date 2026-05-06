@@ -8,24 +8,29 @@ import { doc, getDoc, onSnapshot } from "firebase/firestore";
 interface AuthContextType {
     user: User | null;
     role: "admin" | "super_admin" | null;
+    gender: "male" | "female" | null;
     loading: boolean;
     isSuperAdmin: boolean;
     logout: () => Promise<void>;
     updateName: (newName: string) => Promise<void>;
+    updateGender: (newGender: "male" | "female") => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
     role: null,
+    gender: null,
     loading: true,
     isSuperAdmin: false,
     logout: async () => { },
     updateName: async () => { },
+    updateGender: async () => { },
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [role, setRole] = useState<"admin" | "super_admin" | null>(null);
+    const [gender, setGender] = useState<"male" | "female" | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -46,6 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     if (userDoc.exists()) {
                         const userData = userDoc.data();
                         setRole(userData.role || "admin");
+                        setGender(userData.gender || null);
                     } else {
                         // Security: If user exists in Auth but not in Firestore (deleted by Super Admin), force logout
                         console.warn("User account deleted. Logging out.");
@@ -108,13 +114,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
+    const updateGender = async (newGender: "male" | "female") => {
+        try {
+            const { doc, setDoc } = await import("firebase/firestore");
+
+            if (auth.currentUser) {
+                await setDoc(doc(db, "users", auth.currentUser.uid), {
+                    gender: newGender,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+                
+                setGender(newGender);
+            }
+        } catch (error) {
+            console.error("Error updating gender:", error);
+            throw error;
+        }
+    };
+
     const value = {
         user,
         role,
+        gender,
         loading,
         isSuperAdmin: role === "super_admin",
         logout,
         updateName,
+        updateGender,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
