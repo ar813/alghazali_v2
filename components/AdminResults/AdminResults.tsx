@@ -102,7 +102,7 @@ const AdminResults = ({ genderFilter, onLoadingChange }: { genderFilter?: string
     } catch (err: any) {
       console.error('Error loading results:', err);
     } finally { setLoading(false); onLoadingChange?.(false); }
-  }, [onLoadingChange, selectedSession]);
+  }, [onLoadingChange, selectedSession, genderFilter]);
 
   useEffect(() => { loadQuizzes(); }, [loadQuizzes, selectedSession]);
   useEffect(() => { loadResults(selectedQuizId); }, [selectedQuizId, loadResults, selectedSession, genderFilter]);

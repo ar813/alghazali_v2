@@ -124,7 +124,7 @@ const AdminCards = ({ genderFilter, onLoadingChange }: { genderFilter?: string; 
       setLoading(false);
       onLoadingChange?.(false);
     }
-  }, [onLoadingChange, selectedSession]);
+  }, [onLoadingChange, selectedSession, genderFilter]);
 
   useEffect(() => {
     loadStudents();

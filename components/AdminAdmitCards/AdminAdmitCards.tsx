@@ -7,12 +7,13 @@ import type { Student } from "@/types/student";
 import { auth } from '@/lib/firebase';
 import { toast } from "sonner";
 import { useSession } from '@/context/SessionContext';
-import { Search, Printer, FileDown, Layers, User, Users, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Printer, FileDown, Layers, User, Users, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 // Helper for image loading
 const loadImage = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
-  const img = new Image();
+  const img = new window.Image();
   img.crossOrigin = "anonymous";
   img.onload = () => resolve(img);
   img.onerror = reject;
@@ -432,12 +433,12 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
                   <div key={s._id} className="bg-white text-black border-2 border-black p-5 relative font-serif overflow-hidden">
                     {/* Watermark */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-[0.04] pointer-events-none">
-                      <img src="/logo.png" alt="" className="w-56 h-56 object-contain" />
+                      <Image src="/logo.png" alt="Watermark" width={224} height={224} className="object-contain" />
                     </div>
 
                     {/* Header */}
                     <div className="flex items-center justify-between mb-3 border-b-2 border-red-800 pb-3 relative z-10">
-                      <img src="/logo.png" alt="Logo" className="w-14 h-14" />
+                      <Image src="/logo.png" alt="Logo" width={56} height={56} />
                       <div className="text-center flex-1 px-3">
                         <h2 className="text-xl font-bold tracking-tight text-red-800" style={{ fontFamily: 'serif' }}>AL-GHAZALI HIGH SCHOOL</h2>
                         <p className="text-[8px] uppercase tracking-widest text-blue-900 font-bold mt-0.5">41/25-28, Area 36-B Landhi, Karachi 75160</p>
