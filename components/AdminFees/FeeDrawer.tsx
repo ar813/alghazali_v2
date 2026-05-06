@@ -116,21 +116,15 @@ const FeeDrawer = ({
             closeOnEsc={false}
         >
             <DrawerOverlay backdropFilter="blur(4px)" bg="blackAlpha.300" />
-            <DrawerContent
-                bg="white"
-                borderLeft="1px"
-                borderColor="zinc.200"
-                shadow="2xl"
-                _dark={{ bg: "zinc.900", borderColor: "zinc.800" }}
-            >
+            <DrawerContent bg="white" _dark={{ bg: "gray.900", borderColor: "gray.800" }} borderLeft="1px">
                 <DrawerCloseButton top="4" />
 
-                <DrawerHeader borderBottomWidth="1px" py="4">
+                <DrawerHeader borderBottomWidth="1px" borderColor="gray.100" _dark={{ borderColor: "gray.800", bg: "gray.900" }} py="4">
                     <Box>
-                        <Text fontSize="lg" fontWeight="800" color="zinc.900" _dark={{ color: "white" }}>
+                        <Text fontSize="lg" fontWeight="800" color="gray.900" _dark={{ color: "white" }}>
                             {initialData ? 'Edit Fee Record' : 'Add New Fee'}
                         </Text>
-                        <Text fontSize="xs" fontWeight="medium" color="zinc.500" mt="0.5">
+                        <Text fontSize="xs" fontWeight="medium" color="gray.500" mt="0.5">
                             {initialData ? 'Update details for this transaction.' : 'Record a new fee payment from a student.'}
                         </Text>
                     </Box>
@@ -141,12 +135,12 @@ const FeeDrawer = ({
                         <VStack spacing="5" align="stretch">
                             {/* Student Selection */}
                             <FormControl isRequired>
-                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="zinc.500">
+                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
                                     Student
                                 </FormLabel>
                                 <InputGroup size="md" mb="2">
                                     <InputLeftElement pointerEvents="none">
-                                        <Hash size={16} className="text-zinc-400" />
+                                        <Hash size={16} className="text-gray-400" />
                                     </InputLeftElement>
                                     <Input
                                         value={studentQuickFilter}
@@ -154,8 +148,8 @@ const FeeDrawer = ({
                                         placeholder="Search by Name, Roll, or GR..."
                                         rounded="xl"
                                         fontSize="sm"
-                                        bg="zinc.50"
-                                        _dark={{ bg: "zinc.900/50" }}
+                                        bg="gray.50"
+                                        _dark={{ bg: "gray.900/50" }}
                                     />
                                 </InputGroup>
                                 <Select
@@ -171,7 +165,7 @@ const FeeDrawer = ({
                                     rounded="xl"
                                     fontSize="sm"
                                     placeholder="Select Student"
-                                    className="dark:bg-zinc-900"
+                                    className="dark:bg-gray-900"
                                 >
                                     {filteredStudents.map(s => (
                                         <option key={s._id} value={s._id}>
@@ -183,27 +177,27 @@ const FeeDrawer = ({
 
                             {/* Class */}
                             <FormControl isRequired>
-                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="zinc.500">
+                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
                                     Class
                                 </FormLabel>
                                 <InputGroup size="md">
                                     <InputLeftElement pointerEvents="none">
-                                        <GraduationCap size={16} className="text-zinc-400" />
+                                        <GraduationCap size={16} className="text-gray-400" />
                                     </InputLeftElement>
                                     <Input
                                         value={form.className}
                                         onChange={e => setForm({ ...form, className: e.target.value })}
                                         rounded="xl"
                                         fontSize="sm"
-                                        bg="zinc.50"
-                                        _dark={{ bg: "zinc.900/50" }}
+                                        bg="gray.50"
+                                        _dark={{ bg: "gray.900/50" }}
                                     />
                                 </InputGroup>
                             </FormControl>
 
                             {/* Month & Year */}
                             <Box>
-                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="zinc.500">
+                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
                                     Billing Period
                                 </FormLabel>
                                 <SimpleGrid columns={2} spacing="3">
@@ -227,7 +221,7 @@ const FeeDrawer = ({
 
                             {/* Amount */}
                             <FormControl isRequired>
-                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="zinc.500">
+                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
                                     Amount Paid
                                 </FormLabel>
                                 <InputGroup size="lg">
@@ -242,11 +236,11 @@ const FeeDrawer = ({
                                         fontSize="md"
                                         fontWeight="bold"
                                         fontFamily="mono"
-                                        bg="zinc.50"
-                                        _dark={{ bg: "zinc.900/50" }}
+                                        bg="gray.50"
+                                        _dark={{ bg: "gray.900/50" }}
                                     />
                                     <InputRightElement width="4.5rem">
-                                        <Text fontSize="xs" fontWeight="bold" color="zinc.400">PKR</Text>
+                                        <Text fontSize="xs" fontWeight="bold" color="gray.400">PKR</Text>
                                     </InputRightElement>
                                 </InputGroup>
                                 <Box display="flex" flexWrap="wrap" gap="2" mt="3">
@@ -257,7 +251,7 @@ const FeeDrawer = ({
                                             variant="outline"
                                             onClick={() => setForm(prev => ({ ...prev, amountPaid: amt }))}
                                             rounded="md"
-                                            _hover={{ bg: "zinc.50", _dark: { bg: "zinc.800" } }}
+                                            _hover={{ bg: "gray.50", _dark: { bg: "gray.800" } }}
                                         >
                                             {amt}
                                         </Button>
@@ -267,12 +261,12 @@ const FeeDrawer = ({
 
                             {/* Date */}
                             <FormControl isRequired>
-                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="zinc.500">
+                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
                                     Payment Date
                                 </FormLabel>
                                 <InputGroup>
                                     <InputLeftElement pointerEvents="none">
-                                        <Calendar size={16} className="text-zinc-400" />
+                                        <Calendar size={16} className="text-gray-400" />
                                     </InputLeftElement>
                                     <Input
                                         type="date"
@@ -288,12 +282,12 @@ const FeeDrawer = ({
                             {/* Receipt & Book */}
                             <SimpleGrid columns={2} spacing="4">
                                 <FormControl isRequired>
-                                    <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="zinc.500">
+                                    <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
                                         Receipt No.
                                     </FormLabel>
                                     <InputGroup>
                                         <InputLeftElement pointerEvents="none">
-                                            <Hash size={16} className="text-zinc-400" />
+                                            <Hash size={16} className="text-gray-400" />
                                         </InputLeftElement>
                                         <Input
                                             value={form.receiptNumber}
@@ -305,12 +299,12 @@ const FeeDrawer = ({
                                     </InputGroup>
                                 </FormControl>
                                 <FormControl isRequired>
-                                    <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="zinc.500">
+                                    <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
                                         Book No.
                                     </FormLabel>
                                     <InputGroup>
                                         <InputLeftElement pointerEvents="none">
-                                            <BookOpen size={16} className="text-zinc-400" />
+                                            <BookOpen size={16} className="text-gray-400" />
                                         </InputLeftElement>
                                         <Input
                                             value={form.bookNumber}
@@ -325,7 +319,7 @@ const FeeDrawer = ({
 
                             {/* Notes */}
                             <FormControl>
-                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="zinc.500">
+                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
                                     Notes (Optional)
                                 </FormLabel>
                                 <Textarea
@@ -341,7 +335,7 @@ const FeeDrawer = ({
                     </form>
                 </DrawerBody>
 
-                <DrawerFooter borderTopWidth="1px" py="4">
+                <DrawerFooter borderTopWidth="1px" borderColor="gray.100" bg="white" _dark={{ borderColor: "gray.800", bg: "gray.900" }} py="4">
                     <Button
                         variant="ghost"
                         mr={2}
@@ -358,10 +352,10 @@ const FeeDrawer = ({
                         form="fee-form"
                         isLoading={submitting}
                         loadingText="Saving..."
-                        bg="zinc.900"
+                        bg="gray.900"
                         color="white"
-                        _hover={{ bg: "zinc.800" }}
-                        _dark={{ bg: "white", color: "zinc.900", _hover: { bg: "zinc.100" } }}
+                        _hover={{ bg: "gray.800" }}
+                        _dark={{ bg: "white", color: "gray.900", _hover: { bg: "gray.100" } }}
                         rounded="lg"
                         px="6"
                         fontSize="xs"

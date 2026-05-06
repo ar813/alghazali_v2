@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
-import { Trash2, Shield, UserCog, Search, Plus, X, AlertCircle, Edit3, Loader2, Mail, RefreshCw, Clock } from "lucide-react";
+import { Trash2, Shield, UserCog, Search, Plus, X, AlertCircle, Edit3, Loader2, Mail, RefreshCw, Clock, User, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,7 @@ interface UserData {
     email: string;
     displayName?: string;
     role?: "admin" | "super_admin";
+    gender?: "male" | "female";
     lastLoginAt?: string;
     createdAt?: string;
 }
@@ -29,6 +30,8 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
     const [password, setPassword] = useState("");
     const [displayName, setDisplayName] = useState("");
     const [role, setRole] = useState<"admin" | "super_admin">("admin");
+    const [gender, setGender] = useState<"male" | "female" | "">("");
+    const [showPassword, setShowPassword] = useState(false);
 
     // Edit Dialog state
     const [showEditDialog, setShowEditDialog] = useState(false);
@@ -37,6 +40,8 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
     const [editEmail, setEditEmail] = useState("");
     const [editPassword, setEditPassword] = useState("");
     const [editRole, setEditRole] = useState<"admin" | "super_admin">("admin");
+    const [editGender, setEditGender] = useState<"male" | "female" | "">("");
+    const [showEditPassword, setShowEditPassword] = useState(false);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [updatingRoleUid, setUpdatingRoleUid] = useState<string | null>(null);
@@ -90,7 +95,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${idToken}`,
                 },
-                body: JSON.stringify({ email, password, displayName, role }),
+                body: JSON.stringify({ email, password, displayName, role, gender }),
             });
 
             const data = await response.json();
@@ -124,6 +129,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                     displayName: editDisplayName,
                     email: editEmail,
                     role: editRole,
+                    gender: editGender,
                     ...(editPassword ? { password: editPassword } : {})
                 }),
             });
@@ -218,6 +224,8 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
         setPassword("");
         setDisplayName("");
         setRole("admin");
+        setGender("");
+        setShowPassword(false);
     };
 
     const openEditDialog = (user: UserData) => {
@@ -225,7 +233,9 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
         setEditDisplayName(user.displayName || "");
         setEditEmail(user.email || "");
         setEditRole(user.role || "admin");
+        setEditGender(user.gender || "");
         setEditPassword("");
+        setShowEditPassword(false);
         setShowEditDialog(true);
     };
 
@@ -238,11 +248,11 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
         <>
             <div className="max-w-7xl mx-auto px-2 sm:px-6 space-y-6 pb-20">
                 {/* Header Section */}
-                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 bg-white p-5 sm:p-7 rounded-2xl border border-neutral-200 shadow-sm transition-all">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 bg-white p-5 sm:p-7 rounded-2xl border border-neutral-200 dark:border-[#1F1F1F] shadow-sm transition-all">
                     <div className="space-y-1">
                         <h2 className="text-xl sm:text-2xl font-semibold text-neutral-900 flex items-center gap-3">
                             <div className="p-2 bg-indigo-50 rounded-xl">
-                                <UserCog className="h-6 w-6 text-indigo-600" />
+                                <UserCog className="h-6 w-6 text-black dark:text-white" />
                             </div>
                             Admin Access
                         </h2>
@@ -255,7 +265,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                         <button
                             onClick={handleRefresh}
                             disabled={isRefreshing || loading}
-                            className="p-2.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl border border-neutral-200 transition-all active:scale-95 disabled:opacity-50"
+                            className="p-2.5 text-neutral-500 hover:text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl border border-neutral-200 dark:border-[#1F1F1F] transition-all active:scale-95 disabled:opacity-50"
                             title="Refresh Data"
                         >
                             <RefreshCw size={20} className={cn(isRefreshing && "animate-spin")} />
@@ -267,7 +277,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                 placeholder="Search by name or email..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-neutral-400"
+                                className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-neutral-400"
                             />
                         </div>
                         <button
@@ -281,25 +291,26 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                 </div>
 
                 {/* Table for Desktop */}
-                <div className="hidden md:block bg-white border border-neutral-200 rounded-2xl shadow-sm overflow-hidden">
+                <div className="hidden md:block bg-white border border-neutral-200 dark:border-[#1F1F1F] rounded-2xl shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-neutral-500 uppercase bg-neutral-50/50 border-b border-neutral-200">
+                            <thead className="text-xs text-neutral-500 uppercase bg-neutral-50/50 border-b border-neutral-200 dark:border-[#1F1F1F]">
                                 <tr>
                                     <th className="px-6 py-4 font-semibold">User</th>
                                     <th className="px-6 py-4 font-semibold">Role</th>
+                                    <th className="px-6 py-4 font-semibold">Gender</th>
                                     <th className="px-6 py-4 font-semibold">Last Login</th>
                                     <th className="px-6 py-4 font-semibold text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-neutral-100">
+                            <tbody className="divide-y divide-neutral-100 dark:divide-[#1F1F1F]">
                                 {loading ? (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-20 text-center">
                                             <div className="flex flex-col items-center gap-4">
                                                 <div className="relative">
-                                                    <div className="w-12 h-12 border-4 border-indigo-100 rounded-full"></div>
-                                                    <div className="absolute inset-0 w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                                    <div className="w-12 h-12 border-4 border-neutral-200 dark:border-[#1F1F1F] rounded-full"></div>
+                                                    <div className="absolute inset-0 w-12 h-12 border-4 border-black dark:border-white border-t-transparent rounded-full animate-spin"></div>
                                                 </div>
                                                 <div className="space-y-1">
                                                     <p className="text-sm font-bold text-neutral-900">Loading Team</p>
@@ -316,12 +327,12 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                     </tr>
                                 ) : filteredUsers.map((user) => (
                                     <tr key={user.uid} className={cn(
-                                        "group hover:bg-neutral-50/50 transition-colors",
-                                        user.uid === currentUserUid && "bg-indigo-50/30"
+                                        "group hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors",
+                                        user.uid === currentUserUid && "bg-neutral-100/50 dark:bg-white/5"
                                     )}>
                                         <td className="px-6 py-5">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-700 font-semibold text-lg border border-neutral-200">
+                                                <div className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-700 font-semibold text-lg border border-neutral-200 dark:border-[#1F1F1F]">
                                                     {(user.displayName || user.email)[0].toUpperCase()}
                                                 </div>
                                                 <div className="flex flex-col">
@@ -330,7 +341,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                                             {user.displayName || "Admin User"}
                                                         </span>
                                                         {user.uid === currentUserUid && (
-                                                            <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold uppercase">You</span>
+                                                            <span className="text-[10px] bg-neutral-200 dark:bg-white/10 text-black dark:text-white px-2 py-0.5 rounded-full font-bold uppercase">You</span>
                                                         )}
                                                     </div>
                                                     <span className="text-xs text-neutral-500">{user.email}</span>
@@ -341,10 +352,22 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                             <span className={cn(
                                                 "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border",
                                                 user.role === "super_admin"
-                                                    ? "bg-purple-50 text-purple-700 border-purple-100"
-                                                    : "bg-blue-50 text-blue-700 border-blue-100"
+                                                    ? "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]"
+                                                    : "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]"
                                             )}>
                                                 {user.role === "super_admin" ? "Super Admin" : "Regular Admin"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <span className={cn(
+                                                "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border",
+                                                user.gender === "male"
+                                                    ? "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]"
+                                                    : user.gender === "female"
+                                                        ? "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]"
+                                                        : "bg-neutral-50 text-neutral-600 border-neutral-100"
+                                            )}>
+                                                {user.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : "Not Set"}
                                             </span>
                                         </td>
                                         <td className="px-6 py-5">
@@ -363,11 +386,11 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                                 <button
                                                     onClick={() => handleQuickRoleChange(user)}
                                                     disabled={updatingRoleUid === user.uid || user.uid === currentUserUid}
-                                                    className="px-4 py-1.5 text-xs font-medium rounded-lg text-neutral-600 hover:bg-neutral-100 border border-neutral-200 disabled:opacity-40 min-w-[80px] flex items-center justify-center"
+                                                    className="px-4 py-1.5 text-xs font-medium rounded-lg text-neutral-600 hover:bg-neutral-100 border border-neutral-200 dark:border-[#1F1F1F] disabled:opacity-40 min-w-[80px] flex items-center justify-center"
                                                 >
                                                     {updatingRoleUid === user.uid ? <Loader2 size={14} className="animate-spin" /> : (user.role === "super_admin" ? "Demote" : "Promote")}
                                                 </button>
-                                                <button onClick={() => openEditDialog(user)} className="p-2 text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="Edit">
+                                                <button onClick={() => openEditDialog(user)} className="p-2 text-neutral-400 hover:text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition-all" title="Edit">
                                                     <Edit3 size={18} />
                                                 </button>
                                                 <button
@@ -390,24 +413,24 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                 {/* Cards for Mobile */}
                 <div className="md:hidden space-y-4">
                     {loading ? (
-                        <div className="p-12 text-center bg-white rounded-2xl border border-neutral-200">
-                            <Loader2 size={28} className="animate-spin text-indigo-600 mx-auto mb-3" />
+                        <div className="p-12 text-center bg-white rounded-2xl border border-neutral-200 dark:border-[#1F1F1F]">
+                            <Loader2 size={28} className="animate-spin text-black dark:text-white mx-auto mb-3" />
                             <p className="text-neutral-500">Loading team members...</p>
                         </div>
                     ) : (
                         filteredUsers.map((user) => (
                             <div key={user.uid} className={cn(
                                 "bg-white rounded-2xl border p-5 space-y-4 shadow-sm relative",
-                                user.uid === currentUserUid ? "border-indigo-300 ring-1 ring-indigo-100" : "border-neutral-200",
+                                user.uid === currentUserUid ? "border-indigo-300 ring-1 ring-indigo-100" : "border-neutral-200 dark:border-[#1F1F1F]",
                             )}>
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-700 font-bold text-xl border border-neutral-200">
+                                    <div className="w-12 h-12 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-700 font-bold text-xl border border-neutral-200 dark:border-[#1F1F1F]">
                                         {(user.displayName || user.email)[0].toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
                                             <h3 className="font-semibold text-neutral-900 truncate">{user.displayName || "Admin User"}</h3>
-                                            {user.uid === currentUserUid && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold uppercase">YOU</span>}
+                                            {user.uid === currentUserUid && <span className="text-[10px] bg-neutral-200 dark:bg-white/10 text-black dark:text-white px-1.5 py-0.5 rounded font-bold uppercase">YOU</span>}
                                         </div>
                                         <div className="flex items-center gap-1.5 text-neutral-500 mt-0.5">
                                             <Mail size={12} />
@@ -419,9 +442,15 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                 <div className="flex items-center justify-between py-1 px-1 border-t border-neutral-50 pt-3">
                                     <span className={cn(
                                         "px-2.5 py-1 rounded-lg text-xs font-semibold border",
-                                        user.role === "super_admin" ? "bg-purple-50 text-purple-700 border-purple-100" : "bg-blue-50 text-blue-700 border-blue-100"
+                                        user.role === "super_admin" ? "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]" : "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]"
                                     )}>
                                         {user.role === "super_admin" ? "Super Admin" : "Admin"}
+                                    </span>
+                                    <span className={cn(
+                                        "px-2 py-0.5 rounded text-[10px] font-bold border uppercase",
+                                        user.gender === "male" ? "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]" : user.gender === "female" ? "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]" : "bg-neutral-50 text-neutral-500 border-neutral-100"
+                                    )}>
+                                        {user.gender || "No Gender"}
                                     </span>
                                     <div className="flex items-center gap-1.5 text-neutral-400 text-[10px]">
                                         <Clock size={10} />
@@ -433,13 +462,13 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                     <button
                                         onClick={() => handleQuickRoleChange(user)}
                                         disabled={updatingRoleUid === user.uid || user.uid === currentUserUid}
-                                        className="flex flex-col items-center gap-1 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-[11px] font-medium text-neutral-600 active:scale-95 disabled:opacity-30"
+                                        className="flex flex-col items-center gap-1 py-3 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-[11px] font-medium text-neutral-600 active:scale-95 disabled:opacity-30"
                                     >
                                         {updatingRoleUid === user.uid ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />}
                                         <span>{user.role === "super_admin" ? "Demote" : "Promote"}</span>
                                     </button>
-                                    <button onClick={() => openEditDialog(user)} className="flex flex-col items-center gap-1 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-[11px] font-medium text-neutral-600 active:scale-95">
-                                        <Edit3 size={16} className="text-indigo-600" />
+                                    <button onClick={() => openEditDialog(user)} className="flex flex-col items-center gap-1 py-3 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-[11px] font-medium text-neutral-600 active:scale-95">
+                                        <Edit3 size={16} className="text-black dark:text-white" />
                                         <span>Edit Info</span>
                                     </button>
                                     <button
@@ -489,7 +518,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                                 required
                                                 value={displayName}
                                                 onChange={(e) => setDisplayName(e.target.value)}
-                                                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
+                                                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
                                                 placeholder="Arsalan Ahmed"
                                             />
                                         </div>
@@ -498,12 +527,42 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                             <select
                                                 value={role}
                                                 onChange={(e) => setRole(e.target.value as any)}
-                                                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:border-indigo-500 cursor-pointer appearance-none"
+                                                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm outline-none focus:border-indigo-500 cursor-pointer appearance-none"
                                             >
                                                 <option value="admin">Regular Admin</option>
                                                 <option value="super_admin">Super Admin</option>
                                             </select>
                                         </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Gender Assignment</label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setGender("male")}
+                                                className={cn(
+                                                    "px-4 py-2.5 rounded-xl text-sm font-medium border transition-all",
+                                                    gender === "male"
+                                                        ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
+                                                        : "bg-neutral-50 text-neutral-600 border-neutral-200 dark:border-[#1F1F1F] hover:bg-neutral-100"
+                                                )}
+                                            >
+                                                Male
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setGender("female")}
+                                                className={cn(
+                                                    "px-4 py-2.5 rounded-xl text-sm font-medium border transition-all",
+                                                    gender === "female"
+                                                        ? "bg-pink-600 text-white border-pink-600 shadow-lg shadow-pink-600/20"
+                                                        : "bg-neutral-50 text-neutral-600 border-neutral-200 dark:border-[#1F1F1F] hover:bg-neutral-100"
+                                                )}
+                                            >
+                                                Female
+                                            </button>
+                                        </div>
+                                        <p className="text-[10px] text-neutral-400 mt-1">Regular admins will be restricted to students of this gender.</p>
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Email Address</label>
@@ -512,21 +571,30 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                             required
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
+                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
                                             placeholder="admin@alghazali.edu"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Password</label>
-                                        <input
-                                            type="password"
-                                            required
-                                            minLength={6}
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
-                                            placeholder="At least 6 characters"
-                                        />
+                                        <div className="relative">
+                                            <input
+                                                type={showPassword ? "text" : "password"}
+                                                required
+                                                minLength={6}
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors pr-11"
+                                                placeholder="At least 6 characters"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                                            >
+                                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             </div>
@@ -570,7 +638,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                             required
                                             value={editDisplayName}
                                             onChange={(e) => setEditDisplayName(e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
+                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
@@ -580,19 +648,28 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                             required
                                             value={editEmail}
                                             onChange={(e) => setEditEmail(e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
+                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">New Password (Empty to keep)</label>
-                                        <input
-                                            type="password"
-                                            minLength={6}
-                                            value={editPassword}
-                                            onChange={(e) => setEditPassword(e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
-                                            placeholder="Must be 6+ chars"
-                                        />
+                                        <div className="relative">
+                                            <input
+                                                type={showEditPassword ? "text" : "password"}
+                                                minLength={6}
+                                                value={editPassword}
+                                                onChange={(e) => setEditPassword(e.target.value)}
+                                                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors pr-11"
+                                                placeholder="Must be 6+ chars"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowEditPassword(!showEditPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                                            >
+                                                {showEditPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Account Role</label>
@@ -600,12 +677,41 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                             value={editRole}
                                             onChange={(e) => setEditRole(e.target.value as any)}
                                             disabled={editingUser.uid === currentUserUid}
-                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:border-indigo-500 appearance-none disabled:bg-neutral-100 disabled:text-neutral-400"
+                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm outline-none focus:border-indigo-500 appearance-none disabled:bg-neutral-100 disabled:text-neutral-400"
                                         >
                                             <option value="admin">Regular Admin</option>
                                             <option value="super_admin">Super Admin</option>
                                         </select>
                                         {editingUser.uid === currentUserUid && <p className="text-[10px] text-amber-600 font-medium ml-1">You cannot demote your own account for safety.</p>}
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Gender Assignment</label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditGender("male")}
+                                                className={cn(
+                                                    "px-4 py-2.5 rounded-xl text-sm font-medium border transition-all",
+                                                    editGender === "male"
+                                                        ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
+                                                        : "bg-neutral-50 text-neutral-600 border-neutral-200 dark:border-[#1F1F1F] hover:bg-neutral-100"
+                                                )}
+                                            >
+                                                Male
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditGender("female")}
+                                                className={cn(
+                                                    "px-4 py-2.5 rounded-xl text-sm font-medium border transition-all",
+                                                    editGender === "female"
+                                                        ? "bg-pink-600 text-white border-pink-600 shadow-lg shadow-pink-600/20"
+                                                        : "bg-neutral-50 text-neutral-600 border-neutral-200 dark:border-[#1F1F1F] hover:bg-neutral-100"
+                                                )}
+                                            >
+                                                Female
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             </div>

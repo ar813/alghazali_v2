@@ -23,7 +23,10 @@ import {
     Copy,
     Database,
     CalendarClock,
-    UserCog
+    UserCog,
+    Users as UsersIcon,
+    User,
+    Lock as LockIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -65,8 +68,10 @@ import ProfileUpdateDialog from "../Auth/ProfileUpdateDialog";
 export default function SessionGrid() {
     const { sessions, addSession, renameSession, deleteSession, isLoading, refreshSessions } = useSession();
     const router = useRouter();
-    const { user, logout, isSuperAdmin } = useAuth();
+    const { user, logout, isSuperAdmin, gender } = useAuth();
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isNavigating, setIsNavigating] = useState(false);
+    const [clickedSession, setClickedSession] = useState<string | null>(null);
     const [showAccessDenied, setShowAccessDenied] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [showProfileUpdate, setShowProfileUpdate] = useState(false);
@@ -101,6 +106,10 @@ export default function SessionGrid() {
     // Master API Confirmation Dialog
     const [masterApiDialogOpen, setMasterApiDialogOpen] = useState(false);
 
+    // Gender Selection Dialog
+    const [genderDialogOpen, setGenderDialogOpen] = useState(false);
+    const [selectedSessionForGender, setSelectedSessionForGender] = useState<string | null>(null);
+
     // Sanity API Configuration
     const SANITY_PROJECT_ID = "3u9cr7x9";
     const SANITY_DATASET = "production";
@@ -134,7 +143,33 @@ export default function SessionGrid() {
     const filteredSessions = sessions.filter(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const handleSessionClick = (session: string) => {
-        router.push(`/admin/${session}`);
+        setClickedSession(session);
+        setSelectedSessionForGender(session);
+        setGenderDialogOpen(true);
+        // Reset after dialog is likely visible
+        setTimeout(() => setClickedSession(null), 800);
+    };
+
+    const handleGenderSelect = (selectedGender: 'male' | 'female') => {
+        if (!selectedSessionForGender) return;
+
+        // Check permissions
+        if (!isSuperAdmin) {
+            if (gender && gender !== selectedGender) {
+                setShowAccessDenied(true);
+                return;
+            }
+            if (!gender) {
+                // If gender is not set in profile, we should probably tell them to set it
+                toast.error("Please set your gender in profile settings first.");
+                setShowProfileUpdate(true);
+                return;
+            }
+        }
+
+        setIsNavigating(true);
+        router.push(`/admin/${selectedSessionForGender}?gender=${selectedGender}`);
+        setGenderDialogOpen(false);
     };
 
     const handleCreateSession = async (e: React.FormEvent) => {
@@ -509,12 +544,18 @@ export default function SessionGrid() {
                                     {viewMode === 'grid' && (
                                         <>
                                             <div className="w-16 h-12 relative flex items-center justify-center">
-                                                <Folder className="w-full h-full text-blue-500 fill-blue-500/20 group-hover:fill-blue-500/30 transition-colors" strokeWidth={1.5} />
-                                                <div className="absolute top-[60%] left-1/2 -translate-x-1/2 -translate-y-1/2 mt-1">
-                                                    <span className="text-[0.6rem] font-bold text-blue-700 dark:text-blue-300 bg-white/80 dark:bg-black/80 px-1 py-0.5 rounded-[2px] shadow-sm tracking-tighter block w-max max-w-[50px] truncate">
-                                                        {session}
-                                                    </span>
-                                                </div>
+                                                {clickedSession === session ? (
+                                                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <Folder className="w-full h-full text-blue-500 fill-blue-500/20 group-hover:fill-blue-500/30 transition-colors" strokeWidth={1.5} />
+                                                        <div className="absolute top-[60%] left-1/2 -translate-x-1/2 -translate-y-1/2 mt-1">
+                                                            <span className="text-[0.6rem] font-bold text-blue-700 dark:text-blue-300 bg-white/80 dark:bg-black/80 px-1 py-0.5 rounded-[2px] shadow-sm tracking-tighter block w-max max-w-[50px] truncate">
+                                                                {session}
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                             <div className="w-full px-2">
                                                 <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate w-full">
@@ -529,7 +570,11 @@ export default function SessionGrid() {
                                     {viewMode === 'list' && (
                                         <>
                                             <div className="flex items-center gap-3">
-                                                <Folder className="w-5 h-5 text-blue-500 fill-blue-500/20" />
+                                                {clickedSession === session ? (
+                                                    <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                                                ) : (
+                                                    <Folder className="w-5 h-5 text-blue-500 fill-blue-500/20" />
+                                                )}
                                                 <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{session}</span>
                                             </div>
                                             <div className="text-xs text-neutral-400 hidden sm:block">Academic Session</div>
@@ -755,6 +800,89 @@ export default function SessionGrid() {
                 open={showProfileUpdate}
                 onOpenChange={setShowProfileUpdate}
             />
+
+            {/* Gender Selection Dialog */}
+            <Dialog open={genderDialogOpen} onOpenChange={setGenderDialogOpen}>
+                <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[400px] border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden p-0 shadow-2xl">
+                    <div className="bg-neutral-50 dark:bg-neutral-900/50 p-6 border-b border-neutral-200 dark:border-neutral-800">
+                        <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 mb-4">
+                            <UsersIcon size={20} strokeWidth={2.5} />
+                        </div>
+                        <DialogTitle className="text-lg font-bold">Select Section</DialogTitle>
+                        <p className="text-xs text-neutral-500 mt-1">Choose which section you want to access for {selectedSessionForGender}.</p>
+                    </div>
+
+                    <div className="p-6 space-y-4">
+                        <div className="grid grid-cols-1 gap-3">
+                            <button
+                                onClick={() => handleGenderSelect('male')}
+                                className="group relative flex items-center gap-4 p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all text-left"
+                            >
+                                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                                    <User size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-neutral-900 dark:text-white">Male Section</h4>
+                                    <p className="text-xs text-neutral-500">Access male students and records.</p>
+                                </div>
+                                {!isSuperAdmin && gender === 'female' && (
+                                    <div className="ml-auto">
+                                        <LockIcon size={14} className="text-neutral-400" />
+                                    </div>
+                                )}
+                            </button>
+
+                            <button
+                                onClick={() => handleGenderSelect('female')}
+                                className="group relative flex items-center gap-4 p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-pink-500 dark:hover:border-pink-500 hover:bg-pink-50 dark:hover:bg-pink-950/20 transition-all text-left"
+                            >
+                                <div className="w-12 h-12 bg-pink-100 dark:bg-pink-900/40 rounded-lg flex items-center justify-center text-pink-600 dark:text-pink-400 group-hover:scale-110 transition-transform">
+                                    <User size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-neutral-900 dark:text-white">Female Section</h4>
+                                    <p className="text-xs text-neutral-500">Access female students and records.</p>
+                                </div>
+                                {!isSuperAdmin && gender === 'male' && (
+                                    <div className="ml-auto">
+                                        <LockIcon size={14} className="text-neutral-400" />
+                                    </div>
+                                )}
+                            </button>
+                        </div>
+
+                        <Button
+                            variant="ghost"
+                            className="w-full h-10 text-xs rounded-lg"
+                            onClick={() => setGenderDialogOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+            {/* Navigation Loader */}
+            <AnimatePresence>
+                {isNavigating && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-md z-[10000] flex flex-col items-center justify-center gap-6"
+                    >
+                        <div className="relative">
+                            <div className="w-20 h-20 border-4 border-neutral-200 dark:border-white/10 border-t-black dark:border-t-white rounded-full animate-spin" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <Folder className="w-8 h-8 text-black dark:text-white animate-pulse" />
+                            </div>
+                        </div>
+                        <div className="text-center space-y-2">
+                            <h3 className="text-xl font-bold text-neutral-900 dark:text-white">Opening Section</h3>
+                            <p className="text-sm text-neutral-500 animate-pulse">Please wait while we prepare the dashboard...</p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

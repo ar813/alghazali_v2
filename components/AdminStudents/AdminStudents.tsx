@@ -29,7 +29,7 @@ import {
 import { useSession } from '@/context/SessionContext';
 
 
-const AdminStudents = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
+const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loading: boolean) => void; genderFilter?: "male" | "female" }) => {
   const { isSuperAdmin } = useAuth();
 
   // Search/Filter state
@@ -137,7 +137,7 @@ const AdminStudents = ({ onLoadingChange }: { onLoadingChange?: (loading: boolea
       try {
         const start = (currentPage - 1) * pageSize;
         const end = start + pageSize;
-        const params = { classFilter: klass, search: search, start, end, session: selectedSession };
+        const params = { classFilter: klass, search: search, start, end, session: selectedSession, gender: genderFilter || null };
 
         const [data, count, statsData] = await Promise.all([
           client.fetch(getPaginatedStudentsQuery, params),
@@ -163,7 +163,7 @@ const AdminStudents = ({ onLoadingChange }: { onLoadingChange?: (loading: boolea
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onLoadingChange, currentPage, pageSize, klass, search, selectedSession]); // Added selectedSession
+  }, [onLoadingChange, currentPage, pageSize, klass, search, selectedSession, genderFilter]); // Added selectedSession & genderFilter
 
   const refreshStudents = async () => {
     if (!selectedSession) return;
@@ -171,7 +171,7 @@ const AdminStudents = ({ onLoadingChange }: { onLoadingChange?: (loading: boolea
     onLoadingChange?.(true)
     const start = (currentPage - 1) * pageSize;
     const end = start + pageSize;
-    const params = { classFilter: klass, search: search, start, end, session: selectedSession };
+    const params = { classFilter: klass, search: search, start, end, session: selectedSession, gender: genderFilter || null };
 
     const [data, count] = await Promise.all([
       client.fetch(getPaginatedStudentsQuery, params),

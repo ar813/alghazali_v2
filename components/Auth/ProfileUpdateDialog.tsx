@@ -13,22 +13,24 @@ interface ProfileUpdateDialogProps {
 }
 
 const ProfileUpdateDialog = ({ open, onOpenChange }: ProfileUpdateDialogProps) => {
-    const { user, updateName } = useAuth();
+    const { user, gender, updateName, updateGender } = useAuth();
     const [newName, setNewName] = useState(user?.displayName || '');
+    const [newGender, setNewGender] = useState<"male" | "female" | "">(gender || '');
     const [isUpdating, setIsUpdating] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newName.trim()) return;
+        if (!newName.trim() || !newGender) return;
 
         setIsUpdating(true);
         try {
             await updateName(newName.trim());
-            toast.success('Name updated successfully!');
+            await updateGender(newGender as "male" | "female");
+            toast.success('Profile updated successfully!');
             onOpenChange(false);
         } catch (error) {
-            console.error('Error updating name:', error);
-            toast.error('Failed to update name.');
+            console.error('Error updating profile:', error);
+            toast.error('Failed to update profile.');
         } finally {
             setIsUpdating(false);
         }
@@ -58,13 +60,35 @@ const ProfileUpdateDialog = ({ open, onOpenChange }: ProfileUpdateDialogProps) =
                         />
                     </div>
 
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase tracking-widest font-bold text-neutral-400 ml-1">Gender</label>
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setNewGender('male')}
+                                className={`flex-1 h-10 rounded-lg text-xs font-semibold transition-all ${newGender === 'male' ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+                            >
+                                Male
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setNewGender('female')}
+                                className={`flex-1 h-10 rounded-lg text-xs font-semibold transition-all ${newGender === 'female' ? 'bg-pink-600 text-white border-pink-600 hover:bg-pink-700' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+                            >
+                                Female
+                            </Button>
+                        </div>
+                    </div>
+
                     <div className="flex flex-col sm:flex-row gap-2 pt-2">
                         <Button type="button" variant="ghost" className="order-2 sm:order-1 flex-1 text-xs h-10 rounded-lg" onClick={() => onOpenChange(false)}>
                             Cancel
                         </Button>
                         <Button
                             type="submit"
-                            disabled={isUpdating || !newName.trim()}
+                            disabled={isUpdating || !newName.trim() || !newGender}
                             className="order-1 sm:order-2 flex-[1.5] bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 text-xs h-10 rounded-lg font-semibold shadow-lg shadow-blue-500/10"
                         >
                             {isUpdating ? (

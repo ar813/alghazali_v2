@@ -16,7 +16,7 @@ const MONTHS = ['Month', 'January', 'February', 'March', 'April', 'May', 'June',
 
 import { useSession } from '@/context/SessionContext';
 
-const AdminFees = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
+const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loading: boolean) => void; genderFilter?: "male" | "female" }) => {
   const [students, setStudents] = useState<Student[]>([])
   const [fees, setFees] = useState<any[]>([])
   const [loading, setLoading] = useState<boolean>(false)
@@ -46,7 +46,7 @@ const AdminFees = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) =
     const load = async () => {
       setLoading(true); onLoadingChange?.(true)
       try {
-        const s: Student[] = await client.fetch(getAllStudentsQuery, { session: selectedSession })
+        const s: Student[] = await client.fetch(getAllStudentsQuery, { session: selectedSession, gender: genderFilter || null })
         setStudents(s)
       } finally {
         setLoading(false); onLoadingChange?.(false)
@@ -54,7 +54,7 @@ const AdminFees = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) =
     }
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSession])
+  }, [selectedSession, genderFilter])
 
   // Actions
   const loadFees = useCallback(async () => {
@@ -68,6 +68,7 @@ const AdminFees = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) =
       if (filterYear) params.set('year', String(filterYear))
       if (filterStatus) params.set('status', filterStatus)
       if (search.trim()) params.set('q', search.trim())
+      if (genderFilter) params.set('gender', genderFilter)
       params.set('session', selectedSession)
 
       const res = await fetch(`/api/fees?${params.toString()}`, {
@@ -80,7 +81,7 @@ const AdminFees = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) =
       console.error('Failed to load fees', e)
       toast.error('Failed to load fees')
     } finally { setLoading(false); onLoadingChange?.(false) }
-  }, [selectedSession, user, filterClass, filterMonth, filterYear, filterStatus, search, onLoadingChange])
+  }, [selectedSession, user, filterClass, filterMonth, filterYear, filterStatus, search, onLoadingChange, genderFilter])
 
   const handleExportFees = async () => {
     try {

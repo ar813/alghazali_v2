@@ -6,6 +6,9 @@ import { Provider } from "@/components/ui/provider";
 import AppDownloadPromo from "@/components/AppDownloadPromo/AppDownloadPromo";
 import GoogleAnalytics from "@/components/SEO/GoogleAnalytics";
 import LordIconInitializer from "@/components/LordIconInitializer";
+import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/context/AuthContext";
+import { MobileNavProvider } from "@/contexts/MobileNavContext";
 
 const anta = Anta({
   weight: "400",
@@ -110,11 +113,6 @@ export const metadata: Metadata = {
   },
 };
 
-import { Toaster } from "@/components/ui/sonner";
-
-import { AuthProvider } from "@/context/AuthContext";
-import { MobileNavProvider } from "@/contexts/MobileNavContext";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -122,11 +120,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <GoogleAnalytics ga_id="G-75E96W9EMG" />
-      <LordIconInitializer />
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${anta.variable} ${outfit.variable} antialiased`}
       >
+        <GoogleAnalytics ga_id="G-75E96W9EMG" />
+        <LordIconInitializer />
         <Provider>
           <AuthProvider>
             <MobileNavProvider>

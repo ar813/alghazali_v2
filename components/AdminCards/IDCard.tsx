@@ -76,10 +76,7 @@ const IDCard = ({ student: s, side, issueDate, expiryDate }: IDCardProps) => {
 
     // Build QR Data
     const buildQrData = (s: Student) => {
-        const dob = (s.dob || '').toString();
-        const iss = (s as any).issueDate || issueDate || '';
-        const exp = (s as any).expiryDate || expiryDate || '';
-        return `Name: ${s.fullName || ''}\nFather Name: ${s.fatherName || ''}\nRoll No: ${s.rollNumber || ''}\nGR NO: ${s.grNumber || ''}\nDOB: ${dob}\nIssue: ${iss}\nExpiry: ${exp}\nPhone: ${s.phoneNumber || ''}`;
+        return s.grNumber || '';
     };
 
     const getQrSrc = (s: Student, size = 80) => {

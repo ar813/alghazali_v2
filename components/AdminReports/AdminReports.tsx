@@ -15,7 +15,7 @@ type StudentType = {
   photoUrl?: string
 }
 
-const AdminReports = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
+const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string; onLoadingChange?: (loading: boolean) => void }) => {
   const { selectedSession } = useSession()
   const [students, setStudents] = useState<StudentType[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,13 +55,16 @@ const AdminReports = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean
       if (!selectedSession) return
       setLoading(true)
       onLoadingChange?.(true)
-      const data: StudentType[] = await client.fetch(getAllStudentsQuery, { session: selectedSession })
+      const data: StudentType[] = await client.fetch(getAllStudentsQuery, { 
+        session: selectedSession,
+        gender: genderFilter || null
+      })
       setStudents(data)
       setLoading(false)
       onLoadingChange?.(false)
     }
     fetchStudents()
-  }, [onLoadingChange, selectedSession])
+  }, [onLoadingChange, selectedSession, genderFilter])
 
   const handleExportFeesExcel = async () => {
     try {
@@ -78,6 +81,7 @@ const AdminReports = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean
         if (q) params.set('q', q)
       }
       if (selectedSession) params.set('session', selectedSession)
+      if (genderFilter) params.set('gender', genderFilter)
 
       const res = await fetch(`/api/fees?${params.toString()}`, { cache: 'no-store' })
       const json = await res.json()
