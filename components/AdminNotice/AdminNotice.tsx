@@ -9,6 +9,8 @@ import NoticeForm from './NoticeForm';
 import NoticeList from './NoticeList';
 import EditNoticeModal from './EditNoticeModal';
 import { useSession } from '@/context/SessionContext';
+import { useAuth } from '@/hooks/use-auth';
+import OTPVerificationModal from '@/components/Security/OTPVerificationModal';
 
 const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
   const { selectedSession } = useSession()
@@ -18,6 +20,11 @@ const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
   const [saving, setSaving] = useState<boolean>(false)
   const [workingId, setWorkingId] = useState<string | null>(null)
   const [editing, setEditing] = useState<any | null>(null)
+
+  // OTP State
+  const { user } = useAuth()
+  const [showOTPModal, setShowOTPModal] = useState(false)
+  const [otpAction, setOtpAction] = useState<{ type: 'deleteAll', label: string } | null>(null)
 
   // Initial Load - Students
   useEffect(() => {
@@ -91,15 +98,22 @@ const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
 
   // Delete All
   const handleDeleteAll = async () => {
-    if (!confirm('Type "DELETE" to confirm flushing all records?')) return;
-    setLoading(true)
+    // Require OTP
+    if (!showOTPModal && !otpAction) {
+      setOtpAction({ type: 'deleteAll', label: 'Flush All Notices (Records)' })
+      setShowOTPModal(true)
+      return
+    }
+
     setLoading(true)
     try {
-      const res = await fetch(`/api/notices?all=true&session=${selectedSession}`, { method: 'DELETE' })
+      const res = await fetch(`/api/notices?all=true&session=${selectedSession || ''}`, { method: 'DELETE' })
       const json = await res.json()
       if (json?.ok) {
         setItems([])
         toast.success('All notices cleared')
+        setShowOTPModal(false)
+        setOtpAction(null)
       }
     } finally { setLoading(false) }
   }
@@ -141,6 +155,19 @@ const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
             setEditing(null)
             toast.success('Changes saved successfully')
           }}
+        />
+      )}
+
+      {user && (
+        <OTPVerificationModal
+          isOpen={showOTPModal}
+          onClose={() => { setShowOTPModal(false); setOtpAction(null); }}
+          onVerifySuccess={() => {
+            if (otpAction?.type === 'deleteAll') handleDeleteAll();
+          }}
+          email={user.email || ''}
+          userId={user.uid}
+          actionName={otpAction?.label || 'Critical Data Deletion'}
         />
       )}
     </div>

@@ -35,8 +35,13 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "Al Ghazali High School | Nurturing Minds, Building Character",
-    template: "%s | Al Ghazali High School",
+    default: "Al-Ghazali High School | Excellence in Education & Islamic Values",
+    template: "%s | Al-Ghazali High School",
+  },
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
   },
   description: "Established in 1993, Al Ghazali High School provides quality education combining modern pedagogy with Islamic values in Landhi, Karachi. Under the supervision of Al Razi Educational & Welfare Society.",
   keywords: [

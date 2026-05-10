@@ -32,7 +32,7 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
 
   // Config
   const [examName, setExamName] = useState("Final Term Examination 2024");
-  const [cardsPerPage, setCardsPerPage] = useState<1 | 2>(2);
+  const [cardsPerPage, setCardsPerPage] = useState<1 | 2 | 4>(2);
   const [isDownloading, setIsDownloading] = useState(false);
 
   // Load Data
@@ -125,16 +125,26 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
       const { jsPDF } = await import("jspdf");
 
       const doc = new jsPDF({
-        orientation: 'portrait',
+        orientation: cardsPerPage === 4 ? 'landscape' : 'portrait',
         unit: 'mm',
         format: 'a4'
       });
 
-      const pageWidth = 210;
-      const pageHeight = 297;
+      const pageWidth = cardsPerPage === 4 ? 297 : 210;
+      const pageHeight = cardsPerPage === 4 ? 210 : 297;
       const margin = 10;
-      const cardWidth = pageWidth - (margin * 2);
-      const cardHeight = (pageHeight - (margin * 3)) / 2;
+      
+      let cardWidth: number;
+      let cardHeight: number;
+
+      if (cardsPerPage === 4) {
+        // A4 Landscape is 297 x 210
+        cardWidth = 132;
+        cardHeight = 92;
+      } else {
+        cardWidth = pageWidth - (margin * 2);
+        cardHeight = (pageHeight - (margin * 3)) / 2;
+      }
 
       // Prepare images
       const logo = await loadImage('/logo.png');
@@ -144,93 +154,122 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
 
       for (let i = 0; i < toPrint.length; i++) {
         const s = toPrint[i];
-        const isSecondOnPage = cardsPerPage === 2 && i % 2 !== 0;
+        
+        let isNewPage = false;
+        if (cardsPerPage === 1) isNewPage = i > 0;
+        else if (cardsPerPage === 2) isNewPage = i > 0 && i % 2 === 0;
+        else if (cardsPerPage === 4) isNewPage = i > 0 && i % 4 === 0;
 
-        if (i > 0 && !isSecondOnPage) {
+        if (isNewPage) {
           doc.addPage();
         }
 
-        const yOffset = isSecondOnPage ? (cardHeight + (margin * 2)) : margin;
+        let xOffset = margin;
+        let yOffset = margin;
+
+        if (cardsPerPage === 2) {
+          yOffset = (i % 2 !== 0) ? (cardHeight + (margin * 2)) : margin;
+        } else if (cardsPerPage === 4) {
+          const pos = i % 4;
+          const col = pos % 2;
+          const row = Math.floor(pos / 2);
+          
+          // Calculate centering
+          const hGap = 8; // gap between columns
+          const vGap = 8; // gap between rows
+          const startX = (pageWidth - (cardWidth * 2 + hGap)) / 2;
+          const startY = (pageHeight - (cardHeight * 2 + vGap)) / 2;
+          
+          xOffset = startX + (col * (cardWidth + hGap));
+          yOffset = startY + (row * (cardHeight + vGap));
+        }
+
         const currentCardHeight = cardsPerPage === 1 ? pageHeight - (margin * 2) : cardHeight;
 
         // Draw Card Border
         doc.setDrawColor(0);
         doc.setLineWidth(0.8);
-        doc.rect(margin, yOffset, cardWidth, currentCardHeight);
+        doc.rect(xOffset, yOffset, cardWidth, currentCardHeight);
 
         // Inner thin border for premium look
         doc.setLineWidth(0.2);
-        doc.rect(margin + 1.5, yOffset + 1.5, cardWidth - 3, currentCardHeight - 3);
+        doc.rect(xOffset + 1.5, yOffset + 1.5, cardWidth - 3, currentCardHeight - 3);
+
+        const cardCenterX = xOffset + (cardWidth / 2);
+        const cardBottom = yOffset + currentCardHeight;
+        const footerY = cardBottom - 8;
 
         // --- Watermark ---
         doc.saveGraphicsState();
         doc.setGState(new (doc as any).GState({ opacity: 0.05 }));
-        doc.addImage(logo, 'PNG', pageWidth / 2 - 40, yOffset + (currentCardHeight / 2) - 40, 80, 80);
+        doc.addImage(logo, 'PNG', cardCenterX - 40, yOffset + (currentCardHeight / 2) - 40, 80, 80);
         doc.restoreGraphicsState();
 
         // Header Section
-        const headerY = yOffset + 12;
-        doc.addImage(logo, 'PNG', margin + 8, headerY - 4, 18, 18);
-
+        const headerY = yOffset + 14; // Shifted down for better margin
+        doc.addImage(logo, 'PNG', xOffset + 8, headerY - 5, 18, 18);
+        
         // QR Code (Top Right)
         try {
           const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(s.grNumber || 'N/A')}`;
           const qr = await loadImage(qrUrl);
-          doc.addImage(qr, 'PNG', cardWidth + margin - 26, headerY - 4, 18, 18);
+          doc.addImage(qr, 'PNG', xOffset + cardWidth - 26, headerY - 5, 18, 18);
           doc.setFontSize(7);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(0);
-          doc.text("GR: " + (s.grNumber || '---'), cardWidth + margin - 17, headerY + 18, { align: 'center' });
+          doc.text("GR: " + (s.grNumber || '---'), xOffset + cardWidth - 17, headerY + 16, { align: 'center' });
         } catch (e) { }
 
         doc.setTextColor(0);
-        doc.setFontSize(24);
+        doc.setFontSize(cardsPerPage === 4 ? 18 : 24);
         doc.setFont('times', 'bold');
-        doc.text("AL-GHAZALI HIGH SCHOOL", pageWidth / 2, headerY + 1, { align: 'center' });
+        doc.text("AL-GHAZALI HIGH SCHOOL", cardCenterX, headerY + 1, { align: 'center' });
 
-        doc.setFontSize(8.5);
+        doc.setFontSize(cardsPerPage === 4 ? 7 : 8.5);
         doc.setFont('helvetica', 'normal');
-        doc.text("41/25-28, Area 36-B Landhi, Karachi 75160, Pakistan", pageWidth / 2, headerY + 7, { align: 'center' });
-        doc.text("Phone: 0324-8266424", pageWidth / 2, headerY + 11, { align: 'center' });
+        doc.text("41/25-28, Area 36-B Landhi, Karachi 75160, Pakistan", cardCenterX, headerY + 7, { align: 'center' });
+        doc.text("Phone: 0324-8266424", cardCenterX, headerY + 11, { align: 'center' });
 
         // Exam Title - Premium Ribbon Style
         const examY = headerY + 16;
-        doc.setFillColor(248, 248, 248); // Even lighter grey
-        doc.rect(margin + 10, examY, cardWidth - 20, 10, 'F');
+        doc.setFillColor(248, 248, 248);
+        doc.rect(xOffset + 10, examY, cardWidth - 20, 10, 'F');
         doc.setDrawColor(0);
         doc.setLineWidth(0.4);
-        doc.line(margin + 10, examY, cardWidth + margin - 10, examY);
-        doc.line(margin + 10, examY + 10, cardWidth + margin - 10, examY + 10);
+        doc.line(xOffset + 10, examY, xOffset + cardWidth - 10, examY);
+        doc.line(xOffset + 10, examY + 10, xOffset + cardWidth - 10, examY + 10);
 
-        doc.setFontSize(14);
+        doc.setFontSize(cardsPerPage === 4 ? 12 : 14);
         doc.setFont('helvetica', 'bold');
-        doc.text(examName.toUpperCase(), pageWidth / 2, examY + 6.5, { align: 'center' });
+        doc.text(examName.toUpperCase(), cardCenterX, examY + 6.5, { align: 'center' });
 
         // Student Info Section
-        const infoY = examY + 14;
-        const col1 = margin + 12;
-        const col2 = margin + 55;
+        const infoY = examY + 15;
+        const col1 = xOffset + 12;
+        const col2 = xOffset + (cardsPerPage === 4 ? 48 : 55); // Adjusted for better label/value gap
 
         // Photo Box
         doc.setLineWidth(0.6);
         doc.setDrawColor(0);
-        doc.rect(cardWidth + margin - 45, infoY, 35, 42);
-        doc.setFontSize(8);
+        const photoW = cardsPerPage === 4 ? 30 : 35;
+        const photoH = cardsPerPage === 4 ? 36 : 42;
+        doc.rect(xOffset + cardWidth - photoW - 10, infoY, photoW, photoH);
+        doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(100);
         if (!s.photoUrl) {
-          doc.text("AFFIX PHOTO", cardWidth + margin - 27.5, infoY + 21, { align: 'center' });
+          doc.text("AFFIX PHOTO", xOffset + cardWidth - (photoW / 2) - 10, infoY + (photoH / 2), { align: 'center' });
         }
 
         if (s.photoUrl) {
           try {
             const photo = await loadImage(s.photoUrl);
-            doc.addImage(photo, 'JPEG', cardWidth + margin - 45, infoY, 35, 42);
+            doc.addImage(photo, 'JPEG', xOffset + cardWidth - photoW - 10, infoY, photoW, photoH);
           } catch (e) { }
         }
 
         doc.setTextColor(0);
-        doc.setFontSize(11);
+        doc.setFontSize(cardsPerPage === 4 ? 9 : 11);
 
         const drawField = (label: string, value: string, y: number) => {
           doc.setFont('helvetica', 'bold');
@@ -240,36 +279,37 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
         };
 
         let currentY = infoY + 5;
+        const fieldGap = cardsPerPage === 4 ? 6 : 8;
         drawField("STUDENT NAME", s.fullName.toUpperCase(), currentY);
-        currentY += 8;
+        currentY += fieldGap;
         drawField("FATHER NAME", s.fatherName.toUpperCase(), currentY);
-        currentY += 8;
+        currentY += fieldGap;
         drawField("ROLL NUMBER", s.rollNumber || "---", currentY);
-        currentY += 8;
+        currentY += fieldGap;
         drawField("GR NUMBER", s.grNumber || "---", currentY);
-        currentY += 8;
+        currentY += fieldGap;
         drawField("CLASS", String(s.admissionFor || "---"), currentY);
-        currentY += 8;
+        currentY += fieldGap;
         drawField("PHONE", s.phoneNumber || "---", currentY);
 
         // Divider line for status
         currentY += 3;
         doc.setLineWidth(0.1);
         doc.setDrawColor(150);
-        doc.line(col1, currentY, cardWidth + margin - 10, currentY);
+        doc.line(col1, currentY, xOffset + cardWidth - 10, currentY);
 
         // --- Attendance & Fees Section ---
-        currentY += 11;
-        doc.setFontSize(8);
+        currentY += (cardsPerPage === 4 ? 8 : 11);
+        doc.setFontSize(cardsPerPage === 4 ? 7 : 8);
         doc.setFont('helvetica', 'bold');
 
         // Attendance Table
         const attTableX = col1;
         const attTableY = currentY;
-        const attCellW = 12;
-        const attCellH = 6;
+        const attCellW = cardsPerPage === 4 ? 10 : 12;
+        const attCellH = cardsPerPage === 4 ? 5.5 : 6; // slightly taller cells
 
-        doc.text("ATTENDANCE STATUS", attTableX + (attCellW * 2), attTableY - 3.5, { align: 'center' });
+        doc.text("ATTENDANCE STATUS", attTableX + (attCellW * 2), attTableY - 3, { align: 'center' });
 
         // Table Header
         doc.setLineWidth(0.4);
@@ -277,23 +317,21 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
         doc.rect(attTableX, attTableY, attCellW * 4, attCellH * 2);
         doc.line(attTableX, attTableY + attCellH, attTableX + (attCellW * 4), attTableY + attCellH);
 
-        // Vertical lines
         for (let j = 1; j < 4; j++) {
           doc.line(attTableX + (attCellW * j), attTableY, attTableX + (attCellW * j), attTableY + (attCellH * 2));
         }
 
-        doc.setFontSize(7);
-        doc.text("T.D", attTableX + (attCellW / 2), attTableY + 4, { align: 'center' });
-        doc.text("T.P", attTableX + attCellW + (attCellW / 2), attTableY + 4, { align: 'center' });
-        doc.text("T.A", attTableX + (attCellW * 2) + (attCellW / 2), attTableY + 4, { align: 'center' });
-        doc.text("T.L", attTableX + (attCellW * 3) + (attCellW / 2), attTableY + 4, { align: 'center' });
+        doc.setFontSize(cardsPerPage === 4 ? 6 : 7);
+        doc.text("T.D", attTableX + (attCellW / 2), attTableY + (attCellH * 0.7), { align: 'center' });
+        doc.text("T.P", attTableX + attCellW + (attCellW / 2), attTableY + (attCellH * 0.7), { align: 'center' });
+        doc.text("T.A", attTableX + (attCellW * 2) + (attCellW / 2), attTableY + (attCellH * 0.7), { align: 'center' });
+        doc.text("T.L", attTableX + (attCellW * 3) + (attCellW / 2), attTableY + (attCellH * 0.7), { align: 'center' });
 
         // Fees Status
-        const feesX = col1 + (attCellW * 4) + 12;
-        doc.setFontSize(8);
+        const feesX = col1 + (attCellW * 4) + (cardsPerPage === 4 ? 8 : 12);
+        doc.setFontSize(cardsPerPage === 4 ? 7 : 8);
         doc.text("FEES STATUS:", feesX, attTableY + 4);
 
-        // Checkboxes
         const checkSize = 4;
         const drawCheckbox = (x: number, y: number, label: string) => {
           doc.rect(x, y - 3, checkSize, checkSize);
@@ -301,29 +339,24 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
           doc.text(label, x + checkSize + 2, y);
         };
 
-        drawCheckbox(feesX + 24, attTableY + 4, "Clear");
-        drawCheckbox(feesX + 46, attTableY + 4, "Not Clear");
+        drawCheckbox(feesX + (cardsPerPage === 4 ? 20 : 24), attTableY + 4, "Clear");
+        drawCheckbox(feesX + (cardsPerPage === 4 ? 38 : 46), attTableY + 4, "Not Clear");
 
-        // Remaining Fees
         doc.setFont('helvetica', 'bold');
-        doc.text("REMAINING FEES:", feesX, attTableY + 12);
+        doc.text("REMAINING FEES:", feesX, attTableY + (cardsPerPage === 4 ? 10 : 12));
         doc.setLineWidth(0.2);
-        doc.line(feesX + 30, attTableY + 12.5, cardWidth + margin - 10, attTableY + 12.5);
-
-        // System Footer
-        const cardBottom = (cardsPerPage === 1 ? pageHeight - margin : yOffset + currentCardHeight);
-        const footerY = cardBottom - 8;
+        doc.line(feesX + (cardsPerPage === 4 ? 25 : 30), attTableY + (cardsPerPage === 4 ? 10.5 : 12.5), xOffset + cardWidth - 10, attTableY + (cardsPerPage === 4 ? 10.5 : 12.5));
 
         doc.setLineWidth(0.1);
         doc.setDrawColor(180);
-        doc.line(margin + 5, footerY - 5, cardWidth + margin - 5, footerY - 5);
+        doc.line(xOffset + 5, footerY - 5, xOffset + cardWidth - 5, footerY - 5);
 
-        doc.setFontSize(7);
+        doc.setFontSize(6);
         doc.setFont('helvetica', 'italic');
         const now = new Date();
         const dateTimeStr = now.toLocaleDateString() + " " + now.toLocaleTimeString();
-        doc.text(`* This is a system-generated admit card and does not require a physical signature.`, pageWidth / 2, footerY, { align: 'center' });
-        doc.text(`Generated on: ${dateTimeStr} | IT Department `, pageWidth / 2, footerY + 3.5, { align: 'center' });
+        doc.text(`* System-generated admit card. Signature not required.`, cardCenterX, footerY, { align: 'center' });
+        doc.text(`Generated: ${dateTimeStr} | IT Dept`, cardCenterX, footerY + 3.5, { align: 'center' });
       }
 
       doc.save(`Admit_Cards_${klass}.pdf`);
@@ -367,6 +400,9 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
             </button>
             <button onClick={() => setCardsPerPage(2)} className={cn("px-3 py-1.5 rounded-md text-xs font-bold transition-all", cardsPerPage === 2 ? "bg-white dark:bg-zinc-800 shadow-sm text-primary" : "text-zinc-500")}>
               <Layers size={14} className="inline mr-1" />2/A4
+            </button>
+            <button onClick={() => setCardsPerPage(4)} className={cn("px-3 py-1.5 rounded-md text-xs font-bold transition-all", cardsPerPage === 4 ? "bg-white dark:bg-zinc-800 shadow-sm text-primary" : "text-zinc-500")}>
+              <Layers size={14} className="inline mr-1" />4/A4
             </button>
           </div>
           {/* Download */}

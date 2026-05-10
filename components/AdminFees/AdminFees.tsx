@@ -11,6 +11,7 @@ import FeeTable from './FeeTable';
 import FeeDrawer from './FeeDrawer';
 import FeeDetails from './FeeDetails';
 import { useAuth } from '@/hooks/use-auth';
+import OTPVerificationModal from '@/components/Security/OTPVerificationModal';
 
 const MONTHS = ['Month', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'admission'] as const
 
@@ -39,6 +40,8 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null)
   const [importLoading, setImportLoading] = useState(false)
+  const [showOTPModal, setShowOTPModal] = useState(false)
+  const [otpAction, setOtpAction] = useState<{ type: 'deleteSingle' | 'deleteAll', label: string, id?: string } | null>(null)
 
   // Load students
   useEffect(() => {
@@ -189,26 +192,59 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
   }
 
   const deleteFee = async (id: string) => {
-    toast("Delete Fee Record?", {
-      description: "This action cannot be undone.",
-      action: {
-        label: "Confirm Delete",
-        onClick: async () => {
-          setDeletingId(id)
-          try {
-            const token = await user?.getIdToken();
-            const res = await fetch(`/api/fees?id=${id}`, {
-              method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${token}` }
-            })
-            const json = await res.json()
-            if (json?.ok) { await loadFees(); toast.success('Fee record deleted successfully') }
-          } catch {
-            toast.error('Failed to delete fee record')
-          } finally { setDeletingId(null) }
-        },
-      },
-    })
+    confirmDeleteFee(id);
+  }
+
+  const confirmDeleteFee = async (id: string) => {
+    setDeletingId(id)
+    try {
+      const token = await user?.getIdToken();
+      const res = await fetch(`/api/fees?id=${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const json = await res.json()
+      if (json?.ok) { await loadFees(); toast.success('Fee record deleted successfully') }
+    } catch {
+      toast.error('Failed to delete fee record')
+    } finally {
+      setDeletingId(null)
+      setShowOTPModal(false)
+      setOtpAction(null)
+    }
+  }
+
+  const handleDeleteAllFiltered = async () => {
+    setLoading(true)
+    try {
+      const token = await user?.getIdToken();
+      const params = new URLSearchParams()
+      if (filterClass) params.set('className', filterClass)
+      if (filterMonth && filterMonth !== 'Month') params.set('month', filterMonth)
+      if (filterYear) params.set('year', String(filterYear))
+      if (filterStatus) params.set('status', filterStatus)
+      if (search.trim()) params.set('q', search.trim())
+      if (genderFilter) params.set('gender', genderFilter)
+      params.set('session', selectedSession || '')
+      params.set('all', 'true')
+
+      const res = await fetch(`/api/fees?${params.toString()}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const json = await res.json()
+      if (json?.ok) {
+        toast.success(`Deleted ${json.deleted} records`)
+        await loadFees()
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Bulk delete failed')
+    } finally {
+      setLoading(false)
+      setShowOTPModal(false)
+      setOtpAction(null)
+    }
   }
 
   const markStatus = async (id: string, status: FeeStatus) => {
@@ -269,7 +305,11 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
           search={search} onSearchChange={setSearch}
           uniqueClasses={uniqueClasses} months={MONTHS}
           onRefresh={loadFees} onExport={handleExportFees}
-          onImportClick={handleImportClick} onDeleteAll={() => { }}
+          onImportClick={handleImportClick} 
+          onDeleteAll={() => {
+            setOtpAction({ type: 'deleteAll', label: 'Delete All Filtered Fees' });
+            setShowOTPModal(true);
+          }}
           onAddFee={() => { setEditingFee(null); setShowModal(true); }}
           loading={loading} importLoading={importLoading}
           hasFilters={!!(filterClass || filterMonth || filterYear || filterStatus || search)}
@@ -293,6 +333,19 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
       />
 
       {detailFee && <FeeDetails fee={detailFee} onClose={() => setDetailFee(null)} />}
+
+      {user && (
+        <OTPVerificationModal
+          isOpen={showOTPModal}
+          onClose={() => { setShowOTPModal(false); setOtpAction(null); }}
+          onVerifySuccess={() => {
+            if (otpAction?.type === 'deleteAll') handleDeleteAllFiltered();
+          }}
+          email={user.email || ''}
+          userId={user.uid}
+          actionName={otpAction?.label || 'Critical Data Deletion'}
+        />
+      )}
     </div>
   )
 }

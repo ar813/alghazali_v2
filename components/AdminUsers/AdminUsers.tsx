@@ -6,6 +6,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { Trash2, Shield, UserCog, Search, Plus, X, AlertCircle, Edit3, Loader2, Mail, RefreshCw, Clock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import OTPVerificationModal from "@/components/Security/OTPVerificationModal";
 
 interface UserData {
     uid: string;
@@ -49,6 +50,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
     // Delete Confirmation state
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
+    const [showOTPModal, setShowOTPModal] = useState(false);
 
     const fetchUsers = async (silent = false) => {
         if (!silent) {
@@ -190,7 +192,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
             return;
         }
         setUserToDelete(user);
-        setShowDeleteDialog(true);
+        setShowOTPModal(true);
     };
 
     const confirmDelete = async () => {
@@ -210,7 +212,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
 
             toast.success("User removed permanently.");
             setUsers(prev => prev.filter(user => user.uid !== userToDelete.uid));
-            setShowDeleteDialog(false);
+            setShowOTPModal(false);
             setUserToDelete(null);
         } catch (error: any) {
             toast.error(error.message);
@@ -767,6 +769,17 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                     </div>
                 )
             }
+            {/* OTP Verification Modal */}
+            {auth.currentUser && (
+                <OTPVerificationModal
+                    isOpen={showOTPModal}
+                    onClose={() => { setShowOTPModal(false); setUserToDelete(null); }}
+                    onVerifySuccess={confirmDelete}
+                    email={auth.currentUser.email || ''}
+                    userId={auth.currentUser.uid}
+                    actionName={`Delete Admin User: ${userToDelete?.email || 'this account'}`}
+                />
+            )}
         </>
     );
 };

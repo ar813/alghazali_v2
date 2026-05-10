@@ -176,7 +176,14 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
                                     <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6 border-b border-neutral-50 dark:border-neutral-900 pb-8">
                                         <div
                                             className="relative cursor-pointer w-24 h-24 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 overflow-hidden flex items-center justify-center shrink-0"
-                                            onClick={() => document.getElementById('photo-upload-input')?.click()}
+                                            onClick={() => {
+                                                if (photoPreview) {
+                                                    setCropSource(photoPreview)
+                                                    setShowCropper(true)
+                                                } else {
+                                                    document.getElementById('photo-upload-input')?.click()
+                                                }
+                                            }}
                                         >
                                             {photoPreview ? (
                                                 <Image src={photoPreview} alt="Preview" fill className="object-cover" unoptimized />
@@ -269,15 +276,30 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
                 </div>
             </footer>
 
-            {/* Cropper Overlay */}
-            {showCropper && cropSource && (
-                <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-neutral-950 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl relative">
-                        <button onClick={() => setShowCropper(false)} className="absolute top-4 right-4 z-[101] text-neutral-400 hover:text-neutral-900 dark:hover:text-white"><X size={20} /></button>
-                        <ImageCropper src={cropSource} onCropped={handleCropComplete} onCancel={() => setShowCropper(false)} />
-                    </div>
-                </div>
-            )}
+            {/* Premium Cropper Overlay */}
+            <AnimatePresence>
+                {showCropper && cropSource && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+                    >
+                        {/* Glassmorphic Backdrop */}
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+
+                        {/* Cropper Card */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="bg-white dark:bg-neutral-900 rounded-xl w-full max-w-lg overflow-hidden shadow-2xl relative z-10"
+                        >
+                            <ImageCropper src={cropSource} onCropped={handleCropComplete} onCancel={() => setShowCropper(false)} />
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <style jsx global>{`
                 .no-scrollbar::-webkit-scrollbar { display: none; }

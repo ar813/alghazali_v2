@@ -159,7 +159,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     {/* Photo Section */}
                                     <div className="sm:col-span-2 flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50 hover:border-blue-300 transition-colors">
-                                        <div className="relative group cursor-pointer" onClick={() => document.getElementById('photo-upload')?.click()}>
+                                        <div className="relative group cursor-pointer" onClick={() => { if (photoPreview) { setCropSource(photoPreview); setShowCropper(true); } else { document.getElementById('photo-upload')?.click(); } }}>
                                             <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 border-4 border-white shadow-md">
                                                 {photoPreview ? (
                                                     <Image src={photoPreview} alt="Preview" fill className="object-cover" unoptimized />
@@ -385,11 +385,17 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
 
             {/* Cropper Modal Overlay */}
             {showCropper && cropSource && (
-                <ImageCropper
-                    src={cropSource}
-                    onCropped={handleCropComplete}
-                    onCancel={() => setShowCropper(false)}
-                />
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    {/* Backdrop - click does NOT close */}
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+                    <div className="relative z-10 w-full max-w-md bg-white dark:bg-neutral-900 rounded-xl overflow-hidden shadow-2xl">
+                        <ImageCropper
+                            src={cropSource}
+                            onCropped={handleCropComplete}
+                            onCancel={() => setShowCropper(false)}
+                        />
+                    </div>
+                </div>
             )}
 
 

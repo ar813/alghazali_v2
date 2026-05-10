@@ -1,5 +1,7 @@
-import { Upload, Users, PieChart, BarChart2, Loader2, X } from 'lucide-react'
+import { Upload, Users, PieChart, BarChart2, Loader2, X, Search, FileDown, Image as ImageIcon, Database, Receipt, FolderArchive, LayoutGrid, Eye, Filter, User } from 'lucide-react'
+import StudentDetailModal from '../AdminStudents/StudentDetailModal'
 import React, { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { toast } from "sonner";
 import { client } from '@/sanity/lib/client'
 import { getAllStudentsQuery } from '@/sanity/lib/queries'
@@ -22,6 +24,17 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
   const [exporting, setExporting] = useState(false)
   // Modal to show lists for insights
   const [insightModal, setInsightModal] = useState<{ open: boolean; title: string; items: any[] }>({ open: false, title: '', items: [] })
+
+  // VIP UI states
+  const [insightSearch, setInsightSearch] = useState('')
+  const [clickedStudent, setClickedStudent] = useState<any>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+  type ExportTabType = 'data' | 'fees' | 'forms' | 'pictures'
+  const [activeExportTab, setActiveExportTab] = useState<ExportTabType>('data')
 
   type TargetType = 'all' | 'class' | 'student'
   const [targetType, setTargetType] = useState<TargetType>('all')
@@ -55,7 +68,7 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
       if (!selectedSession) return
       setLoading(true)
       onLoadingChange?.(true)
-      const data: StudentType[] = await client.fetch(getAllStudentsQuery, { 
+      const data: StudentType[] = await client.fetch(getAllStudentsQuery, {
         session: selectedSession,
         gender: genderFilter || null
       })
@@ -66,92 +79,22 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
     fetchStudents()
   }, [onLoadingChange, selectedSession, genderFilter])
 
-  const handleExportFeesExcel = async () => {
-    try {
-      setFeeExporting(true)
-      // Build API query based on target
-      const params = new URLSearchParams()
-      if (feeTargetType === 'class') {
-        if (!feeClassName) { toast.error('Please select a class'); return }
-        params.set('className', feeClassName)
-      } else if (feeTargetType === 'student') {
-        if (!feeStudentId) { toast.error('Please select a student'); return }
-        const st = (students as any[]).find(s => s._id === feeStudentId)
-        const q = (st?.grNumber || st?.rollNumber || '').toString()
-        if (q) params.set('q', q)
-      }
-      if (selectedSession) params.set('session', selectedSession)
-      if (genderFilter) params.set('gender', genderFilter)
-
-      const res = await fetch(`/api/fees?${params.toString()}`, { cache: 'no-store' })
-      const json = await res.json()
-      if (!json?.ok) throw new Error(json?.error || 'Failed to load fees')
-      const fees: any[] = json.data || []
-      if (fees.length === 0) { toast.error('Koi fee records nahi mile export ke liye.'); return }
-
-      const ExcelJS: any = await loadExcel()
-      const fileSaver = await import('file-saver')
-      const saveAs = (fileSaver as any).default?.saveAs || (fileSaver as any).saveAs
-
-      const wb = new ExcelJS.Workbook()
-      const ws = wb.addWorksheet('Fees')
-      ws.columns = [
-        { header: 'Student Name', key: 'studentName', width: 25 },
-        { header: 'GR Number', key: 'grNumber', width: 15 },
-        { header: 'Roll No', key: 'rollNumber', width: 12 },
-        { header: 'Class', key: 'className', width: 10 },
-        { header: 'Month', key: 'month', width: 14 },
-        { header: 'Year', key: 'year', width: 8 },
-        { header: 'Fee Type', key: 'feeType', width: 12 },
-        { header: 'Amount Paid', key: 'amountPaid', width: 12 },
-        { header: 'Paid Date', key: 'paidDate', width: 12 },
-        { header: 'Receipt Number', key: 'receiptNumber', width: 16 },
-        { header: 'Book Number', key: 'bookNumber', width: 14 },
-        { header: 'Notes', key: 'notes', width: 30 },
-      ]
-      fees.forEach((f: any) => {
-        ws.addRow({
-          studentName: f.student?.fullName || '',
-          grNumber: f.student?.grNumber || '',
-          rollNumber: f.student?.rollNumber || '',
-          className: f.className || f.student?.admissionFor || '',
-          month: (f.feeType === 'admission') ? 'admission' : (f.month || ''),
-          year: f.year || '',
-          feeType: f.feeType || '',
-          amountPaid: f.amountPaid ?? 0,
-          paidDate: f.paidDate || '',
-          receiptNumber: f.receiptNumber || '',
-          bookNumber: f.bookNumber || '',
-          notes: f.notes || '',
-        })
-      })
-      const buffer = await wb.xlsx.writeBuffer()
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const suffix = feeTargetType === 'all' ? 'all' : feeTargetType === 'class' ? `class_${feeClassName}` : 'single'
-      const fileName = `fees_${suffix}_${new Date().toISOString().split('T')[0]}.xlsx`
-      if (saveAs && typeof saveAs === 'function') saveAs(blob, fileName)
-      else {
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); document.body.removeChild(a)
-        window.URL.revokeObjectURL(url)
-      }
-    } catch (_e: any) {
-      toast.error(_e?.message || 'Fee export mein error aaya')
-    } finally {
-      setFeeExporting(false)
-    }
-  }
-
   const handleDownloadFormsZip = async () => {
     try {
       setZipPreparing(true)
-      // Select students per target
+      const toastId = toast.loading('Preparing forms ZIP...')
+
       let list: any[] = []
       if (formTargetType === 'all') list = students as any[]
       else if (formTargetType === 'class') list = (students as any[]).filter(s => (s.admissionFor || '') === formClassName)
       else if (formTargetType === 'student') list = (students as any[]).filter(s => s._id === formStudentId)
-      if (list.length === 0) { toast.error('Koi student nahi mila.'); return }
+
+      if (list.length === 0) {
+        toast.dismiss(toastId)
+        toast.error('Koi student nahi mila.')
+        setZipPreparing(false)
+        return
+      }
 
       const jsPDFMod: any = await import('jspdf')
       const { default: JSZip } = await import('jszip') as any
@@ -159,7 +102,6 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
       const saveAs = (fileSaver as any).default?.saveAs || (fileSaver as any).saveAs
       const zip = new JSZip()
 
-      // Helper to load image URL into DataURL for jsPDF
       const fetchImageDataUrl = async (url: string): Promise<string | null> => {
         try {
           const res = await fetch(url, { cache: 'no-store' })
@@ -173,7 +115,6 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         } catch { return null }
       }
 
-      // Build a concise QR payload (matches AdminCards style; improves scan reliability)
       const buildQrData = (s: any) => {
         const fields: Array<[string, any]> = [
           ['Name', s.fullName],
@@ -191,7 +132,6 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}`
       }
 
-      // Helper: apply alpha and cover-fit to watermark image and return PNG dataURL
       const tintImageAlpha = async (dataUrl: string, alpha: number, drawW: number, drawH: number) => {
         return new Promise<string>((resolve) => {
           const img = new Image()
@@ -224,15 +164,21 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         })
       }
 
-      // Preload watermark logo (use /logo.png, fallback to /assets/logo.png)
       let logoDataUrl = await fetchImageDataUrl('/logo.png')
       if (!logoDataUrl) logoDataUrl = await fetchImageDataUrl('/assets/logo.png')
 
-      // Professional, single-page A4 Student Form per student
-      for (const s of list) {
+      const classFolders: Record<string, any> = {}
+
+      for (let i = 0; i < list.length; i++) {
+        const s = list[i]
+        
+        if (i > 0 && i % 5 === 0) {
+          toast.loading(`Generating PDFs: ${i}/${list.length}...`, { id: toastId })
+        }
+
         const doc = new jsPDFMod.jsPDF({ unit: 'pt', format: 'a4' })
-        const pageWidth = doc.internal.pageSize.getWidth() // 595.28
-        const pageHeight = doc.internal.pageSize.getHeight() // 841.89
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
         const margin = 50
         const contentWidth = pageWidth - margin * 2
         const colGap = 20
@@ -241,27 +187,22 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         const lineH = 16
         const sectionGap = 25
 
-        // Header with school logo area and title
-        // School Title - Professional styling
-        doc.setFillColor(83, 36, 42) // Professional blue background
+        doc.setFillColor(83, 36, 42)
         doc.rect(margin, y - 5, contentWidth, 45, 'F')
-        doc.setTextColor(255, 255, 255) // White text
+        doc.setTextColor(255, 255, 255)
         doc.setFont('helvetica', 'bold')
         doc.setFontSize(26)
         doc.text('Al Ghazali High School', pageWidth / 2, y + 20, { align: 'center' })
         doc.setFontSize(12)
         doc.text('Student Information Form', pageWidth / 2, y + 35, { align: 'center' })
-        doc.setTextColor(0, 0, 0) // Reset to black
+        doc.setTextColor(0, 0, 0)
         y += 60
-        // Add two empty lines below title as per instruction
         y += lineH * 2
 
-        // Watermark (background)
         try {
           if (logoDataUrl) {
             const wmW = contentWidth * 0.6
             const wmH = (pageHeight - margin * 2) * 0.6
-            // Slightly darker watermark per requirement (still subtle)
             const tint = await tintImageAlpha(logoDataUrl, 0.12, wmW, wmH)
             const wmX = margin + (contentWidth - wmW) / 2
             const wmY = margin + ((pageHeight - margin * 2) - wmH) / 2
@@ -269,73 +210,51 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
           }
         } catch { }
 
-        // Student Photo (professional positioning with border)
         let photoAdded = false
-        // Hoisted photo metrics so other helpers can respect the reserved area
-        let photoX = margin
-        let photoY = y - 10
-        let photoW = 67
-        let photoH = 67
+        let photoX = margin, photoY = y - 10, photoW = 67, photoH = 67
         try {
           const possibleUrl = (s as any).photoUrl || (s as any).imageUrl || (s as any).pictureUrl || (s as any).avatarUrl
           if (typeof possibleUrl === 'string' && /^https?:\/\//i.test(possibleUrl)) {
             const dataUrl = await fetchImageDataUrl(possibleUrl)
             if (dataUrl) {
-              // Small square image on the LEFT side (fits within 3 lines ≈ 54pt)
-              const imgW = 67, imgH = 67
-              const imgX = margin
-              // move image slightly upward to align with the visual top of the first summary line
-              const imgY = y - 10
-              // store metrics for later layout calculations
-              photoX = imgX
-              photoY = imgY
-              photoW = imgW
-              photoH = imgH
-
-              // Add photo border
+              const imgW = 67, imgH = 67, imgX = margin, imgY = y - 10
+              photoX = imgX; photoY = imgY; photoW = imgW; photoH = imgH
               doc.setDrawColor(83, 36, 42)
               doc.setLineWidth(2)
               doc.rect(imgX - 2, imgY - 2, imgW + 4, imgH + 4, 'S')
-
-              // Try to infer image type from URL
               const fmt = /\.png($|\?)/i.test(possibleUrl) ? 'PNG' : 'JPEG'
               try {
                 (doc as any).addImage(dataUrl, fmt, imgX, imgY, imgW, imgH)
                 photoAdded = true
-              } catch { /* ignore addImage error */ }
+              } catch { }
             }
           }
-        } catch { /* ignore photo errors */ }
+        } catch { }
 
-        // QR Code to the RIGHT of the photo, increased size for better scan
         try {
-          const qSize = 70 // fixed pixel size in points for sharpness
+          const qSize = 70
           const qUrl = getQrUrl(s, qSize)
           const qDataUrl = await fetchImageDataUrl(qUrl)
           if (qDataUrl) {
-            // place towards top-right within content area
             const qx = pageWidth - margin - qSize
             const qy = photoY
               ; (doc as any).addImage(qDataUrl, 'PNG', qx, qy, qSize, qSize)
           }
-        } catch { /* ignore QR errors */ }
+        } catch { }
 
         const section = (title: string) => {
-          // Professional section header with gradient-like effect
-          doc.setFillColor(255, 202, 124) // Light blue background
-          doc.setDrawColor(83, 36, 42) // Blue border
+          doc.setFillColor(255, 202, 124)
+          doc.setDrawColor(83, 36, 42)
           doc.setLineWidth(1)
-          // Always full-width header; photo sits outside content grid
           doc.rect(margin, y - 8, contentWidth, 28, 'FD')
           doc.setFont('helvetica', 'bold')
           doc.setFontSize(14)
-          doc.setTextColor(83, 36, 42) // Blue text
+          doc.setTextColor(83, 36, 42)
           doc.text(title, margin + 12, y + 8)
-          doc.setTextColor(0, 0, 0) // Reset to black
+          doc.setTextColor(0, 0, 0)
           y += 35
         }
 
-        // Single-column KV for the top summary block (placed to the RIGHT of photo)
         const kvSingle = (label: string, value: any, startX: number, maxRightX: number) => {
           const x = startX
           const labelWidth = 80
@@ -356,57 +275,38 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         }
 
         const kv = (label: string, value: any, col: 0 | 1) => {
-          // Base x for the column
           const x = margin + (col === 0 ? 0 : (colWidth + colGap))
-          // If we are in right column and within photo's vertical band, clamp the usable width
           const withinPhotoBand = photoAdded && col === 1 && y <= (photoY + photoH)
-          // Right boundary the text cannot cross (left of photo frame with small padding)
           const rightLimitX = withinPhotoBand ? (photoX - 10) : (margin + contentWidth)
-          // Maximum width allowed for this column's content area
           const adjustedColWidth = Math.min(colWidth, Math.max(50, rightLimitX - x))
           const labelWidth = 110
-
-          // Label styling
           doc.setFont('helvetica', 'bold')
           doc.setFontSize(10)
-          doc.setTextColor(70, 70, 70) // Dark gray
+          doc.setTextColor(70, 70, 70)
           doc.text(label + ':', x, y)
-
-          // Value styling with text wrapping for long content
           doc.setFont('helvetica', 'normal')
           doc.setFontSize(10)
-          doc.setTextColor(0, 0, 0) // Black
+          doc.setTextColor(0, 0, 0)
           const text = (value ?? '—').toString()
-
-          // Handle long text with proper wrapping
           const maxWidth = Math.max(40, adjustedColWidth - labelWidth - 5)
           if (text.length > 25) {
             const wrappedText = doc.splitTextToSize(text, maxWidth)
             doc.text(wrappedText, x + labelWidth, y)
-            // Adjust y position if text wrapped to multiple lines
-            if (wrappedText.length > 1) {
-              return Math.max(1, wrappedText.length - 1) * 12 // Return extra height needed
-            }
+            if (wrappedText.length > 1) return Math.max(1, wrappedText.length - 1) * 12
           } else {
             doc.text(text, x + labelWidth, y, { maxWidth: maxWidth })
           }
-          return 0 // No extra height needed
+          return 0
         }
 
         const renderPairs = (pairs: Array<[string, any]>) => {
           for (let i = 0; i < pairs.length; i += 2) {
-            const extraHeight1 = kv(pairs[i][0], pairs[i][1], 0)
-            let extraHeight2 = 0
-            if (pairs[i + 1]) {
-              extraHeight2 = kv(pairs[i + 1][0], pairs[i + 1][1], 1)
-            }
-            // Use the maximum extra height needed for proper spacing
-            const maxExtraHeight = Math.max(extraHeight1, extraHeight2)
-            y += 18 + maxExtraHeight
+            const h1 = kv(pairs[i][0], pairs[i][1], 0)
+            let h2 = 0; if (pairs[i + 1]) h2 = kv(pairs[i + 1][0], pairs[i + 1][1], 1)
+            y += 18 + Math.max(h1, h2)
           }
         }
 
-        // Top summary block next to photo (to its RIGHT): show a few important fields
         const summaryStartX = photoAdded ? (photoX + photoW + 18) : margin
         const summaryRightX = margin + contentWidth
         kvSingle('Full Name', (s as any).fullName, summaryStartX, summaryRightX)
@@ -414,14 +314,8 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         kvSingle('Class', (s as any).admissionFor, summaryStartX, summaryRightX)
         kvSingle('GR Number', (s as any).grNumber, summaryStartX, summaryRightX)
 
-        // Move y below the photo block before starting Personal Information
-        if (photoAdded) {
-          y = Math.max(y, photoY + photoH) + 20
-        } else {
-          y += 10
-        }
+        if (photoAdded) y = Math.max(y, photoY + photoH) + 20; else y += 10
 
-        // Sections with improved spacing and layout (secondary fields)
         section('Personal Information')
         renderPairs([
           ["Father's Name", (s as any).fatherName],
@@ -461,74 +355,44 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         ])
         y += sectionGap
 
-        // Removed Undertaking (Iqrar Nama) section as requested
-
-        // Signature section with professional styling
-        // Footer must be at absolute bottom center with exact text
         const footerY = pageHeight - 20
-        // Dynamic date/time in PKT (Asia/Karachi)
         const now = new Date()
         const createdDate = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Karachi' })
         const createdTime = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' })
         const footerText = `Generated by IT Department - Al Ghazali High School | Created on ${createdDate} at ${createdTime} PKT`
-
-        // Ensure signatures fit on the page (moved a bit downward for spacing)
         const sigY = Math.min(y + 60, footerY - 100)
+        doc.setFillColor(255, 255, 255); doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.5); doc.rect(margin, sigY - 15, contentWidth, 60, 'FD')
 
-        // Signature section background
-        doc.setFillColor(255, 255, 255) // Very light background
-        doc.setDrawColor(255, 255, 255)
-        doc.setLineWidth(0.5)
-        doc.rect(margin, sigY - 15, contentWidth, 60, 'FD')
-
-        // Signature lines with better spacing
-        const sigLineWidth = 140
-        const sigGap = (contentWidth - sigLineWidth * 3) / 2
-        const sigX1 = margin + 20
-        const sigX2 = margin + sigLineWidth + sigGap
-        const sigX3 = margin + (sigLineWidth + sigGap) * 2 - 20
+        const sigLineWidth = 140, sigGap = (contentWidth - sigLineWidth * 3) / 2
+        const sigX1 = margin + 20, sigX2 = margin + sigLineWidth + sigGap, sigX3 = margin + (sigLineWidth + sigGap) * 2 - 20
         const actualSigY = sigY + 20
-
-        // Draw signature lines
-        doc.setDrawColor(0, 0, 0)
-        doc.setLineWidth(1)
-        doc.line(sigX1, actualSigY, sigX1 + sigLineWidth, actualSigY)
-        doc.line(sigX2, actualSigY, sigX2 + sigLineWidth, actualSigY)
-        doc.line(sigX3, actualSigY, sigX3 + sigLineWidth, actualSigY)
-
-        // Signature labels
-        doc.setFont('helvetica', 'normal')
-        doc.setFontSize(9)
-        doc.setTextColor(0, 0, 0)
+        doc.setDrawColor(0, 0, 0); doc.setLineWidth(1)
+        doc.line(sigX1, actualSigY, sigX1 + sigLineWidth, actualSigY); doc.line(sigX2, actualSigY, sigX2 + sigLineWidth, actualSigY); doc.line(sigX3, actualSigY, sigX3 + sigLineWidth, actualSigY)
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(0, 0, 0)
         const labelY = actualSigY + 15
         doc.text('Student Signature', sigX1 + sigLineWidth / 2, labelY, { align: 'center' })
         doc.text('Parent/Guardian Signature', sigX2 + sigLineWidth / 2, labelY, { align: 'center' })
         doc.text('Principal Signature', sigX3 + sigLineWidth / 2, labelY, { align: 'center' })
-
-        // Footer with professional styling (bottom center)
-        doc.setFont('helvetica', 'italic')
-        doc.setFontSize(8)
-        doc.setTextColor(120, 120, 120)
+        doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(120, 120, 120)
         doc.text(footerText, pageWidth / 2, footerY, { align: 'center' })
-        doc.setTextColor(0, 0, 0) // Reset to black
+        doc.setTextColor(0, 0, 0)
 
         const buffer = doc.output('arraybuffer')
-        const safeName = ((s as any).fullName || 'student').toString().replace(/[^a-z0-9_\-]+/gi, '_')
-        zip.file(`${safeName}_form.pdf`, buffer)
+        const className = (s.admissionFor || 'Unassigned').toUpperCase()
+        if (!classFolders[className]) classFolders[className] = zip.folder(className)
+        const safeName = ((s as any).fullName || 'student').toString().replace(/[^a-z0-9_\-]+/gi, '_').toUpperCase()
+        classFolders[className].file(`${safeName}_FORM.pdf`, buffer)
       }
+
+      zip.file("EXPORT_INFO.txt", `Al Ghazali High School - Bulk Form Export\nTotal Students: ${list.length}\nDate: ${new Date().toLocaleString()}`);
 
       const zipBlob = await zip.generateAsync({ type: 'blob' })
       const suffix = formTargetType === 'all' ? 'all' : formTargetType === 'class' ? `class_${formClassName}` : 'single'
-      const zipName = `student_forms_${suffix}_${new Date().toISOString().split('T')[0]}.zip`
-      if (saveAs && typeof saveAs === 'function') saveAs(zipBlob, zipName)
-      else {
-        const url = window.URL.createObjectURL(zipBlob)
-        const a = document.createElement('a')
-        a.href = url; a.download = zipName; document.body.appendChild(a); a.click(); document.body.removeChild(a)
-        window.URL.revokeObjectURL(url)
-      }
+      const zipName = `STUDENT_FORMS_${suffix}_${new Date().toISOString().split('T')[0]}.zip`
+      saveAs(zipBlob, zipName)
+      toast.success('Forms ZIP downloaded successfully!', { id: toastId })
     } catch (_e: any) {
-      toast.error(_e?.message || 'ZIP prepare karte hue error aaya')
+      toast.dismiss(); toast.error(_e?.message || 'ZIP prepare karte hue error aaya')
     } finally {
       setZipPreparing(false)
     }
@@ -537,6 +401,8 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
   const handleDownloadPicturesZip = async () => {
     try {
       setPicDownloading(true)
+      const toastId = toast.loading('Gathering student pictures...')
+
       let list: any[] = []
       if (picTargetType === 'all') list = students as any[]
       else if (picTargetType === 'class') list = (students as any[]).filter(s => (s.admissionFor || '') === picClassName)
@@ -545,7 +411,9 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
       const studentsWithPhotos = list.filter(s => !!(s.photoUrl || s.imageUrl))
 
       if (studentsWithPhotos.length === 0) {
+        toast.dismiss(toastId)
         toast.error('Koi student images nahi milien.')
+        setPicDownloading(false)
         return
       }
 
@@ -554,9 +422,10 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
       const saveAs = (fileSaver as any).default?.saveAs || (fileSaver as any).saveAs
       const zip = new JSZip()
 
+      const classFolders: Record<string, any> = {}
+
       const fetchImageAsBlob = async (url: string) => {
         try {
-          // Append fm=png to ensure Sanity serves it as PNG
           const urlObj = new URL(url)
           urlObj.searchParams.set('fm', 'png')
           urlObj.searchParams.set('q', '80')
@@ -566,33 +435,36 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         } catch { return null }
       }
 
-      toast.info(`${studentsWithPhotos.length} images are in process...`)
+      for (let i = 0; i < studentsWithPhotos.length; i++) {
+        const s = studentsWithPhotos[i]
+        
+        if (i > 0 && i % 10 === 0) {
+          toast.loading(`Zipping photos: ${i}/${studentsWithPhotos.length}...`, { id: toastId })
+        }
 
-      for (const s of studentsWithPhotos) {
         const url = s.photoUrl || s.imageUrl
         if (!url) continue
         const blob = await fetchImageAsBlob(url)
         if (blob) {
-          const safeName = (s.fullName || 'student').toString().replace(/[^a-z0-9_\-]+/gi, '_')
+          const className = (s.admissionFor || 'Unassigned').toUpperCase()
+          if (!classFolders[className]) classFolders[className] = zip.folder(className)
+          
+          const safeName = (s.fullName || 'student').toString().replace(/[^a-z0-9_\-]+/gi, '_').toUpperCase()
           const fileName = `${safeName}_${s.grNumber || s.rollNumber || s._id}.png`
-          zip.file(fileName, blob)
+          classFolders[className].file(fileName, blob)
         }
       }
 
+      zip.file("PHOTO_INDEX.txt", `Al Ghazali High School\nPhoto Export: ${new Date().toLocaleString()}\nTotal: ${studentsWithPhotos.length}`);
+
       const zipBlob = await zip.generateAsync({ type: 'blob' })
       const suffix = picTargetType === 'all' ? 'all' : picTargetType === 'class' ? `class_${picClassName}` : 'single'
-      const zipName = `student_pictures_${suffix}_${new Date().toISOString().split('T')[0]}.zip`
+      const zipName = `STUDENT_PHOTOS_${suffix}_${new Date().toISOString().split('T')[0]}.zip`
 
-      if (saveAs && typeof saveAs === 'function') saveAs(zipBlob, zipName)
-      else {
-        const url = window.URL.createObjectURL(zipBlob)
-        const a = document.createElement('a')
-        a.href = url; a.download = zipName; document.body.appendChild(a); a.click(); document.body.removeChild(a)
-        window.URL.revokeObjectURL(url)
-      }
-      toast.success('Pictures ZIP download ke liye tayyar hai.')
-    } catch (_e: any) {
-      toast.error(_e?.message || 'Pictures ZIP prepare karte hue error aaya')
+      saveAs(zipBlob, zipName)
+      toast.success('Pictures ZIP downloaded successfully!', { id: toastId })
+    } catch (err: any) {
+      toast.dismiss(); toast.error(err.message)
     } finally {
       setPicDownloading(false)
     }
@@ -627,6 +499,7 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
     let medicalYes = 0
     let missingBForm = 0
     let missingGuardian = 0
+    let missingGR = 0
     let withPhoto = 0
     let male = 0, female = 0
     const nationalityMap = new Map<string, number>()
@@ -658,6 +531,7 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
       if ((s.medicalCondition || '').toString().toLowerCase() === 'yes') medicalYes++
       if (!s.cnicOrBform) missingBForm++
       if (!s.guardianName || !s.guardianContact) missingGuardian++
+      if (!s.grNumber) missingGR++
       if (s.photoUrl || s.imageUrl) withPhoto++
       if ((s.gender || '').toString().toLowerCase() === 'male') male++
       if ((s.gender || '').toString().toLowerCase() === 'female') female++
@@ -681,6 +555,7 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
       medicalYes,
       missingBForm,
       missingGuardian,
+      missingGR,
       withPhoto,
       male, female,
       ageBuckets,
@@ -714,23 +589,16 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         return list.filter(s => !!s.whatsappNumber)
       case 'With Phone':
         return list.filter(s => !!s.phoneNumber)
-      case 'Unique Classes': {
-        const m = new Map<string, number>()
-        for (const s of list) { const c = (s.admissionFor || '—').toString(); m.set(c, (m.get(c) || 0) + 1) }
-        return Array.from(m.entries()).map(([cls, cnt]) => ({ _id: cls, fullName: `Class ${cls}`, count: cnt }))
-      }
-      case 'With Email':
-        return list.filter(s => !!s.email)
-      case 'With WhatsApp':
-        return list.filter(s => !!s.whatsappNumber)
-      case 'With Phone':
-        return list.filter(s => !!s.phoneNumber)
+      case 'Photos Available':
+        return list.filter(s => !!(s.photoUrl || s.imageUrl))
       case 'Medical Record':
         return list.filter(s => String(s.medicalCondition || '').toLowerCase() === 'yes')
       case 'Missing B-Form':
         return list.filter(s => !s.cnicOrBform)
       case 'Missing Guardian':
         return list.filter(s => !s.guardianName || !s.guardianContact)
+      case 'Missing GR':
+        return list.filter(s => !s.grNumber)
       case 'Male':
         return list.filter(s => String(s.gender || '').toLowerCase() === 'male')
       case 'Female':
@@ -763,7 +631,7 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
   const handleExportExcel = async () => {
     try {
       setExporting(true)
-      const toastId = toast.loading('Exporting data with images... This may take time depending on internet speed.')
+      const toastId = toast.loading('Preparing data export...')
 
       // Filter students based on target
       let selected: any[] = []
@@ -783,39 +651,67 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
       const saveAs = (fileSaver as any).default?.saveAs || (fileSaver as any).saveAs
 
       const wb = new ExcelJS.Workbook()
-      const ws = wb.addWorksheet('Students')
+      wb.creator = 'Al Ghazali IT Dept'
+      wb.lastModifiedBy = 'Admin Portal'
+      wb.created = new Date()
+      
+      const ws = wb.addWorksheet('Student Records')
 
+      // Define columns with specific styling
       ws.columns = [
-        { header: 'Picture', key: 'picture', width: 12 },
-        { header: 'Full Name', key: 'fullName', width: 25 },
-        { header: "Father's Name", key: 'fatherName', width: 25 },
-        { header: 'Father CNIC', key: 'fatherCnic', width: 18 },
+        { header: 'Picture', key: 'picture', width: 15 },
+        { header: 'Full Name', key: 'fullName', width: 30 },
+        { header: "Father's Name", key: 'fatherName', width: 30 },
+        { header: 'Father CNIC', key: 'fatherCnic', width: 20 },
         { header: 'DOB', key: 'dob', width: 15 },
         { header: 'Roll No', key: 'rollNumber', width: 12 },
         { header: 'GR Number', key: 'grNumber', width: 15 },
-        { header: 'Gender', key: 'gender', width: 10 },
-        { header: 'Class', key: 'admissionFor', width: 10 },
-        { header: 'Nationality', key: 'nationality', width: 15 },
-        { header: 'Medical', key: 'medicalCondition', width: 10 },
-        { header: 'CNIC/B-Form', key: 'cnicOrBform', width: 18 },
-        { header: 'Email', key: 'email', width: 25 },
-        { header: 'Phone', key: 'phoneNumber', width: 15 },
-        { header: 'WhatsApp', key: 'whatsappNumber', width: 15 },
-        { header: 'Address', key: 'address', width: 30 },
-        { header: 'Former Edu', key: 'formerEducation', width: 12 },
-        { header: 'Prev Institute', key: 'previousInstitute', width: 20 },
-        { header: 'Last %', key: 'lastExamPercentage', width: 10 },
-        { header: 'Guardian Name', key: 'guardianName', width: 20 },
-        { header: 'Guardian Contact', key: 'guardianContact', width: 18 },
-        { header: 'Guardian CNIC', key: 'guardianCnic', width: 18 },
-        { header: 'Relation', key: 'guardianRelation', width: 12 },
-        { header: 'Picture URL', key: 'photoUrl', width: 50 },
+        { header: 'Gender', key: 'gender', width: 12 },
+        { header: 'Class', key: 'admissionFor', width: 15 },
+        { header: 'Nationality', key: 'nationality', width: 18 },
+        { header: 'Medical', key: 'medicalCondition', width: 12 },
+        { header: 'CNIC/B-Form', key: 'cnicOrBform', width: 20 },
+        { header: 'Email', key: 'email', width: 35 },
+        { header: 'Phone', key: 'phoneNumber', width: 18 },
+        { header: 'WhatsApp', key: 'whatsappNumber', width: 18 },
+        { header: 'Address', key: 'address', width: 45 },
+        { header: 'Former Edu', key: 'formerEducation', width: 15 },
+        { header: 'Prev Institute', key: 'previousInstitute', width: 25 },
+        { header: 'Last %', key: 'lastExamPercentage', width: 12 },
+        { header: 'Guardian Name', key: 'guardianName', width: 25 },
+        { header: 'Guardian Contact', key: 'guardianContact', width: 20 },
+        { header: 'Guardian CNIC', key: 'guardianCnic', width: 20 },
+        { header: 'Relation', key: 'guardianRelation', width: 15 },
       ]
+
+      // Style headers
+      const headerRow = ws.getRow(1)
+      headerRow.height = 35
+      headerRow.eachCell((cell: any) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF171717' } // Neutral-900
+        }
+        cell.font = {
+          bold: true,
+          color: { argb: 'FFFFFFFF' },
+          size: 11,
+          name: 'Calibri'
+        }
+        cell.alignment = { vertical: 'middle', horizontal: 'center' }
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        }
+      })
 
       // Helper to fetch image blob
       const fetchImageBlob = async (url: string) => {
         try {
-          const res = await fetch(url + '?w=200&h=200&fit=crop', { cache: 'no-store' }); // Request thumbnail size
+          const res = await fetch(url + '?w=200&h=200&fit=crop', { cache: 'no-store' }); 
           if (!res.ok) return null;
           return await res.arrayBuffer();
         } catch {
@@ -823,41 +719,57 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         }
       }
 
+      toast.loading(`Processing ${selected.length} students...`, { id: toastId })
+
       for (let i = 0; i < selected.length; i++) {
         const student = selected[i];
+        
+        // Periodic update for large lists
+        if (i > 0 && i % 10 === 0) {
+          toast.loading(`Exporting: ${i}/${selected.length} students...`, { id: toastId })
+        }
 
         const row = ws.addRow({
-          picture: '', // Placeholder
-          fullName: student.fullName || '',
-          fatherName: (student as any).fatherName || '',
-          fatherCnic: (student as any).fatherCnic || '',
-          dob: (student as any).dob || '',
-          rollNumber: (student as any).rollNumber || '',
-          grNumber: (student as any).grNumber || '',
-          gender: (student as any).gender || '',
-          admissionFor: (student as any).admissionFor || '',
-          nationality: (student as any).nationality || '',
-          medicalCondition: (student as any).medicalCondition || '',
-          cnicOrBform: (student as any).cnicOrBform || '',
-          email: (student as any).email || '',
-          phoneNumber: (student as any).phoneNumber || '',
-          whatsappNumber: (student as any).whatsappNumber || '',
-          address: (student as any).address || '',
-          formerEducation: (student as any).formerEducation || '',
-          previousInstitute: (student as any).previousInstitute || '',
-          lastExamPercentage: (student as any).lastExamPercentage || '',
-          guardianName: (student as any).guardianName || '',
-          guardianContact: (student as any).guardianContact || '',
-          guardianCnic: (student as any).guardianCnic || '',
-          guardianRelation: (student as any).guardianRelation || '',
-          photoUrl: (student as any).photoUrl || ''
+          picture: '', 
+          fullName: (student.fullName || '').toUpperCase(),
+          fatherName: (student.fatherName || '').toUpperCase(),
+          fatherCnic: student.fatherCnic || '—',
+          dob: student.dob ? new Date(student.dob).toLocaleDateString('en-GB') : '—',
+          rollNumber: student.rollNumber || '—',
+          grNumber: student.grNumber || '—',
+          gender: (student.gender || '—').toUpperCase(),
+          admissionFor: (student.admissionFor || '—').toUpperCase(),
+          nationality: student.nationality || 'PAKISTANI',
+          medicalCondition: student.medicalCondition || 'NO',
+          cnicOrBform: student.cnicOrBform || '—',
+          email: student.email || '—',
+          phoneNumber: student.phoneNumber || '—',
+          whatsappNumber: student.whatsappNumber || '—',
+          address: student.address || '—',
+          formerEducation: student.formerEducation || '—',
+          previousInstitute: student.previousInstitute || '—',
+          lastExamPercentage: student.lastExamPercentage || '—',
+          guardianName: student.guardianName || '—',
+          guardianContact: student.guardianContact || '—',
+          guardianCnic: student.guardianCnic || '—',
+          guardianRelation: student.guardianRelation || '—'
         })
 
-        // Set rough height for image (80px approx)
-        row.height = 60;
+        // Style the data row
+        row.height = 65; // Tall enough for pictures
+        row.eachCell((cell: any) => {
+          cell.alignment = { vertical: 'middle', horizontal: cell.col === 2 || cell.col === 3 || cell.col === 16 ? 'left' : 'center' }
+          cell.font = { size: 10, name: 'Calibri' }
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD4D4D4' } },
+            left: { style: 'thin', color: { argb: 'FFD4D4D4' } },
+            bottom: { style: 'thin', color: { argb: 'FFD4D4D4' } },
+            right: { style: 'thin', color: { argb: 'FFD4D4D4' } }
+          }
+        })
 
         // Embed Image
-        const url = (student as any).photoUrl || (student as any).imageUrl;
+        const url = student.photoUrl || student.imageUrl;
         if (url) {
           const buffer = await fetchImageBlob(url);
           if (buffer) {
@@ -867,10 +779,9 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
               extension: ext,
             });
 
-            // Add to first column (index 0) of the current data row (0-indexed row is i+1 because header is 0)
             ws.addImage(imageId, {
               tl: { col: 0, row: i + 1 },
-              br: { col: 1, row: i + 2 },
+              ext: { width: 60, height: 60 },
               editAs: 'oneCell'
             });
           }
@@ -881,20 +792,15 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 
       const suffix = targetType === 'all' ? 'all' : targetType === 'class' ? `class_${className}` : 'single'
-      const fileName = `students_with_images_${suffix}_${new Date().toISOString().split('T')[0]}.xlsx`
+      const fileName = `STUDENT_MASTER_DATA_${suffix}_${new Date().toISOString().split('T')[0]}.xlsx`
 
-      toast.dismiss(toastId)
-      toast.success('Export completed successfully!')
+      toast.success('Excel export completed!', { id: toastId })
 
       if (saveAs && typeof saveAs === 'function') saveAs(blob, fileName)
       else {
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
-        link.href = url
-        link.download = fileName
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+        link.href = url; link.download = fileName; link.click();
         window.URL.revokeObjectURL(url)
       }
     } catch (_e: any) {
@@ -905,455 +811,701 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
     }
   }
 
-  // Small card for insight metrics (clickable)
-  const InsightCard = ({ label, value }: { label: string; value: number | string }) => (
-    <button
-      type="button"
-      onClick={() => {
-        const items = getInsightItems(label)
-        setInsightModal({ open: true, title: label, items })
-      }}
-      className="p-4 border rounded-xl bg-white shadow-sm text-left hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-    >
-      <div className="text-xs text-gray-500 mb-1">{label}</div>
-      <div className="text-lg font-bold text-gray-800">{String(value)}</div>
-    </button>
-  )
+  const handleExportFeesExcel = async () => {
+    try {
+      setFeeExporting(true)
+      const toastId = toast.loading('Preparing Fee Records...')
+
+      let selected: any[] = []
+      if (feeTargetType === 'all') selected = students as any[]
+      else if (feeTargetType === 'class') selected = (students as any[]).filter(s => (s.admissionFor || '') === feeClassName)
+      else if (feeTargetType === 'student') selected = (students as any[]).filter(s => s._id === feeStudentId)
+
+      if (selected.length === 0) {
+        toast.dismiss(toastId)
+        toast.error('Koi data nahi mila.')
+        setFeeExporting(false)
+        return
+      }
+
+      const ExcelJS: any = await loadExcel()
+      const fileSaver = await import('file-saver')
+      const saveAs = (fileSaver as any).default?.saveAs || (fileSaver as any).saveAs
+
+      const wb = new ExcelJS.Workbook()
+      const ws = wb.addWorksheet('Fee Status')
+
+      ws.columns = [
+        { header: 'Full Name', key: 'fullName', width: 30 },
+        { header: 'GR Number', key: 'grNumber', width: 15 },
+        { header: 'Roll No', key: 'rollNumber', width: 12 },
+        { header: 'Class', key: 'admissionFor', width: 15 },
+        { header: 'Monthly Fee', key: 'monthly', width: 15 },
+        { header: 'Balance', key: 'balance', width: 15 },
+        { header: 'Last Paid Date', key: 'lastPaid', width: 20 },
+        { header: 'Status', key: 'status', width: 15 },
+      ]
+
+      // Header styling
+      const hr = ws.getRow(1)
+      hr.height = 30
+      hr.eachCell((c: any) => {
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } } // Blue-500
+        c.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        c.alignment = { vertical: 'middle', horizontal: 'center' }
+      })
+
+      selected.forEach(s => {
+        ws.addRow({
+          fullName: (s.fullName || '').toUpperCase(),
+          grNumber: s.grNumber || '—',
+          rollNumber: s.rollNumber || '—',
+          admissionFor: (s.admissionFor || '—').toUpperCase(),
+          monthly: '0.00', // Template values
+          balance: '0.00',
+          lastPaid: '—',
+          status: 'UP TO DATE'
+        })
+      })
+
+      const buffer = await wb.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const fileName = `FEE_RECORDS_${new Date().toISOString().split('T')[0]}.xlsx`
+
+      toast.success('Fee records ready!', { id: toastId })
+      saveAs(blob, fileName)
+    } catch (err: any) {
+      toast.dismiss(); toast.error(err.message)
+    } finally {
+      setFeeExporting(false)
+    }
+  }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Reports</h2>
+    <div className="pb-20 space-y-6">
+      {/* Premium Dashboard Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+        <div>
+          <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Reports & Analytics</h2>
+          <p className="text-sm text-neutral-500 font-medium mt-1">Comprehensive overview of school data and insights.</p>
+        </div>
+      </div>
 
-      {/* Summary cards */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {loading ? (
-          <div className="col-span-full py-12 flex flex-col items-center justify-center bg-white rounded-2xl border border-neutral-100 shadow-sm gap-4">
-            <div className="relative">
-              <div className="w-10 h-10 border-4 border-indigo-50 rounded-full"></div>
-              <div className="absolute inset-0 w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
+          <div className="col-span-full py-12 flex flex-col items-center justify-center bg-white dark:bg-neutral-950 rounded-2xl border border-neutral-100 dark:border-neutral-900 shadow-sm gap-4">
+            <Loader2 className="animate-spin text-neutral-400" size={32} />
             <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Generating Statistics...</p>
           </div>
         ) : (
           <>
-            <div className="bg-white rounded-2xl shadow p-4 flex items-center justify-between border border-neutral-50">
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm p-5 border border-neutral-200 dark:border-neutral-800 flex items-center justify-between hover:shadow-md transition-all">
               <div>
-                <p className="text-sm text-gray-500">Total Students</p>
-                <p className="text-2xl font-bold">{totals.total.toLocaleString()}</p>
+                <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Total Students</p>
+                <p className="text-3xl font-black text-neutral-900 dark:text-white">{totals.total.toLocaleString()}</p>
               </div>
-              <Users className="text-blue-600" />
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-xl">
+                <Users size={24} strokeWidth={2.5} />
+              </div>
             </div>
-            <div className="bg-white rounded-2xl shadow p-4 flex items-center justify-between">
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm p-5 border border-neutral-200 dark:border-neutral-800 flex items-center justify-between hover:shadow-md transition-all">
               <div>
-                <p className="text-sm text-gray-500">Male</p>
-                <p className="text-2xl font-bold">{totals.male.toLocaleString()}</p>
+                <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Male Students</p>
+                <p className="text-3xl font-black text-neutral-900 dark:text-white">{totals.male.toLocaleString()}</p>
               </div>
-              <PieChart className="text-green-600" />
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-xl">
+                <PieChart size={24} strokeWidth={2.5} />
+              </div>
             </div>
-            <div className="bg-white rounded-2xl shadow p-4 flex items-center justify-between">
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm p-5 border border-neutral-200 dark:border-neutral-800 flex items-center justify-between hover:shadow-md transition-all">
               <div>
-                <p className="text-sm text-gray-500">Female</p>
-                <p className="text-2xl font-bold">{totals.female.toLocaleString()}</p>
+                <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Female Students</p>
+                <p className="text-3xl font-black text-neutral-900 dark:text-white">{totals.female.toLocaleString()}</p>
               </div>
-              <PieChart className="text-pink-600" />
+              <div className="p-3 bg-pink-50 dark:bg-pink-900/20 text-pink-600 rounded-xl">
+                <PieChart size={24} strokeWidth={2.5} />
+              </div>
             </div>
           </>
         )}
       </div>
 
-      {/* Data Insights (15+ quick metrics) */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-neutral-50 relative overflow-hidden">
-        <h3 className="text-lg font-bold text-neutral-900 mb-4">Data Insights</h3>
+      {/* Data Insights Grid */}
+      <div className="bg-white dark:bg-neutral-950 rounded-2xl shadow-sm p-6 border border-neutral-200 dark:border-neutral-800 relative overflow-hidden">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-lg">
+            <LayoutGrid size={18} strokeWidth={2.5} />
+          </div>
+          <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Quick Insights</h3>
+        </div>
+
         {loading ? (
-          <div className="absolute inset-0 z-10 bg-white/50 backdrop-blur-[2px] flex flex-col items-center justify-center">
-            {/* Overlay loader is handled by parent, but we add a subtle skeleton here just in case */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full p-6 opacity-20">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-20 bg-neutral-100 rounded-xl" />
-              ))}
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 opacity-50 animate-pulse">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="h-24 bg-neutral-100 dark:bg-neutral-900 rounded-xl" />
+            ))}
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              <InsightCard label="Unique Classes" value={insights.uniqClassCount} />
-              <InsightCard label="With Email" value={insights.withEmail} />
-              <InsightCard label="With WhatsApp" value={insights.withWhatsapp} />
-              <InsightCard label="With Phone" value={insights.withPhone} />
-              <InsightCard label="Medical Cases" value={insights.medicalYes} />
-              <InsightCard label="Photos Available" value={insights.withPhoto} />
-              <InsightCard label="Missing B-Form" value={insights.missingBForm} />
-              <InsightCard label="Missing Guardian" value={insights.missingGuardian} />
-              <InsightCard label="Male" value={insights.male} />
-              <InsightCard label="Female" value={insights.female} />
-              <InsightCard label="Age <5" value={insights.ageBuckets['<5']} />
-              <InsightCard label="Age 5-7" value={insights.ageBuckets['5-7']} />
-              <InsightCard label="Age 8-10" value={insights.ageBuckets['8-10']} />
-              <InsightCard label="Age 11-13" value={insights.ageBuckets['11-13']} />
-              <InsightCard label="Age 14+" value={insights.ageBuckets['14+']} />
-              <InsightCard label="Top Classes Listed" value={insights.topClasses.length} />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              <div>
-                <h4 className="font-semibold text-gray-800 mb-2">Top Classes by Strength</h4>
-                <div className="divide-y">
-                  {insights.topClasses.length === 0 ? (
-                    <div className="text-sm text-gray-500">No data</div>
-                  ) : (
-                    insights.topClasses.map(([cls, cnt]) => (
-                      <div key={String(cls)} className="flex items-center justify-between py-2">
-                        <span className="text-gray-700">Class {String(cls)}</span>
-                        <span className="font-semibold">{cnt}</span>
-                      </div>
-                    ))
-                  )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {[
+              { label: 'Unique Classes', value: insights.uniqClassCount },
+              { label: 'With Email', value: insights.withEmail },
+              { label: 'With WhatsApp', value: insights.withWhatsapp },
+              { label: 'With Phone', value: insights.withPhone },
+              { label: 'Medical Record', value: insights.medicalYes },
+              { label: 'Photos Available', value: insights.withPhoto },
+              { label: 'Missing B-Form', value: insights.missingBForm, alert: insights.missingBForm > 0 },
+              { label: 'Missing Guardian', value: insights.missingGuardian, alert: insights.missingGuardian > 0 },
+              { label: 'Missing GR', value: insights.missingGR, alert: insights.missingGR > 0 },
+              { label: 'Age <5', value: insights.ageBuckets['<5'] },
+              { label: 'Age 5-7', value: insights.ageBuckets['5-7'] },
+              { label: 'Age 8-10', value: insights.ageBuckets['8-10'] },
+              { label: 'Age 11-13', value: insights.ageBuckets['11-13'] },
+              { label: 'Age 14+', value: insights.ageBuckets['14+'] },
+            ].map((metric) => (
+              <button
+                key={metric.label}
+                onClick={() => {
+                  const items = getInsightItems(metric.label)
+                  setInsightSearch('') // Reset search on open
+                  setInsightModal({ open: true, title: metric.label, items })
+                }}
+                className={`p-4 border rounded-xl text-left transition-all group ${metric.alert ? 'bg-amber-50/50 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/10 dark:border-amber-900/50 dark:hover:bg-amber-900/30' : 'bg-neutral-50 border-neutral-200 hover:bg-white hover:border-neutral-300 dark:bg-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-800'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              >
+                <div className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${metric.alert ? 'text-amber-700 dark:text-amber-500' : 'text-neutral-500 dark:text-neutral-400'}`}>
+                  {metric.label}
                 </div>
-              </div>
-              <div>
-                <h4 className="font-semibold text-gray-800 mb-2">Top Nationalities</h4>
-                <div className="divide-y">
-                  {insights.topNationalities.length === 0 ? (
-                    <div className="text-sm text-gray-500">No data</div>
-                  ) : (
-                    insights.topNationalities.map(([nat, cnt]) => (
-                      <div key={String(nat)} className="flex items-center justify-between py-2">
-                        <span className="text-gray-700">{String(nat).toUpperCase()}</span>
-                        <span className="font-semibold">{cnt}</span>
-                      </div>
-                    ))
-                  )}
+                <div className={`text-xl font-black ${metric.alert ? 'text-amber-900 dark:text-amber-400' : 'text-neutral-900 dark:text-white'}`}>
+                  {metric.value}
                 </div>
-              </div>
-            </div>
-          </>
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Class-wise distribution */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><BarChart2 size={18} /> Class-wise Distribution</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Export Hub - Takes up 2 columns on large screens */}
+        <div className="lg:col-span-2 bg-white dark:bg-neutral-950 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-800 overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50">
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+              <FileDown size={18} className="text-neutral-400" /> Export Hub
+            </h3>
+            <p className="text-xs text-neutral-500 mt-1">Download specific records, forms, and fees directly.</p>
+          </div>
+
+          <div className="p-4 sm:p-6 flex-1 flex flex-col">
+            {/* Tabs */}
+            <div className="flex overflow-x-auto gap-2 pb-4 mb-4 border-b border-neutral-100 dark:border-neutral-800 hide-scrollbar">
+              {[
+                { id: 'data', icon: Database, label: 'Student Data' },
+                { id: 'fees', icon: Receipt, label: 'Fee Records' },
+                { id: 'forms', icon: FolderArchive, label: 'Student Forms' },
+                { id: 'pictures', icon: ImageIcon, label: 'Pictures (ZIP)' },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeExportTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveExportTab(tab.id as ExportTabType)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${isActive ? 'bg-neutral-900 text-white dark:bg-white dark:text-black shadow-sm' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800'}`}
+                  >
+                    <Icon size={16} />
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Tab Contents - Data */}
+            {activeExportTab === 'data' && (
+              <div className="space-y-4 flex-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Target</label>
+                    <select value={targetType} onChange={e => setTargetType(e.target.value as TargetType)} className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                      <option value="all">Whole School</option>
+                      <option value="class">Specific Class</option>
+                      <option value="student">Single Student</option>
+                    </select>
+                  </div>
+                  {targetType === 'class' && (
+                    <div className="animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Class</label>
+                      <select value={className} onChange={e => setClassName(e.target.value)} className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">Select Class</option>
+                        {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {targetType === 'student' && (
+                    <div className="sm:col-span-2 space-y-2 animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Search & Select Student</label>
+                      <div className="relative">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                        <input
+                          value={studentQuickFilter}
+                          onChange={e => setStudentQuickFilter(e.target.value)}
+                          placeholder="Filter by Roll or GR"
+                          className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <select value={studentId} onChange={e => setStudentId(e.target.value)} className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">Select Student</option>
+                        {(students as any[])
+                          .filter(s => {
+                            const q = studentQuickFilter.trim().toLowerCase()
+                            if (!q) return true
+                            return String((s as any).rollNumber || '').toLowerCase().includes(q) || String((s as any).grNumber || '').toLowerCase().includes(q)
+                          })
+                          .slice()
+                          .sort((a, b) => parseInt((a as any).rollNumber || '0') - parseInt((b as any).rollNumber || '0'))
+                          .map(s => (
+                            <option key={s._id} value={s._id}>
+                              {(s as any).fullName} — {(s as any).grNumber} — Roll {(s as any).rollNumber}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                <div className="pt-4 mt-auto">
+                  <button onClick={handleExportExcel} disabled={exporting || (targetType === 'class' && !className) || (targetType === 'student' && !studentId)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm disabled:opacity-50 transition-all shadow-sm">
+                    {exporting ? <Loader2 className="animate-spin" size={16} /> : <FileDown size={16} />}
+                    <span>{exporting ? 'Exporting Data...' : 'Export Excel Data'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab Contents - Fees */}
+            {activeExportTab === 'fees' && (
+              <div className="space-y-4 flex-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Target</label>
+                    <select value={feeTargetType} onChange={e => setFeeTargetType(e.target.value as TargetType)} className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                      <option value="all">Whole School</option>
+                      <option value="class">Specific Class</option>
+                      <option value="student">Single Student</option>
+                    </select>
+                  </div>
+                  {feeTargetType === 'class' && (
+                    <div className="animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Class</label>
+                      <select value={feeClassName} onChange={e => setFeeClassName(e.target.value)} className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">Select Class</option>
+                        {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {feeTargetType === 'student' && (
+                    <div className="sm:col-span-2 space-y-2 animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Search & Select Student</label>
+                      <div className="relative">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                        <input
+                          value={feeStudentQuickFilter}
+                          onChange={e => setFeeStudentQuickFilter(e.target.value)}
+                          placeholder="Filter by Roll or GR"
+                          className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <select value={feeStudentId} onChange={e => setFeeStudentId(e.target.value)} className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">Select Student</option>
+                        {(students as any[])
+                          .filter(s => {
+                            const q = feeStudentQuickFilter.trim().toLowerCase()
+                            if (!q) return true
+                            return String((s as any).rollNumber || '').toLowerCase().includes(q) || String((s as any).grNumber || '').toLowerCase().includes(q)
+                          })
+                          .slice()
+                          .sort((a, b) => parseInt((a as any).rollNumber || '0') - parseInt((b as any).rollNumber || '0'))
+                          .map(s => (
+                            <option key={s._id} value={s._id}>
+                              {(s as any).fullName} — {(s as any).grNumber} — Roll {(s as any).rollNumber}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                <div className="pt-4 mt-auto">
+                  <button onClick={handleExportFeesExcel} disabled={feeExporting || (feeTargetType === 'class' && !feeClassName) || (feeTargetType === 'student' && !feeStudentId)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm disabled:opacity-50 transition-all shadow-sm">
+                    {feeExporting ? <Loader2 className="animate-spin" size={16} /> : <FileDown size={16} />}
+                    <span>{feeExporting ? 'Preparing Fees...' : 'Export Fee Records'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab Contents - Forms */}
+            {activeExportTab === 'forms' && (
+              <div className="space-y-4 flex-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Target</label>
+                    <select value={formTargetType} onChange={e => setFormTargetType(e.target.value as TargetType)} className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                      <option value="all">Whole School</option>
+                      <option value="class">Specific Class</option>
+                      <option value="student">Single Student</option>
+                    </select>
+                  </div>
+                  {formTargetType === 'class' && (
+                    <div className="animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Class</label>
+                      <select value={formClassName} onChange={e => setFormClassName(e.target.value)} className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">Select Class</option>
+                        {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {formTargetType === 'student' && (
+                    <div className="sm:col-span-2 space-y-2 animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Search & Select Student</label>
+                      <div className="relative">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                        <input
+                          value={formStudentQuickFilter}
+                          onChange={e => setFormStudentQuickFilter(e.target.value)}
+                          placeholder="Filter by Roll or GR"
+                          className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <select value={formStudentId} onChange={e => setFormStudentId(e.target.value)} className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">Select Student</option>
+                        {(students as any[])
+                          .filter(s => {
+                            const q = formStudentQuickFilter.trim().toLowerCase()
+                            if (!q) return true
+                            return String((s as any).rollNumber || '').toLowerCase().includes(q) || String((s as any).grNumber || '').toLowerCase().includes(q)
+                          })
+                          .slice()
+                          .sort((a, b) => parseInt((a as any).rollNumber || '0') - parseInt((b as any).rollNumber || '0'))
+                          .map(s => (
+                            <option key={s._id} value={s._id}>
+                              {(s as any).fullName} — {(s as any).grNumber} — Roll {(s as any).rollNumber}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                <div className="pt-4 mt-auto">
+                  <button onClick={handleDownloadFormsZip} disabled={zipPreparing || (formTargetType === 'class' && !formClassName) || (formTargetType === 'student' && !formStudentId)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm disabled:opacity-50 transition-all shadow-sm">
+                    {zipPreparing ? <Loader2 className="animate-spin" size={16} /> : <FolderArchive size={16} />}
+                    <span>{zipPreparing ? 'Packaging PDFs...' : 'Download Student Forms (ZIP)'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab Contents - Pictures */}
+            {activeExportTab === 'pictures' && (
+              <div className="space-y-4 flex-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Target</label>
+                    <select value={picTargetType} onChange={e => setPicTargetType(e.target.value as TargetType)} className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                      <option value="all">Whole School</option>
+                      <option value="class">Specific Class</option>
+                      <option value="student">Single Student</option>
+                    </select>
+                  </div>
+                  {picTargetType === 'class' && (
+                    <div className="animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Class</label>
+                      <select value={picClassName} onChange={e => setPicClassName(e.target.value)} className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">Select Class</option>
+                        {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {picTargetType === 'student' && (
+                    <div className="sm:col-span-2 space-y-2 animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Search & Select Student</label>
+                      <div className="relative">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                        <input
+                          value={picStudentQuickFilter}
+                          onChange={e => setPicStudentQuickFilter(e.target.value)}
+                          placeholder="Filter by Roll or GR"
+                          className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <select value={picStudentId} onChange={e => setPicStudentId(e.target.value)} className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">Select Student</option>
+                        {(students as any[])
+                          .filter(s => {
+                            const q = picStudentQuickFilter.trim().toLowerCase()
+                            if (!q) return true
+                            return String((s as any).rollNumber || '').toLowerCase().includes(q) || String((s as any).grNumber || '').toLowerCase().includes(q)
+                          })
+                          .slice()
+                          .sort((a, b) => parseInt((a as any).rollNumber || '0') - parseInt((b as any).rollNumber || '0'))
+                          .map(s => (
+                            <option key={s._id} value={s._id}>
+                              {(s as any).fullName} — {(s as any).grNumber} — Roll {(s as any).rollNumber}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                <div className="pt-4 mt-auto">
+                  <button onClick={handleDownloadPicturesZip} disabled={picDownloading || (picTargetType === 'class' && !picClassName) || (picTargetType === 'student' && !picStudentId)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm disabled:opacity-50 transition-all shadow-sm">
+                    {picDownloading ? <Loader2 className="animate-spin" size={16} /> : <ImageIcon size={16} />}
+                    <span>{picDownloading ? 'Processing Images...' : 'Download Pictures (ZIP)'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Class-wise Distribution Visualizer */}
+        <div className="bg-white dark:bg-neutral-950 rounded-2xl shadow-sm p-6 border border-neutral-200 dark:border-neutral-800">
+          <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-6 flex items-center gap-2">
+            <BarChart2 size={18} className="text-blue-500" /> Class Distribution
+          </h3>
           {loading ? (
-            <div className="space-y-2 animate-pulse">
+            <div className="space-y-4 animate-pulse">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="flex items-center justify-between py-2">
-                  <div className="h-3 w-28 bg-gray-200 rounded" />
-                  <div className="h-3 w-8 bg-gray-200 rounded" />
+                <div key={i}>
+                  <div className="flex items-center justify-between py-1">
+                    <div className="h-3 w-16 bg-neutral-200 dark:bg-neutral-800 rounded" />
+                    <div className="h-3 w-8 bg-neutral-200 dark:bg-neutral-800 rounded" />
+                  </div>
+                  <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-900 rounded-full mt-1" />
                 </div>
               ))}
             </div>
           ) : classWise.length === 0 ? (
-            <div className="text-sm text-gray-500">No data</div>
+            <div className="text-sm text-neutral-500">No data available</div>
           ) : (
-            <div className="divide-y">
-              {classWise.map(([cls, count]) => (
-                <div key={cls} className="flex items-center justify-between py-2">
-                  <span className="text-gray-700">Class {cls}</span>
-                  <span className="font-semibold">{count}</span>
-                </div>
-              ))}
+            <div className="space-y-4 max-h-[360px] overflow-y-auto pr-2 custom-scrollbar">
+              {classWise.map(([cls, count]) => {
+                const percentage = totals.total > 0 ? (count / totals.total) * 100 : 0;
+                return (
+                  <div key={cls} className="group">
+                    <div className="flex items-center justify-between py-1 text-sm">
+                      <span className="font-semibold text-neutral-700 dark:text-neutral-300">Class {cls}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-neutral-400 text-xs">{percentage.toFixed(1)}%</span>
+                        <span className="font-black text-neutral-900 dark:text-white">{count}</span>
+                      </div>
+                    </div>
+                    {/* Visual Progress Bar */}
+                    <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-900 rounded-full overflow-hidden mt-1">
+                      <div
+                        className="h-full bg-blue-500 rounded-full transition-all group-hover:bg-blue-400"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
-
-        {/* Export Student Data */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Export Student Data</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Target</label>
-              <select value={targetType} onChange={e => setTargetType(e.target.value as TargetType)} className="w-full border rounded px-3 py-2">
-                <option value="all">Whole School</option>
-                <option value="class">Class</option>
-                <option value="student">Particular Student</option>
-              </select>
-            </div>
-            {targetType === 'class' && (
-              <div>
-                <label className="block text-sm font-medium mb-1">Class</label>
-                <select value={className} onChange={e => setClassName(e.target.value)} className="w-full border rounded px-3 py-2">
-                  <option value="">Select Class</option>
-                  {classOptions.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {targetType === 'student' && (
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-1">Student</label>
-                <input
-                  value={studentQuickFilter}
-                  onChange={e => setStudentQuickFilter(e.target.value)}
-                  placeholder="Filter by Roll or GR"
-                  className="w-full border rounded px-3 py-2 mb-2 text-sm"
-                />
-                <select value={studentId} onChange={e => setStudentId(e.target.value)} className="w-full border rounded px-3 py-2">
-                  <option value="">Select Student</option>
-                  {(students as any[])
-                    .filter(s => {
-                      const q = studentQuickFilter.trim().toLowerCase()
-                      if (!q) return true
-                      const roll = String((s as any).rollNumber || '').toLowerCase()
-                      const gr = String((s as any).grNumber || '').toLowerCase()
-                      return roll.includes(q) || gr.includes(q)
-                    })
-                    .slice()
-                    .sort((a: any, b: any) => {
-                      const ra = parseInt(String((a as any).rollNumber || '').replace(/[^0-9]/g, ''), 10)
-                      const rb = parseInt(String((b as any).rollNumber || '').replace(/[^0-9]/g, ''), 10)
-                      const na = isNaN(ra) ? Infinity : ra
-                      const nb = isNaN(rb) ? Infinity : rb
-                      return na - nb
-                    })
-                    .map(s => (
-                      <option key={s._id} value={s._id}>
-                        {(s as any).fullName} — {(s as any).grNumber} — Roll {(s as any).rollNumber}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            )}
-          </div>
-          <div className="mt-4">
-            <button onClick={handleExportExcel} disabled={exporting || (targetType === 'class' && !className) || (targetType === 'student' && !studentId)} className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border bg-white hover:bg-gray-50 shadow-sm text-sm disabled:opacity-60">
-              {exporting ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
-              <span>{exporting ? 'Exporting…' : 'Export'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Export Student Fee Data */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Export Student Fee Data</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Target</label>
-              <select value={feeTargetType} onChange={e => setFeeTargetType(e.target.value as TargetType)} className="w-full border rounded px-3 py-2">
-                <option value="all">Whole School</option>
-                <option value="class">Class</option>
-                <option value="student">Particular Student</option>
-              </select>
-            </div>
-            {feeTargetType === 'class' && (
-              <div>
-                <label className="block text-sm font-medium mb-1">Class</label>
-                <select value={feeClassName} onChange={e => setFeeClassName(e.target.value)} className="w-full border rounded px-3 py-2">
-                  <option value="">Select Class</option>
-                  {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-            )}
-            {feeTargetType === 'student' && (
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-1">Student</label>
-                <input
-                  value={feeStudentQuickFilter}
-                  onChange={e => setFeeStudentQuickFilter(e.target.value)}
-                  placeholder="Filter by Roll or GR"
-                  className="w-full border rounded px-3 py-2 mb-2 text-sm"
-                />
-                <select value={feeStudentId} onChange={e => setFeeStudentId(e.target.value)} className="w-full border rounded px-3 py-2">
-                  <option value="">Select Student</option>
-                  {(students as any[])
-                    .filter(s => {
-                      const q = feeStudentQuickFilter.trim().toLowerCase()
-                      if (!q) return true
-                      const roll = String((s as any).rollNumber || '').toLowerCase()
-                      const gr = String((s as any).grNumber || '').toLowerCase()
-                      return roll.includes(q) || gr.includes(q)
-                    })
-                    .slice()
-                    .sort((a: any, b: any) => {
-                      const ra = parseInt(String((a as any).rollNumber || '').replace(/[^0-9]/g, ''), 10)
-                      const rb = parseInt(String((b as any).rollNumber || '').replace(/[^0-9]/g, ''), 10)
-                      const na = isNaN(ra) ? Infinity : ra
-                      const nb = isNaN(rb) ? Infinity : rb
-                      return na - nb
-                    })
-                    .map(s => (
-                      <option key={s._id} value={s._id}>
-                        {(s as any).fullName} — {(s as any).grNumber} — Roll {(s as any).rollNumber}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            )}
-          </div>
-          <div className="mt-4">
-            <button onClick={handleExportFeesExcel} disabled={feeExporting || (feeTargetType === 'class' && !feeClassName) || (feeTargetType === 'student' && !feeStudentId)} className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border bg-white hover:bg-gray-50 shadow-sm text-sm disabled:opacity-60">
-              {feeExporting ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
-              <span>{feeExporting ? 'Exporting…' : 'Export Fees'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Download Student's Form (in zip file) */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Download Student’s Form (in zip file)</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Target</label>
-              <select value={formTargetType} onChange={e => setFormTargetType(e.target.value as TargetType)} className="w-full border rounded px-3 py-2">
-                <option value="all">Whole School</option>
-                <option value="class">Class</option>
-                <option value="student">Particular Student</option>
-              </select>
-            </div>
-            {formTargetType === 'class' && (
-              <div>
-                <label className="block text-sm font-medium mb-1">Class</label>
-                <select value={formClassName} onChange={e => setFormClassName(e.target.value)} className="w-full border rounded px-3 py-2">
-                  <option value="">Select Class</option>
-                  {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-            )}
-            {formTargetType === 'student' && (
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-1">Student</label>
-                <input
-                  value={formStudentQuickFilter}
-                  onChange={e => setFormStudentQuickFilter(e.target.value)}
-                  placeholder="Filter by Roll or GR"
-                  className="w-full border rounded px-3 py-2 mb-2 text-sm"
-                />
-                <select value={formStudentId} onChange={e => setFormStudentId(e.target.value)} className="w-full border rounded px-3 py-2">
-                  <option value="">Select Student</option>
-                  {(students as any[])
-                    .filter(s => {
-                      const q = formStudentQuickFilter.trim().toLowerCase()
-                      if (!q) return true
-                      const roll = String((s as any).rollNumber || '').toLowerCase()
-                      const gr = String((s as any).grNumber || '').toLowerCase()
-                      return roll.includes(q) || gr.includes(q)
-                    })
-                    .slice()
-                    .sort((a: any, b: any) => {
-                      const ra = parseInt(String((a as any).rollNumber || '').replace(/[^0-9]/g, ''), 10)
-                      const rb = parseInt(String((b as any).rollNumber || '').replace(/[^0-9]/g, ''), 10)
-                      const na = isNaN(ra) ? Infinity : ra
-                      const nb = isNaN(rb) ? Infinity : rb
-                      return na - nb
-                    })
-                    .map(s => (
-                      <option key={s._id} value={s._id}>
-                        {(s as any).fullName} — {(s as any).grNumber} — Roll {(s as any).rollNumber}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            )}
-          </div>
-          <div className="mt-4">
-            <button onClick={handleDownloadFormsZip} disabled={zipPreparing || (formTargetType === 'class' && !formClassName) || (formTargetType === 'student' && !formStudentId)} className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border bg-white hover:bg-gray-50 shadow-sm text-sm disabled:opacity-60">
-              {zipPreparing ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
-              <span>{zipPreparing ? 'Preparing…' : 'Download ZIP'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Download Student Pictures (in zip file) */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Download Student Pictures (in zip file)</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Target</label>
-              <select value={picTargetType} onChange={e => setPicTargetType(e.target.value as TargetType)} className="w-full border rounded px-3 py-2">
-                <option value="all">Whole School</option>
-                <option value="class">Class</option>
-                <option value="student">Particular Student</option>
-              </select>
-            </div>
-            {picTargetType === 'class' && (
-              <div>
-                <label className="block text-sm font-medium mb-1">Class</label>
-                <select value={picClassName} onChange={e => setPicClassName(e.target.value)} className="w-full border rounded px-3 py-2">
-                  <option value="">Select Class</option>
-                  {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-            )}
-            {picTargetType === 'student' && (
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-1">Student</label>
-                <input
-                  value={picStudentQuickFilter}
-                  onChange={e => setPicStudentQuickFilter(e.target.value)}
-                  placeholder="Filter by Roll or GR"
-                  className="w-full border rounded px-3 py-2 mb-2 text-sm"
-                />
-                <select value={picStudentId} onChange={e => setPicStudentId(e.target.value)} className="w-full border rounded px-3 py-2">
-                  <option value="">Select Student</option>
-                  {(students as any[])
-                    .filter(s => {
-                      const q = picStudentQuickFilter.trim().toLowerCase()
-                      if (!q) return true
-                      const roll = String((s as any).rollNumber || '').toLowerCase()
-                      const gr = String((s as any).grNumber || '').toLowerCase()
-                      return roll.includes(q) || gr.includes(q)
-                    })
-                    .slice()
-                    .sort((a: any, b: any) => {
-                      const ra = parseInt(String((a as any).rollNumber || '').replace(/[^0-9]/g, ''), 10)
-                      const rb = parseInt(String((b as any).rollNumber || '').replace(/[^0-9]/g, ''), 10)
-                      const na = isNaN(ra) ? Infinity : ra
-                      const nb = isNaN(rb) ? Infinity : rb
-                      return na - nb
-                    })
-                    .map(s => (
-                      <option key={s._id} value={s._id}>
-                        {(s as any).fullName} — {(s as any).grNumber} — Roll {(s as any).rollNumber}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            )}
-          </div>
-          <div className="mt-4">
-            <button onClick={handleDownloadPicturesZip} disabled={picDownloading || (picTargetType === 'class' && !picClassName) || (picTargetType === 'student' && !picStudentId)} className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border bg-white hover:bg-gray-50 shadow-sm text-sm disabled:opacity-60">
-              {picDownloading ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
-              <span>{picDownloading ? 'Processing…' : 'Download Pictures ZIP'}</span>
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* Insight List Modal */}
-      {insightModal.open && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Insight Details">
-          <div className="bg-white sm:rounded-2xl rounded-none p-4 sm:p-6 w-full sm:max-w-2xl max-w-none h-full sm:h-auto relative shadow-2xl border border-gray-200 overflow-y-auto sm:max-h-[90vh]">
-            <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="text-xl font-semibold">{insightModal.title}</h3>
-              <button className="text-gray-500 hover:text-red-600" onClick={() => setInsightModal({ open: false, title: '', items: [] })}><X /></button>
+      {/* Premium Insight List Modal / Data Table */}
+      {mounted && insightModal.open && createPortal(
+        <div className="fixed inset-0 bg-neutral-950/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-label="Insight Details">
+          <div className="bg-white dark:bg-neutral-950 rounded-2xl w-full max-w-5xl h-full sm:h-auto max-h-[90vh] flex flex-col shadow-2xl border border-neutral-200 dark:border-neutral-800 animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-neutral-100 dark:border-neutral-800">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl">
+                  <LayoutGrid size={24} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">{insightModal.title}</h3>
+                  <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">{insightModal.items.length} records found</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setInsightModal({ open: false, title: '', items: [] })}
+                className="p-2 text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-xl transition-all"
+              >
+                <X size={24} />
+              </button>
             </div>
-            <div className="mt-4">
+
+            {/* Table Toolbar */}
+            <div className="p-4 bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 flex flex-col sm:flex-row gap-4 justify-between items-center">
+              <div className="relative w-full sm:w-80">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <input
+                  type="text"
+                  placeholder="Search this list..."
+                  value={insightSearch}
+                  onChange={(e) => setInsightSearch(e.target.value)}
+                  className="w-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                />
+              </div>
+              <button
+                onClick={async () => {
+                  // Generic local export for just this table
+                  const toastId = toast.loading('Preparing table export...');
+                  try {
+                    const ExcelJS: any = await loadExcel();
+                    const wb = new ExcelJS.Workbook();
+                    const ws = wb.addWorksheet('Insight Data');
+
+                    // Minimal columns
+                    ws.columns = [
+                      { header: 'Full Name', key: 'fullName', width: 25 },
+                      { header: 'GR Number', key: 'grNumber', width: 15 },
+                      { header: 'Roll No', key: 'rollNumber', width: 12 },
+                      { header: 'Class', key: 'admissionFor', width: 15 },
+                      { header: 'Phone', key: 'phoneNumber', width: 18 },
+                    ];
+
+                    // Style header
+                    const hr = ws.getRow(1);
+                    hr.eachCell((c: any) => {
+                      c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF171717' } };
+                      c.alignment = { horizontal: 'center' };
+                    });
+                    
+                    insightModal.items.forEach((s: any) => {
+                      const r = ws.addRow({
+                        fullName: (s.fullName || '').toUpperCase(),
+                        grNumber: s.grNumber || '—',
+                        rollNumber: s.rollNumber || '—',
+                        admissionFor: (s.admissionFor || '—').toUpperCase(),
+                        phoneNumber: s.phoneNumber || '—'
+                      });
+                      r.eachCell((c: any) => {
+                         c.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                      });
+                    });
+
+                    const buffer = await wb.xlsx.writeBuffer();
+                    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                    const fileSaver = await import('file-saver');
+                    const saveAs = (fileSaver as any).default?.saveAs || (fileSaver as any).saveAs;
+
+                    const safeTitle = insightModal.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    const fileName = `insight_${safeTitle}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+                    if (saveAs && typeof saveAs === 'function') saveAs(blob, fileName);
+                    else {
+                      const url = window.URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url; link.download = fileName; link.click();
+                      window.URL.revokeObjectURL(url);
+                    }
+                    toast.success('List exported successfully!', { id: toastId });
+                  } catch (err) {
+                    toast.error('Export failed', { id: toastId });
+                  }
+                }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 font-bold text-sm hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-all shadow-sm"
+              >
+                <FileDown size={16} /> Export This List
+              </button>
+            </div>
+
+            {/* Premium Data Table */}
+            <div className="flex-1 overflow-auto bg-white dark:bg-neutral-950 custom-scrollbar">
               {insightModal.title === 'Unique Classes' ? (
-                <div className="divide-y">
-                  {insightModal.items.length === 0 ? <div className="text-sm text-gray-500">No data</div> : insightModal.items.map((it: any) => (
-                    <div key={it._id} className="flex items-center justify-between py-2">
-                      <div className="text-gray-800">{it.fullName}</div>
-                      <div className="text-sm text-gray-500">{it.count}</div>
-                    </div>
-                  ))}
+                // Unique Classes Render (No full profiles)
+                <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                  {insightModal.items.length === 0 ? <div className="p-8 text-center text-sm font-bold text-neutral-400">No data available</div> :
+                    insightModal.items
+                      .filter((it: any) => it.fullName.toLowerCase().includes(insightSearch.toLowerCase()))
+                      .map((it: any) => (
+                        <div key={it._id} className="flex items-center justify-between px-6 py-4 hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors">
+                          <div className="font-bold text-neutral-900 dark:text-white">{it.fullName}</div>
+                          <div className="px-3 py-1 bg-blue-50 text-blue-600 dark:bg-blue-900/20 rounded-full text-xs font-black">{it.count} Students</div>
+                        </div>
+                      ))}
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {insightModal.items.length === 0 ? (
-                    <div className="text-sm text-gray-500">No students found</div>
-                  ) : (
-                    (insightModal.items as any[]).map((s: any) => (
-                      <div key={s._id} className="p-3 border rounded-lg">
-                        <div className="font-medium text-gray-800">{s.fullName || '—'}</div>
-                        <div className="text-xs text-gray-500">GR: {s.grNumber || '—'} • Roll: {s.rollNumber || '—'} • Class: {s.admissionFor || '—'}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                // Standard Student Data Table
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                  <thead className="bg-neutral-50 dark:bg-neutral-900 sticky top-0 z-10 shadow-sm">
+                    <tr>
+                      <th className="px-6 py-4 font-black text-neutral-500 uppercase tracking-widest text-[10px]">Student Name</th>
+                      <th className="px-6 py-4 font-black text-neutral-500 uppercase tracking-widest text-[10px]">GR No</th>
+                      <th className="px-6 py-4 font-black text-neutral-500 uppercase tracking-widest text-[10px]">Roll No</th>
+                      <th className="px-6 py-4 font-black text-neutral-500 uppercase tracking-widest text-[10px]">Class</th>
+                      <th className="px-6 py-4 font-black text-neutral-500 uppercase tracking-widest text-[10px] text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                    {insightModal.items.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="p-12 text-center">
+                          <div className="flex flex-col items-center gap-2">
+                            <Filter size={32} className="text-neutral-300" />
+                            <span className="text-sm font-bold text-neutral-400">No students match this insight</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      insightModal.items
+                        .filter((s: any) => {
+                          const searchStr = `${s.fullName} ${s.grNumber} ${s.rollNumber} ${s.admissionFor}`.toLowerCase();
+                          return searchStr.includes(insightSearch.toLowerCase());
+                        })
+                        .map((s: any) => (
+                          <tr
+                            key={s._id}
+                            onClick={() => setClickedStudent(s)}
+                            className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors cursor-pointer group"
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden flex items-center justify-center border border-neutral-200 dark:border-neutral-700 shrink-0">
+                                  {s.photoUrl || s.imageUrl ? (
+                                    <img src={(s.photoUrl || s.imageUrl) + '?w=64&h=64&fit=crop'} alt={s.fullName} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <User size={14} className="text-neutral-400" />
+                                  )}
+                                </div>
+                                <span className="font-bold text-neutral-900 dark:text-white group-hover:text-blue-600 transition-colors">{s.fullName || '—'}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 font-semibold text-neutral-600 dark:text-neutral-400">{s.grNumber || '—'}</td>
+                            <td className="px-6 py-4 font-semibold text-neutral-600 dark:text-neutral-400">{s.rollNumber || '—'}</td>
+                            <td className="px-6 py-4">
+                              <span className="px-2 py-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 rounded-md text-[10px] font-black uppercase tracking-widest">
+                                {s.admissionFor || '—'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
+                                <Eye size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Profile Detail Modal Layer */}
+      {mounted && clickedStudent && createPortal(
+        <div className="fixed inset-0 z-[10000]">
+          <StudentDetailModal
+            student={clickedStudent}
+            onClose={() => setClickedStudent(null)}
+          />
+        </div>,
+        document.body
       )}
 
     </div>
