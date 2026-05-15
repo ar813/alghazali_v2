@@ -160,7 +160,7 @@ export default function StudentPromotionPage() {
     }, [sourceSession, mode]);
 
     const filteredStudents = useMemo(() => {
-        let result = students.filter(s => {
+        const result = students.filter(s => {
             const matchesSearch = s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 s.grNumber?.includes(searchQuery) ||
                 s.rollNumber?.includes(searchQuery);
@@ -218,7 +218,7 @@ export default function StudentPromotionPage() {
                 return;
             }
             const token = await user.getIdToken();
-            let payload: any = { sourceSession, targetSession: selectedSession };
+            const payload: any = { sourceSession, targetSession: selectedSession };
             
             if (mode === 'bulk') {
                 // Filter mapping to only include selected classes
