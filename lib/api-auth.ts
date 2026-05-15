@@ -26,11 +26,16 @@ export async function verifyAuth(request: Request) {
 
     const data = await res.json();
 
+    if (data.error) {
+      console.error('[Auth Verify] Google API Error:', data.error.message);
+      return null;
+    }
+
     if (data.users && data.users.length > 0) {
       return data.users[0]; // Valid user
     }
   } catch (error) {
-    console.error('Auth verification failed:', error);
+    console.error('[Auth Verify] Network/System Error:', error);
   }
 
   return null;

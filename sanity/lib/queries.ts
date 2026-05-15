@@ -37,7 +37,23 @@ export const getPaginatedStudentsQuery = `*[_type == "student"
   && ($gender == null || gender == $gender)
   && ($classFilter == "All" || admissionFor == $classFilter)
   && ($search == "" || fullName match $search + "*" || fatherName match $search + "*" || rollNumber match $search + "*" || grNumber match $search + "*")
-] | order(admissionFor asc, rollNumber asc) [$start...$end] {${studentFields}}`
+] | order(
+  select($sortDir == "asc" => select(
+    $sortKey == "rollNumber" => rollNumber,
+    $sortKey == "grNumber" => grNumber,
+    $sortKey == "fullName" => fullName,
+    admissionFor
+  )) asc,
+  select($sortDir == "desc" => select(
+    $sortKey == "rollNumber" => rollNumber,
+    $sortKey == "grNumber" => grNumber,
+    $sortKey == "fullName" => fullName,
+    admissionFor
+  )) desc,
+  admissionFor asc,
+  rollNumber asc,
+  fullName asc
+) [$start...$end] {${studentFields}}`
 
 export const getStudentsCountQuery = `count(*[_type == "student" 
   && ${sessionFilter}

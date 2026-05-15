@@ -13,9 +13,23 @@ interface StudentTableProps {
     onDelete: (id: string) => void;
     deleteLoadingId: string | null;
     isSuperAdmin?: boolean;
+    currentSort?: { key: string; dir: 'asc' | 'desc' };
+    onSort?: (key: any) => void;
 }
 
-const StudentTable: React.FC<StudentTableProps> = ({ students, loading, onView, onEdit, onDelete, deleteLoadingId, isSuperAdmin = false }) => {
+import { ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+
+const StudentTable: React.FC<StudentTableProps> = ({
+    students,
+    loading,
+    onView,
+    onEdit,
+    onDelete,
+    deleteLoadingId,
+    isSuperAdmin = false,
+    currentSort,
+    onSort
+}) => {
 
     const getInitial = (name?: string) => name ? name.charAt(0).toUpperCase() : '?';
 
@@ -43,13 +57,34 @@ const StudentTable: React.FC<StudentTableProps> = ({ students, loading, onView, 
                 <table className="w-full text-left">
                     <thead>
                         <tr className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
-                            <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Student</th>
-                            <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Class</th>
-                            <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Roll No</th>
-                            <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">GR No</th>
-                            <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Father Name</th>
-                            <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Contact</th>
-                            <th className="px-6 py-4 text-right text-xs font-bold text-neutral-500 uppercase tracking-wider">Actions</th>
+                            {[
+                                { key: 'fullName', label: 'Student' },
+                                { key: 'admissionFor', label: 'Class' },
+                                { key: 'rollNumber', label: 'Roll No' },
+                                { key: 'grNumber', label: 'GR No' },
+                                { key: 'fatherName', label: 'Father Name', noSort: true },
+                                { key: 'phoneNumber', label: 'Contact', noSort: true },
+                            ].map((col) => (
+                                <th
+                                    key={col.key}
+                                    onClick={() => !col.noSort && onSort?.(col.key)}
+                                    className={`px-6 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-[0.2em] transition-colors ${!col.noSort ? 'cursor-pointer hover:text-neutral-900 dark:hover:text-white' : ''}`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        {col.label}
+                                        {!col.noSort && (
+                                            <div className="flex flex-col opacity-30 group-hover:opacity-100 transition-opacity">
+                                                {currentSort?.key === col.key ? (
+                                                    currentSort.dir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
+                                                ) : (
+                                                    <ArrowUpDown size={10} />
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </th>
+                            ))}
+                            <th className="px-6 py-5 text-right text-[10px] font-black text-neutral-400 uppercase tracking-[0.2em]">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-50 dark:divide-neutral-900">

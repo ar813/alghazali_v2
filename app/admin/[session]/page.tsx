@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { SessionProvider, useSession } from '@/context/SessionContext';
+import { useSession } from '@/context/SessionContext';
 import AdminPortal from '@/components/AdminPortal/AdminPortal';
 import NavBar from '@/components/NavBar/NavBar';
 import TopLoader from '@/components/TopLoader/TopLoader';
@@ -14,9 +14,7 @@ const SessionPage = ({ params }: { params: { session: string } }) => {
     const sessionName = decodeURIComponent(params.session);
 
     return (
-        <SessionProvider>
-            <SessionContent sessionName={sessionName} />
-        </SessionProvider>
+        <SessionContent sessionName={sessionName} />
     );
 };
 

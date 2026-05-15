@@ -7,7 +7,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, LayoutDashboard, CalendarClock, Smartphone, UserCog } from "lucide-react";
+import { LogOut, LayoutDashboard, Smartphone, UserCog, ShieldCheck, User } from "lucide-react";
 import { User as FirebaseUser } from "firebase/auth";
 import Link from "next/link";
 import Image from "next/image";
@@ -42,107 +42,123 @@ export function AdminDropdown({ user, role, logout }: AdminDropdownProps) {
         <>
             <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                    <button className="relative outline-none rounded-full transition-transform active:scale-95 focus:ring-2 focus:ring-neutral-200 dark:focus:ring-neutral-800 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black">
+                    <button className="relative outline-none group">
                         <div className={cn(
-                            "h-9 w-9 rounded-full flex items-center justify-center overflow-hidden",
-                            "bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700",
-                            "hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors duration-200"
+                            "h-10 w-10 flex items-center justify-center overflow-hidden transition-all duration-300",
+                            "bg-white border border-gray-100 group-hover:border-emerald-800/30",
+                            "shadow-sm group-hover:shadow-md"
                         )}>
                             {user.photoURL ? (
                                 <Image
                                     src={user.photoURL}
                                     alt="Profile"
-                                    width={36}
-                                    height={36}
-                                    className="h-full w-full object-cover"
+                                    width={40}
+                                    height={40}
+                                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                                 />
                             ) : (
-                                <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400 select-none">
+                                <span className="text-[10px] font-black text-emerald-800 label-mono">
                                     {initials}
                                 </span>
                             )}
                         </div>
+                        {/* Status Indicator */}
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-white p-0.5">
+                            <div className="w-full h-full bg-emerald-500 rounded-full border border-white" />
+                        </div>
                     </button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent className="w-60 p-1.5" align="end" sideOffset={8}>
-                    {/* Header */}
-                    <div className="flex items-center gap-3 p-2 mb-1">
-                        <div className="h-8 w-8 shrink-0 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-400 font-medium text-xs border border-neutral-200 dark:border-neutral-700 select-none">
-                            {initials}
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-medium truncate text-neutral-900 dark:text-neutral-100">
-                                {user.displayName || "Admin User"}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] text-neutral-500 truncate">
-                                    {user.email}
+                <DropdownMenuContent 
+                    className="w-64 p-0 bg-white border border-gray-100 shadow-2xl rounded-none animate-in fade-in zoom-in-95 duration-200" 
+                    align="end" 
+                    sideOffset={12}
+                >
+                    {/* Premium Header */}
+                    <div className="p-5 bg-gray-50/50 border-b border-gray-100">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="h-12 w-12 shrink-0 bg-white flex items-center justify-center text-emerald-800 font-black text-xs border border-gray-100 shadow-sm label-mono">
+                                {user.photoURL ? (
+                                    <Image src={user.photoURL} alt="" width={48} height={48} className="object-cover" />
+                                ) : initials}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-sm font-bold truncate text-gray-900 tracking-tight">
+                                    {user.displayName || "Admin User"}
                                 </span>
-                                <span className={cn(
-                                    "text-[9px] px-1.5 py-px rounded-full font-medium uppercase tracking-wide border",
-                                    role === "super_admin"
-                                        ? "bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800"
-                                        : "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800"
-                                )}>
-                                    {role === "super_admin" ? "S. Admin" : "Admin"}
+                                <span className="text-[10px] text-gray-400 truncate font-medium mb-2">
+                                    {user.email}
                                 </span>
                             </div>
                         </div>
+                        
+                        <div className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest border label-mono",
+                            role === "super_admin"
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-100"
+                                : "bg-gray-100 text-gray-600 border-gray-200"
+                        )}>
+                            <ShieldCheck size={10} />
+                            {role === "super_admin" ? "Super Admin" : "Administrator"}
+                        </div>
                     </div>
 
-                    <DropdownMenuSeparator className="my-1" />
-
-                    <DropdownMenuGroup>
-                        <DropdownMenuItem asChild>
-                            <Link href="/admin" className="gap-2.5 py-2 cursor-pointer focus:bg-neutral-100 dark:focus:bg-neutral-800">
-                                <LayoutDashboard size={15} className="text-neutral-500" />
-                                <span className="text-sm">Dashboard</span>
-                            </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                            <Link href={mobileAppUrl} target="_blank" className="gap-2.5 py-2 cursor-pointer focus:bg-neutral-100 dark:focus:bg-neutral-800">
-                                <Smartphone size={15} className="text-neutral-500" />
-                                <span className="text-sm">Get Mobile App</span>
-                            </Link>
-                        </DropdownMenuItem>
-                        {role === "super_admin" && (
+                    <div className="p-1.5">
+                        <DropdownMenuGroup>
                             <DropdownMenuItem asChild>
-                                <Link href="/admin/users" className="gap-2.5 py-2 cursor-pointer focus:bg-neutral-100 dark:focus:bg-neutral-800">
-                                    <UserCog size={15} className="text-neutral-500" />
-                                    <span className="text-sm font-medium">Manage Users</span>
+                                <Link href="/admin" className="flex items-center gap-3 px-3 py-2.5 cursor-pointer outline-none transition-colors hover:bg-gray-50 group">
+                                    <LayoutDashboard size={16} className="text-gray-400 group-hover:text-emerald-800 transition-colors" />
+                                    <span className="text-xs font-bold uppercase tracking-wider text-gray-600 group-hover:text-gray-900">Dashboard</span>
                                 </Link>
                             </DropdownMenuItem>
-                        )}
-                    </DropdownMenuGroup>
+                            
+                            {role === "super_admin" && (
+                                <DropdownMenuItem asChild>
+                                    <Link href="/admin/users" className="flex items-center gap-3 px-3 py-2.5 cursor-pointer outline-none transition-colors hover:bg-gray-50 group">
+                                        <UserCog size={16} className="text-gray-400 group-hover:text-emerald-800 transition-colors" />
+                                        <span className="text-xs font-bold uppercase tracking-wider text-gray-600 group-hover:text-gray-900">Manage Users</span>
+                                    </Link>
+                                </DropdownMenuItem>
+                            )}
 
-                    <DropdownMenuSeparator className="my-1" />
+                            <DropdownMenuItem asChild>
+                                <Link href={mobileAppUrl} target="_blank" className="flex items-center gap-3 px-3 py-2.5 cursor-pointer outline-none transition-colors hover:bg-gray-50 group">
+                                    <Smartphone size={16} className="text-gray-400 group-hover:text-emerald-800 transition-colors" />
+                                    <span className="text-xs font-bold uppercase tracking-wider text-gray-600 group-hover:text-gray-900">Mobile App</span>
+                                </Link>
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
 
-                    <div className="px-2 py-1.5 flex items-center gap-2 text-[10px] text-neutral-400 font-medium select-none">
-                        <CalendarClock size={12} />
-                        <span>Logged in: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <div className="my-1.5 h-px bg-gray-100 mx-2" />
+
+                        <DropdownMenuGroup>
+                            <DropdownMenuItem
+                                onClick={() => setShowProfileUpdate(true)}
+                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer outline-none transition-colors hover:bg-gray-50 group"
+                            >
+                                <User size={16} className="text-gray-400 group-hover:text-emerald-800 transition-colors" />
+                                <span className="text-xs font-bold uppercase tracking-wider text-gray-600 group-hover:text-gray-900">Edit Profile</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setShowLogoutConfirm(true);
+                                }}
+                                className="flex items-center gap-3 px-3 py-2.5 text-red-600 cursor-pointer outline-none transition-colors hover:bg-red-50 group"
+                            >
+                                <LogOut size={16} className="text-red-400 group-hover:text-red-600 transition-colors" />
+                                <span className="text-xs font-black uppercase tracking-widest">Sign Out</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
                     </div>
 
-                    <DropdownMenuSeparator className="my-1" />
-
-                    <DropdownMenuItem
-                        onClick={() => setShowProfileUpdate(true)}
-                        className="gap-2.5 py-2 cursor-pointer focus:bg-neutral-100 dark:focus:bg-neutral-800"
-                    >
-                        <UserCog size={15} className="text-neutral-500" />
-                        <span className="text-sm">Edit Profile</span>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                        onClick={(e) => {
-                            e.preventDefault();
-                            setShowLogoutConfirm(true);
-                        }}
-                        className="gap-2.5 py-2 text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer"
-                    >
-                        <LogOut size={15} />
-                        <span className="text-sm font-medium">Log out</span>
-                    </DropdownMenuItem>
+                    {/* Subtle Bottom Branding */}
+                    <div className="p-3 bg-gray-50/30 text-center border-t border-gray-100">
+                        <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.3em] label-mono">
+                            Al Ghazali Core v3.0
+                        </p>
+                    </div>
                 </DropdownMenuContent>
             </DropdownMenu>
 

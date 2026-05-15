@@ -12,7 +12,7 @@ import {
   MobileNavLink,
 } from "@/components/ui/resizable-navbar";
 import { useState, createElement } from "react";
-import { Home, ReceiptText, GraduationCap, KeyRound, Smartphone, FileDown } from "lucide-react";
+import { Home, ReceiptText, GraduationCap, KeyRound, Smartphone, FileDown, Library } from "lucide-react";
 import { useMobileNav, PortalNavConfig } from "@/contexts/MobileNavContext";
 import { useAuth } from "@/context/AuthContext";
 import IslamicDate from "./IslamicDate";
@@ -37,6 +37,11 @@ export default function NavBar() {
       name: "Student Portal",
       link: "/student-portal",
       icon: <GraduationCap size={16} />,
+    },
+    {
+      name: "E-Library",
+      link: "/library",
+      icon: <Library size={16} />,
     },
     {
       name: "Admin",
@@ -89,7 +94,7 @@ export default function NavBar() {
 
             {loading ? (
               // Skeleton Loader for Button area
-              <div className="h-10 w-32 rounded-xl bg-neutral-100 dark:bg-neutral-800 animate-pulse hidden md:block" />
+              <div className="h-10 w-32 bg-neutral-100 dark:bg-neutral-800 animate-pulse hidden md:block rounded-none" />
             ) : user ? (
               // Authenticated Admin State
               <AdminDropdown user={user} role={role} logout={logout} />
@@ -168,7 +173,7 @@ export default function NavBar() {
                 <NavbarButton
                   onClick={closeMobileMenu}
                   variant="primary"
-                  className="w-full h-12 flex-col !rounded-2xl !py-2"
+                  className="w-full h-12 flex-col !rounded-none !py-2"
                   href="/assets/Student_Information_Form.pdf"
                   target="_blank"
                 >
@@ -178,7 +183,7 @@ export default function NavBar() {
                 <NavbarButton
                   onClick={closeMobileMenu}
                   variant="secondary"
-                  className="w-full h-12 flex-col !rounded-2xl !py-2"
+                  className="w-full h-12 flex-col !rounded-none !py-2"
                   href={process.env.NEXT_PUBLIC_MOBILE_APP_URL || "#"}
                   target="_blank"
                 >

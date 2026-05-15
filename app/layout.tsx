@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Anta, Outfit } from "next/font/google";
+import { Anta, Outfit, Amiri } from "next/font/google";
 import "./globals.css";
 import { Provider } from "@/components/ui/provider";
 import AppDownloadPromo from "@/components/AppDownloadPromo/AppDownloadPromo";
@@ -22,6 +22,12 @@ const outfit = Outfit({
   variable: "--font-outfit",
 });
 
+const amiri = Amiri({
+  subsets: ["arabic"],
+  weight: ["400", "700"],
+  variable: "--font-amiri",
+});
+
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
@@ -35,8 +41,13 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "Al Ghazali High School | Nurturing Minds, Building Character",
-    template: "%s | Al Ghazali High School",
+    default: "Al-Ghazali High School | Excellence in Education & Islamic Values",
+    template: "%s | Al-Ghazali High School",
+  },
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
   },
   description: "Established in 1993, Al Ghazali High School provides quality education combining modern pedagogy with Islamic values in Landhi, Karachi. Under the supervision of Al Razi Educational & Welfare Society.",
   keywords: [
@@ -121,7 +132,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${anta.variable} ${outfit.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${anta.variable} ${outfit.variable} ${amiri.variable} antialiased`}
       >
         <GoogleAnalytics ga_id="G-75E96W9EMG" />
         <LordIconInitializer />

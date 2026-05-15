@@ -57,10 +57,10 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: false, error: 'Server is missing SANITY_API_WRITE_TOKEN' }, { status: 500 })
   }
   const url = new URL(request.url)
-  const all = url.searchParams.get('all') === 'true'
+  const all = url.searchParams.get('all') === 'true' || url.searchParams.get('action') === 'deleteAll'
   const className = url.searchParams.get('class')?.trim()
   const force = url.searchParams.get('force') === 'true'
-  const session = url.searchParams.get('session')?.trim()
+  const session = url.searchParams.get('session')?.trim() || url.searchParams.get('year')?.trim() // Handle session or year
 
   // Session Filter Logic
   const sessionFilter = `($session == null || session == $session || (!defined(session) && $session == "2025-2026"))`
@@ -148,7 +148,15 @@ export async function DELETE(request: Request) {
   }
 
   // Otherwise delete a single student by id (expects JSON body with { id })
-  const { id } = await request.json()
+  let id = null;
+  try {
+    const body = await request.json();
+    id = body.id;
+  } catch {
+    // If JSON parsing fails, check query params as a fallback for single ID
+    id = url.searchParams.get('id');
+  }
+
   console.log('API DELETE /api/students', id)
   try {
     if (!id) {

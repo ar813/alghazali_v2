@@ -8,86 +8,73 @@
   }
 
   ::selection {
-    background-color: #000;
+    background-color: #059669;
     color: #fff;
   }
 
   :root {
-    /* Vercel Light Theme */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
+    /* Light Emerald Stitch Theme */
+    --background: 0 0% 100%;           /* #ffffff */
+    --foreground: 220 13% 10%;         /* #171a1f */
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
+    --card-foreground: 220 13% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
+    --popover-foreground: 220 13% 10%;
 
-    --primary: 0 0% 0%;
+    --primary: 163 88% 20%;            /* #065f46 emerald-800 (Darker) */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 98%;
-    --secondary-foreground: 0 0% 0%;
+    --secondary: 220 14% 96%;          /* #f3f4f6 */
+    --secondary-foreground: 220 13% 10%;
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;    /* #6b7280 */
 
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 13% 10%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 92%;
-    --input: 0 0% 92%;
-    --ring: 0 0% 0%;
+    --border: 220 13% 91%;             /* #e5e7eb */
+    --input: 220 13% 91%;
+    --ring: 163 88% 20%;
 
-    --radius: 0.5rem;
+    --radius: 0rem;                     /* Sharp corners — Stitch style */
+
+    /* Gold accent for achievements */
+    --gold: 43 74% 49%;                /* #D4A017 */
 
     /* Charts */
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
+    --chart-1: 160 84% 39%;
+    --chart-2: 43 74% 49%;
     --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 
   .dark {
-    /* Vercel Dark Theme */
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-
-    --card: 0 0% 3%;
-    --card-foreground: 0 0% 100%;
-
-    --popover: 0 0% 3%;
-    --popover-foreground: 0 0% 100%;
-
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 0%;
-
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 100%;
-
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 63.9%;
-
-    --accent: 0 0% 10%;
-    --accent-foreground: 0 0% 100%;
-
+    --background: 0 0% 7.5%;
+    --foreground: 0 0% 88.6%;
+    --card: 0 0% 12.2%;
+    --card-foreground: 0 0% 88.6%;
+    --popover: 0 0% 7.5%;
+    --popover-foreground: 0 0% 88.6%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 16.5%;
+    --secondary-foreground: 0 0% 88.6%;
+    --muted: 0 0% 20.8%;
+    --muted-foreground: 0 0% 72.9%;
+    --accent: 0 0% 22.4%;
+    --accent-foreground: 0 0% 88.6%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-
+    --destructive-foreground: 0 0% 88%;
     --border: 0 0% 20%;
     --input: 0 0% 20%;
-    --ring: 0 0% 100%;
-
-    /* Charts Dark */
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --ring: 160 84% 39%;
   }
 }
 
@@ -98,16 +85,14 @@
 
   body {
     @apply bg-background text-foreground tracking-tight scroll-smooth;
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background-color: #ffffff;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: var(--font-outfit), sans-serif;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-geist-sans), sans-serif;
+    letter-spacing: -0.02em;
   }
 }
 
@@ -116,96 +101,155 @@
     text-wrap: balance;
   }
 
-  /* Modern Grid Background */
+  /* ─── Islamic Geometric SVG Background Texture (light mode) ─── */
+  .bg-islamic-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='none' stroke='%23065f46' stroke-width='0.4' opacity='0.08'%3E%3Cpolygon points='30,5 38,20 55,20 43,31 47,48 30,38 13,48 17,31 5,20 22,20'/%3E%3Cpolygon points='30,12 36,22 48,22 39,29 43,41 30,34 17,41 21,29 12,22 24,22'/%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  /* ─── Grid Backgrounds ─── */
   .bg-grid-small-black {
-    background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 .5H16' fill='none' stroke='rgb(0, 0, 0)' stroke-opacity='0.1' stroke-width='1'/%3E%3Cpath d='M.5 0V16' fill='none' stroke='rgb(0, 0, 0)' stroke-opacity='0.1' stroke-width='1'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 .5H16' fill='none' stroke='rgb(0,0,0)' stroke-opacity='0.04' stroke-width='1'/%3E%3Cpath d='M.5 0V16' fill='none' stroke='rgb(0,0,0)' stroke-opacity='0.04' stroke-width='1'/%3E%3C/svg%3E");
   }
 
   .bg-grid-small-white {
-    background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 .5H16' fill='none' stroke='rgb(255, 255, 255)' stroke-opacity='0.1' stroke-width='1'/%3E%3Cpath d='M.5 0V16' fill='none' stroke='rgb(255, 255, 255)' stroke-opacity='0.1' stroke-width='1'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 .5H16' fill='none' stroke='rgb(0, 0, 0)' stroke-opacity='0.03' stroke-width='1'/%3E%3Cpath d='M.5 0V16' fill='none' stroke='rgb(0, 0, 0)' stroke-opacity='0.03' stroke-width='1'/%3E%3C/svg%3E");
   }
 
-  /* Mask gradient for smooth fade */
   .mask-gradient-b {
     mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
   }
 
-  /* Enterprise Refinement Utility */
   .bg-grid-vercel {
     background-image:
-      linear-gradient(to right, rgba(0, 0, 0, 0.08) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+      linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
     background-size: 60px 60px;
   }
 
   .bg-grid-enterprise {
     background-image:
-      linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+      linear-gradient(to right, rgba(0, 0, 0, 0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.025) 1px, transparent 1px);
     background-size: 20px 20px;
   }
 
   .shadow-enterprise {
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.03), 0 2px 4px rgba(0, 0, 0, 0.02), 0 12px 24px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04), 0 12px 24px rgba(0, 0, 0, 0.06);
   }
 
-  /* Animated Beams */
+  /* ─── Emerald Glow ─── */
+  .glow-emerald {
+    box-shadow: 0 0 24px rgba(5, 150, 105, 0.12), 0 0 48px rgba(5, 150, 105, 0.04);
+  }
+
+  .glow-emerald-sm {
+    box-shadow: 0 0 8px rgba(5, 150, 105, 0.15);
+  }
+
+  /* ─── Stitch Button Style (Light) ─── */
+  .btn-stitch-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 bg-[#111] text-white font-semibold text-sm tracking-wide border border-[#111] transition-all duration-200;
+    border-radius: 0;
+  }
+
+  .btn-stitch-primary:hover {
+    background-color: #065f46;
+    border-color: #065f46;
+    color: #fff;
+  }
+
+  .btn-stitch-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 bg-transparent text-[#111] font-semibold text-sm tracking-wide border border-[#d1d5db] transition-all duration-200;
+    border-radius: 0;
+  }
+
+  .btn-stitch-secondary:hover {
+    border-color: #059669;
+    color: #059669;
+  }
+
+  /* ─── Stitch Card ─── */
+  .card-stitch {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .card-stitch:hover {
+    border-color: #059669;
+    box-shadow: 0 0 16px rgba(5, 150, 105, 0.06);
+  }
+
+  /* ─── Emerald Accent Line ─── */
+  .emerald-line-left {
+    border-left: 2px solid #059669;
+  }
+
+  /* ─── Label Mono Style ─── */
+  .label-mono {
+    font-family: var(--font-geist-mono), monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #065f46;
+  }
+
+  /* ─── Animated Beams ─── */
   @keyframes beam-x {
-    0% {
-      transform: translateX(-100%);
-      opacity: 0;
-    }
-
-    10% {
-      opacity: 0.4;
-    }
-
-    90% {
-      opacity: 0.4;
-    }
-
-    100% {
-      transform: translateX(100vw);
-      opacity: 0;
-    }
+    0% { transform: translateX(-100%); opacity: 0; }
+    10% { opacity: 0.2; }
+    90% { opacity: 0.2; }
+    100% { transform: translateX(100vw); opacity: 0; }
   }
 
   @keyframes beam-y {
-    0% {
-      transform: translateY(-100%);
-      opacity: 0;
-    }
-
-    10% {
-      opacity: 0.4;
-    }
-
-    90% {
-      opacity: 0.4;
-    }
-
-    100% {
-      transform: translateY(100vh);
-      opacity: 0;
-    }
+    0% { transform: translateY(-100%); opacity: 0; }
+    10% { opacity: 0.2; }
+    90% { opacity: 0.2; }
+    100% { transform: translateY(100vh); opacity: 0; }
   }
 
   .animate-beam-x {
     animation: beam-x 3s linear infinite;
-    filter: drop-shadow(0 0 1px currentColor) brightness(1.2);
-    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 2px #059669) brightness(1.4);
+    mix-blend-mode: multiply;
     height: 1px;
   }
 
   .animate-beam-y {
     animation: beam-y 4s linear infinite;
-    filter: drop-shadow(0 0 1px currentColor) brightness(1.2);
-    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 2px #059669) brightness(1.4);
+    mix-blend-mode: multiply;
     width: 1px;
   }
 
-  /* Refined Mask for Hero Content - Stronger center fade */
   .hero-mask {
     mask-image: radial-gradient(ellipse at 50% 40%, transparent 10%, black 80%);
+  }
+
+  /* ─── Section Divider ─── */
+  .section-divider {
+    border-top: 1px solid #e5e7eb;
+  }
+
+  /* ─── Fade In Up Animation ─── */
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.6s ease forwards;
+  }
+
+  /* ─── Counter Animation ─── */
+  @keyframes count-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-count {
+    animation: count-up 0.5s ease forwards;
   }
 }

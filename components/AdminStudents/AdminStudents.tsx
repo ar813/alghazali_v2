@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { RotateCw, Upload, Download, Search, Plus, ChevronRight, Lock, GraduationCap } from 'lucide-react'
+import { RotateCw, Upload, Download, Search, Plus, ChevronRight, Lock, GraduationCap, ArrowUpDown, Check, ChevronDown, Settings, AlertCircle, Trash2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 // import { motion } from 'framer-motion'
 
 import { client } from "@/sanity/lib/client";
@@ -19,12 +20,17 @@ import StudentGrid from './StudentGrid';
 import StudentFormContent from './StudentFormContent';
 import StudentDetailModal from './StudentDetailModal';
 import SecurityConfirmationModal from './SecurityConfirmationModal';
-import StudentPromotion from './StudentPromotion';
+import OTPVerificationModal from '@/components/Security/OTPVerificationModal';
 import AccessDeniedDialog from '@/components/Auth/AccessDeniedDialog';
 import {
   Drawer,
   DrawerOverlay,
-  DrawerContent
+  DrawerContent,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Portal
 } from "@chakra-ui/react"
 import { useSession } from '@/context/SessionContext';
 
@@ -43,7 +49,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
   // Modal States
   const [clickedStudent, setClickedStudent] = useState<Student | null>(null); // For Details View
   const [showAddModal, setShowAddModal] = useState(false)
-  const [showPromotionModal, setShowPromotionModal] = useState(false)
+  const router = useRouter()
   const [editingStudent, setEditingStudent] = useState<Student | null>(null) // For Edit Modal
 
   // Loading States
@@ -64,10 +70,18 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
   // Access Control Dialog State
   const [showAccessDenied, setShowAccessDenied] = useState(false);
 
+  // OTP Verification State
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otpAction, setOtpAction] = useState<{ type: 'deleteAll' | 'deleteClass' | 'deleteSingle', label: string } | null>(null);
+
+  const { user } = useAuth();
+
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
+  const [sortKey, setSortKey] = useState<'fullName' | 'grNumber' | 'rollNumber' | 'admissionFor'>('admissionFor');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [stats, setStats] = useState({ total: 0, boys: 0, girls: 0, kg: 0 });
   const [fetchedClasses, setFetchedClasses] = useState<string[]>([]);
 
@@ -84,7 +98,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [search, klass])
+  }, [search, klass, pageSize, sortKey, sortDir])
 
   // Normalize Student Helper
   // Define this BEFORE usage in useEffect
@@ -137,7 +151,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
       try {
         const start = (currentPage - 1) * pageSize;
         const end = start + pageSize;
-        const params = { classFilter: klass, search: search, start, end, session: selectedSession, gender: genderFilter || null };
+        const params = { classFilter: klass, search: search, start, end, session: selectedSession, gender: genderFilter || null, sortKey, sortDir };
 
         const [data, count, statsData] = await Promise.all([
           client.fetch(getPaginatedStudentsQuery, params),
@@ -163,7 +177,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onLoadingChange, currentPage, pageSize, klass, search, selectedSession, genderFilter]); // Added selectedSession & genderFilter
+  }, [onLoadingChange, currentPage, pageSize, klass, search, selectedSession, genderFilter, sortKey, sortDir]); // Added sortKey & sortDir
 
   const refreshStudents = async () => {
     if (!selectedSession) return;
@@ -171,7 +185,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
     onLoadingChange?.(true)
     const start = (currentPage - 1) * pageSize;
     const end = start + pageSize;
-    const params = { classFilter: klass, search: search, start, end, session: selectedSession, gender: genderFilter || null };
+    const params = { classFilter: klass, search: search, start, end, session: selectedSession, gender: genderFilter || null, sortKey, sortDir };
 
     const [data, count] = await Promise.all([
       client.fetch(getPaginatedStudentsQuery, params),
@@ -181,6 +195,15 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
     setTotalCount(count)
     setLoading(false)
     onLoadingChange?.(false)
+  }
+
+  const handleSort = (key: any) => {
+    if (sortKey === key) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
   }
 
 
@@ -270,16 +293,23 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
       setEditLoading(false)
     }
   }
-
   const handleDeleteStudent = async (id: string) => {
     if (!isSuperAdmin) {
       setShowAccessDenied(true);
       return;
     }
+
     setDeleteLoadingId(id)
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/students', { method: 'DELETE', body: JSON.stringify({ id }), headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } })
+      const res = await fetch('/api/students', { 
+        method: 'DELETE', 
+        body: JSON.stringify({ id }), 
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        } 
+      })
       const json = await res.json()
       if (!res.ok || !json.ok) {
         if (res.status === 409 && (json?.referencing || json?.blocked)) {
@@ -307,10 +337,19 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
       setShowAccessDenied(true);
       return;
     }
+
+    // Require OTP for "Wipe Directory"
+    if (!showOTPModal && !otpAction) {
+      setOtpAction({ type: 'deleteAll', label: 'Wipe Entire Student Directory' });
+      setShowDeleteAllConfirm(false);
+      setShowOTPModal(true);
+      return;
+    }
+
     setBulkActionLoading(true)
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/students?action=deleteAll', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
+      const res = await fetch(`/api/students?action=deleteAll&session=${encodeURIComponent(selectedSession || '')}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
       const json = await res.json()
 
       if (!res.ok || !json.ok) throw new Error(json.error || 'Delete all failed')
@@ -318,6 +357,8 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
       await refreshStudents()
       toast.success('All students deleted successfully')
       setShowDeleteAllConfirm(false)
+      setShowOTPModal(false)
+      setOtpAction(null)
     } catch (error) {
       console.error(error)
       toast.error('Failed to delete all students')
@@ -333,10 +374,22 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
       setShowAccessDenied(true);
       return;
     }
+
+    // Require OTP for "Clear Class Data"
+    if (!showOTPModal && !otpAction) {
+      setOtpAction({ type: 'deleteClass', label: `Delete All Students in Class ${deleteClassSelected}` });
+      setShowDeleteByClassConfirm(false);
+      setShowOTPModal(true);
+      return;
+    }
+
     setBulkActionLoading(true)
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch(`/api/students?class=${deleteClassSelected}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
+      const res = await fetch(`/api/students?class=${deleteClassSelected}&session=${encodeURIComponent(selectedSession || '')}`, { 
+        method: 'DELETE', 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      })
       const json = await res.json()
 
       if (!res.ok || !json.ok) throw new Error(json.error || 'Delete class failed')
@@ -344,6 +397,8 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
       await refreshStudents()
       toast.success(`Class ${deleteClassSelected} students deleted`)
       setShowDeleteByClassConfirm(false)
+      setShowOTPModal(false)
+      setOtpAction(null)
     } catch (error) {
       console.error(error)
       toast.error('Failed to delete class')
@@ -624,57 +679,109 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
       <HeaderStats stats={stats} />
 
-      <div className="bg-white dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-900 p-3 sm:p-4 rounded-[2rem] shadow-sm mb-8 flex flex-col xl:flex-row gap-4 items-center justify-between transition-all">
+      <div className="bg-white dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-900 p-2 rounded-2xl shadow-sm mb-6 flex flex-row flex-wrap lg:flex-nowrap gap-2 items-center justify-between transition-all sticky top-2 z-30">
 
-        <div className="flex flex-col md:flex-row gap-3 w-full xl:w-auto">
-          <div className="relative group/search w-full md:w-[400px]">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within/search:text-neutral-900 dark:group-focus-within/search:text-white transition-colors">
-              <Search size={18} />
+        {/* Left Section: Search & Essential Filters */}
+        <div className="flex flex-row items-center gap-2 flex-1 min-w-[300px]">
+          <div className="relative group/search flex-1 max-w-[280px]">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
+              <Search size={16} />
             </div>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search Student (Name, GR, CNIC...)"
-              className="w-full pl-12 pr-6 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 rounded-2xl focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-all text-[13px] font-bold text-neutral-900 dark:text-white placeholder:text-neutral-400"
+              placeholder="Search students..."
+              className="w-full pl-10 pr-4 py-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl focus:outline-none focus:border-blue-500 transition-all text-[13px] font-bold text-neutral-900 dark:text-white"
             />
           </div>
 
-          <div className="relative w-full md:w-56 group/select">
-            <select
-              value={klass}
-              onChange={(e) => setKlass(e.target.value)}
-              className="w-full px-5 py-3 pr-10 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 rounded-2xl focus:outline-none focus:border-neutral-900 dark:focus:border-white text-[13px] font-bold text-neutral-600 dark:text-neutral-400 appearance-none cursor-pointer transition-all uppercase tracking-widest"
-            >
-              <option value="All">All Classes</option>
-              {fetchedClasses.map(c => <option key={c} value={c}>Class {c}</option>)}
-            </select>
-            <ChevronRight size={14} className="absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-neutral-400 group-focus-within/select:rotate-180 transition-transform pointer-events-none" />
+          <div className="flex items-center gap-2">
+            <div className="relative group/select w-32 md:w-36">
+              <select
+                value={klass}
+                onChange={(e) => setKlass(e.target.value)}
+                className="w-full px-4 py-2 pr-8 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl focus:outline-none focus:border-blue-500 text-[12px] font-bold text-neutral-600 dark:text-neutral-400 appearance-none cursor-pointer transition-all uppercase tracking-wider"
+              >
+                <option value="All">All Classes</option>
+                {fetchedClasses.map(c => <option key={c} value={c}>Class {c}</option>)}
+              </select>
+              <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+            </div>
+
+            <Menu>
+              <MenuButton className="p-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all text-neutral-500 hover:text-blue-600 flex items-center justify-center shadow-sm" title="Sort Options">
+                <ArrowUpDown size={16} />
+              </MenuButton>
+              <Portal>
+                <MenuList className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-xl rounded-xl p-2 z-[100]">
+                  {[
+                    { key: 'fullName', label: 'Full Name' },
+                    { key: 'grNumber', label: 'GR Number' },
+                    { key: 'rollNumber', label: 'Roll Number' },
+                    { key: 'admissionFor', label: 'Class' },
+                  ].map((option) => (
+                    <MenuItem
+                      key={option.key}
+                      onClick={() => setSortKey(option.key as any)}
+                      className="rounded-lg px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center justify-between"
+                    >
+                      {option.label}
+                      {sortKey === option.key && <Check size={12} className="text-blue-600" />}
+                    </MenuItem>
+                  ))}
+                  <div className="my-1 h-px bg-neutral-50 dark:border-neutral-800" />
+                  <div className="flex p-1 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg">
+                    <button onClick={(e) => { e.stopPropagation(); setSortDir('asc'); }} className={`flex-1 py-1 text-[10px] font-black rounded-md ${sortDir === 'asc' ? 'bg-white dark:bg-neutral-700 text-blue-600 shadow-sm' : 'text-neutral-400'}`}>ASC</button>
+                    <button onClick={(e) => { e.stopPropagation(); setSortDir('desc'); }} className={`flex-1 py-1 text-[10px] font-black rounded-md ${sortDir === 'desc' ? 'bg-white dark:bg-neutral-700 text-blue-600 shadow-sm' : 'text-neutral-400'}`}>DESC</button>
+                  </div>
+                </MenuList>
+              </Portal>
+            </Menu>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 justify-center sm:justify-end w-full xl:w-auto">
-          <div className="flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900/50 p-1.5 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+        {/* Right Section: Toolbox & Primary Actions */}
+        <div className="flex flex-row items-center gap-2">
+
+          <div className="flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900/50 p-1 rounded-xl border border-neutral-100 dark:border-neutral-800">
             <button
               onClick={refreshStudents}
-              className={`p-2 rounded-xl hover:bg-white dark:hover:bg-neutral-800 transition-all text-neutral-400 hover:text-neutral-900 dark:hover:text-white shadow-sm ${loading ? 'opacity-50 pointer-events-none' : ''}`}
+              className={`p-2 rounded-lg hover:bg-white dark:hover:bg-neutral-800 text-neutral-400 hover:text-blue-600 ${loading ? 'opacity-50 pointer-events-none' : ''}`}
+              title="Refresh"
             >
-              <RotateCw size={18} className={loading ? 'animate-spin' : ''} />
+              <RotateCw size={16} className={loading ? 'animate-spin' : ''} />
             </button>
-            <div className="w-px h-5 bg-neutral-200 dark:bg-neutral-700 mx-1" />
-            <button
-              onClick={handleExportExcel}
-              className="p-2 rounded-xl hover:bg-white dark:hover:bg-neutral-800 transition-all text-neutral-400 hover:text-neutral-900 dark:hover:text-white shadow-sm"
-              title="Export Ledger"
-            >
-              <Download size={18} />
-            </button>
-            <button
-              onClick={handleImportExcelClick}
-              className="p-2 rounded-xl hover:bg-white dark:hover:bg-neutral-800 transition-all text-neutral-400 hover:text-neutral-900 dark:hover:text-white shadow-sm"
-              title="Import Buffer"
-            >
-              <Upload size={18} />
-            </button>
+
+            <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
+
+            <Menu>
+              <MenuButton className="p-2 rounded-lg hover:bg-white dark:hover:bg-neutral-800 text-neutral-500 hover:text-blue-600 transition-all" title="Toolbox">
+                <Settings size={18} />
+              </MenuButton>
+              <Portal>
+                <MenuList className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-xl rounded-xl p-2 z-[100]">
+                  <MenuItem onClick={handleExportExcel} className="rounded-lg px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center gap-3">
+                    <Download size={14} /> Export to Excel
+                  </MenuItem>
+                  <MenuItem onClick={handleImportExcelClick} className="rounded-lg px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center gap-3">
+                    <Upload size={14} /> Import from Excel
+                  </MenuItem>
+                  <div className="my-1 h-px bg-neutral-50 dark:border-neutral-800" />
+                  <MenuItem
+                    onClick={() => { if (!isSuperAdmin) { setShowAccessDenied(true); return; } setDeleteClassSelected('1'); setShowDeleteByClassConfirm(true) }}
+                    className="rounded-lg px-4 py-2 text-[12px] font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 flex items-center gap-3"
+                  >
+                    <AlertCircle size={14} /> Clear Class Data
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => { if (!isSuperAdmin) { setShowAccessDenied(true); return; } setShowDeleteAllConfirm(true) }}
+                    className="rounded-lg px-4 py-2 text-[12px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-3"
+                  >
+                    <Trash2 size={14} /> Wipe Directory
+                  </MenuItem>
+                </MenuList>
+              </Portal>
+            </Menu>
             <input id={fileInputRefId} type="file" accept=".xlsx" className="hidden" onChange={handleImportExcelFile} />
           </div>
 
@@ -682,37 +789,13 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
             <button
               onClick={() => {
                 if (!isSuperAdmin) { setShowAccessDenied(true); return; }
-                setDeleteClassSelected('1');
-                setShowDeleteByClassConfirm(true)
+                router.push('/admin/students/promote')
               }}
-              className="px-4 py-2.5 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-amber-500 hover:text-white bg-amber-500/5 hover:bg-amber-500 rounded-xl transition-all border border-amber-500/10"
+              className="px-3 md:px-4 py-2 rounded-xl bg-white dark:bg-neutral-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-neutral-900 dark:text-white flex items-center gap-2 transition-all border border-neutral-200 dark:border-neutral-800 text-[11px] font-black uppercase tracking-wider group whitespace-nowrap"
             >
-              <span>Clear Class</span>
-              {!isSuperAdmin && <Lock size={10} className="mb-0.5" />}
-            </button>
-            <button
-              onClick={() => {
-                if (!isSuperAdmin) { setShowAccessDenied(true); return; }
-                setShowDeleteAllConfirm(true)
-              }}
-              className="px-4 py-2.5 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-rose-500 hover:text-white bg-rose-500/5 hover:bg-rose-500 rounded-xl transition-all border border-rose-500/10"
-            >
-              <span>Delete All</span>
-              {!isSuperAdmin && <Lock size={10} className="mb-0.5" />}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                if (!isSuperAdmin) { setShowAccessDenied(true); return; }
-                setShowPromotionModal(true)
-              }}
-              className="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-3 shadow-lg shadow-blue-500/30 transition-all hover:scale-[1.02] active:scale-95 border border-blue-500/20"
-            >
-              <GraduationCap size={18} />
-              <span className="text-[12px] font-black uppercase tracking-[0.2em]">Promote</span>
-              {!isSuperAdmin && <Lock size={12} className="opacity-70" />}
+              <GraduationCap size={16} className="text-blue-600" />
+              <span className="hidden sm:inline">Promote</span>
+              {!isSuperAdmin && <Lock size={10} className="opacity-50" />}
             </button>
 
             <button
@@ -720,12 +803,11 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
                 if (!isSuperAdmin) { setShowAccessDenied(true); return; }
                 setShowAddModal(true)
               }}
-              className="group relative px-6 py-3 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-black flex items-center gap-3 overflow-hidden shadow-2xl transition-all hover:scale-[1.02] active:scale-95"
+              className="px-3 md:px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 shadow-sm transition-all text-[11px] font-black uppercase tracking-wider whitespace-nowrap"
             >
-              <div className="absolute inset-x-0 bottom-0 h-[2px] bg-white dark:bg-neutral-900 opacity-20 scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
-              <Plus size={18} strokeWidth={3} />
-              <span className="text-[12px] font-black uppercase tracking-[0.2em]">New Entry</span>
-              {!isSuperAdmin && <Lock size={12} className="opacity-70" />}
+              <Plus size={16} />
+              <span className="hidden sm:inline">Add Student</span>
+              {!isSuperAdmin && <Lock size={10} className="opacity-70" />}
             </button>
           </div>
         </div>
@@ -746,6 +828,8 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
           }}
           deleteLoadingId={deleteLoadingId}
           isSuperAdmin={isSuperAdmin}
+          currentSort={{ key: sortKey, dir: sortDir }}
+          onSort={handleSort}
         />
 
         <StudentGrid
@@ -765,36 +849,91 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
         />
       </div>
 
-      <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-6 px-4 py-6 border-t border-neutral-100 dark:border-neutral-900">
-        <div className="flex flex-col gap-1 text-center sm:text-left">
-          <p className="text-[11px] font-black text-neutral-900 dark:text-white uppercase tracking-[0.2em]">Total Students</p>
-          <p className="text-[12px] text-neutral-400 font-medium">
-            Showing <span className="text-neutral-900 dark:text-white font-bold">{students.length}</span> of <span className="text-neutral-900 dark:text-white font-bold">{totalCount}</span> student records
+      <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-6 px-6 py-4 bg-white dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-900 rounded-2xl shadow-sm transition-all">
+        <div className="flex flex-col gap-1">
+          <p className="text-[11px] text-neutral-400 font-black uppercase tracking-widest">Directory Status</p>
+          <p className="text-[13px] text-neutral-500 font-bold">
+            Showing <span className="text-neutral-900 dark:text-white font-black">{(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalCount)}</span>
+            <span className="mx-2 text-neutral-300">/</span>
+            <span className="text-blue-600 font-black">{totalCount}</span> Students
           </p>
         </div>
 
-        <div className="flex items-center gap-2 p-1.5 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-inner">
-          <button
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1 || loading}
-            className="p-2 rounded-xl text-neutral-400 hover:text-neutral-900 dark:hover:text-white disabled:opacity-30 transition-all hover:bg-white dark:hover:bg-neutral-800 shadow-sm"
-          >
-            <ChevronRight size={20} className="rotate-180" />
-          </button>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          {/* Enhanced Multi-Page Pagination */}
+          <div className="flex items-center gap-1.5 p-1 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1 || loading}
+              className="p-2 rounded-lg text-neutral-400 hover:text-blue-600 disabled:opacity-30 transition-all hover:bg-white dark:hover:bg-neutral-800"
+            >
+              <ChevronRight size={16} className="rotate-180" />
+            </button>
 
-          <div className="px-6 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 shadow-sm">
-            <span className="text-[12px] font-black text-neutral-900 dark:text-white uppercase tracking-widest">
-              Page {currentPage}
-            </span>
+            <div className="flex items-center gap-1">
+              {(() => {
+                const totalPages = Math.ceil(totalCount / pageSize);
+                const pages = [];
+                const maxVisible = 5;
+
+                let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                const endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+                if (endPage - startPage + 1 < maxVisible) {
+                  startPage = Math.max(1, endPage - maxVisible + 1);
+                }
+
+                if (startPage > 1) {
+                  pages.push(
+                    <button key={1} onClick={() => setCurrentPage(1)} className="w-8 h-8 flex items-center justify-center rounded-lg text-[12px] font-bold text-neutral-400 hover:text-neutral-900 dark:hover:text-white">1</button>
+                  );
+                  if (startPage > 2) pages.push(<span key="dots-1" className="text-neutral-300 px-1">...</span>);
+                }
+
+                for (let i = Math.max(1, startPage); i <= endPage; i++) {
+                  pages.push(
+                    <button
+                      key={i}
+                      onClick={() => setCurrentPage(i)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-[12px] font-black transition-all ${currentPage === i
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-110'
+                          : 'text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-800'
+                        }`}
+                    >
+                      {i}
+                    </button>
+                  );
+                }
+
+                if (endPage < totalPages) {
+                  if (endPage < totalPages - 1) pages.push(<span key="dots-2" className="text-neutral-300 px-1">...</span>);
+                  pages.push(
+                    <button key={totalPages} onClick={() => setCurrentPage(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-lg text-[12px] font-bold text-neutral-400 hover:text-neutral-900 dark:hover:text-white">{totalPages}</button>
+                  );
+                }
+
+                return pages;
+              })()}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage(p => p + 1)}
+              disabled={currentPage >= Math.ceil(totalCount / pageSize) || loading}
+              className="p-2 rounded-lg text-neutral-400 hover:text-blue-600 disabled:opacity-30 transition-all hover:bg-white dark:hover:bg-neutral-800"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
 
-          <button
-            onClick={() => setCurrentPage(p => p + 1)}
-            disabled={students.length < pageSize || loading}
-            className="p-2 rounded-xl text-neutral-400 hover:text-neutral-900 dark:hover:text-white disabled:opacity-30 transition-all hover:bg-white dark:hover:bg-neutral-800 shadow-sm"
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+            className="px-3 py-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl text-[11px] font-black text-neutral-600 focus:outline-none cursor-pointer"
           >
-            <ChevronRight size={20} />
-          </button>
+            {[10, 20, 50, 100].map(size => (
+              <option key={size} value={size}>Show {size}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -890,14 +1029,20 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
         loading={bulkActionLoading}
       />
 
-      {showPromotionModal && (
-        <StudentPromotion
-          onClose={() => setShowPromotionModal(false)}
-          onSuccess={async () => {
-            await refreshStudents();
+      {user && (
+        <OTPVerificationModal
+          isOpen={showOTPModal}
+          onClose={() => { setShowOTPModal(false); setOtpAction(null); }}
+          onVerifySuccess={() => {
+            if (otpAction?.type === 'deleteAll') handleDeleteAll();
+            else if (otpAction?.type === 'deleteClass') handleDeleteClass();
           }}
+          email={user.email || ''}
+          userId={user.uid}
+          actionName={otpAction?.label || 'Critical Data Deletion'}
         />
       )}
+
 
 
     </div>

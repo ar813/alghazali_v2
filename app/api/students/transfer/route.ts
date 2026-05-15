@@ -10,60 +10,77 @@ export async function POST(req: NextRequest) {
         if (!user) return unauthorizedResponse();
 
         const body = await req.json();
-        const { sourceSession, targetSession, mapping } = body;
+        const { sourceSession, targetSession, mapping, items } = body;
 
-        if (!sourceSession || !targetSession || !mapping || typeof mapping !== 'object') {
-            return NextResponse.json({ ok: false, error: 'sourceSession, targetSession, and mapping are required' }, { status: 400 });
+        // items is optional: Array<{ id: string, targetClass: string }>
+
+        if (!sourceSession || !targetSession) {
+            return NextResponse.json({ ok: false, error: 'sourceSession and targetSession are required' }, { status: 400 });
+        }
+
+        if (!items && (!mapping || typeof mapping !== 'object')) {
+            return NextResponse.json({ ok: false, error: 'Either mapping or specific items are required' }, { status: 400 });
         }
 
         console.log(`[Promotion] Starting transfer from ${sourceSession} to ${targetSession}`);
 
-        let totalProcessed = 0;
         let totalCreated = 0;
-
-        // mapping is like { "KG": "1", "1": "2", ... }
-        const classesToTransfer = Object.keys(mapping);
-
         const transaction = serverClient.transaction();
 
-        for (const fromClass of classesToTransfer) {
-            const toClass = mapping[fromClass];
-            if (!toClass) continue; // Skip if no mapping provided
-
-            // Fetch students from source session (handling legacy undefined session)
-            const query = `*[_type == "student" && 
-                (session == $source || (!defined(session) && $source == "2025-2026")) && 
-                admissionFor == $cls
-            ]{
-                _id, _type, fullName, fatherName, fatherCnic, dob, rollNumber, grNumber, 
-                gender, nationality, medicalCondition, cnicOrBform, email, phoneNumber, 
-                whatsappNumber, address, formerEducation, previousInstitute, lastExamPercentage,
-                guardianName, guardianContact, guardianCnic, guardianRelation, photo,
-                issueDate, expiryDate
-            }`;
-
-            const students = await serverClient.fetch(query, { source: sourceSession, cls: fromClass });
-
-            console.log(`[Promotion] Found ${students.length} students in ${fromClass} to promote to ${toClass}`);
+        if (items && Array.isArray(items) && items.length > 0) {
+            // --- Manual Mode: Specific Students ---
+            console.log(`[Promotion] Processing ${items.length} specific students`);
+            
+            // Fetch students by IDs
+            const ids = items.map(item => item.id);
+            const students = await serverClient.fetch(`*[_type == "student" && _id in $ids]`, { ids });
+            
+            const itemMap = new Map(items.map(i => [i.id, i]));
 
             for (const student of students) {
-                totalProcessed++;
+                const item = itemMap.get(student._id);
+                if (!item) continue;
 
-                // Construct new document
-                // We DON'T include _id so Sanity generates a new one.
-                // We DO include the fields but update session and admissionFor
                 const newDoc = {
                     ...student,
-                    _id: undefined, // Let Sanity generate new ID
+                    _id: undefined,
                     session: targetSession,
-                    admissionFor: toClass,
-                    // Optionally prefix roll number or keep same? User said "copy roll no"
-                    // We'll keep it as is, user can edit later in the new session
+                    admissionFor: item.targetClass,
+                    rollNumber: item.rollNumber || student.rollNumber, // Support custom roll number
                 };
-
-                // Add to transaction
                 transaction.create(newDoc);
                 totalCreated++;
+            }
+        } else {
+            // --- Bulk Mode: Class Mapping ---
+            const classesToTransfer = Object.keys(mapping);
+            for (const fromClass of classesToTransfer) {
+                const toClass = mapping[fromClass];
+                if (!toClass) continue;
+
+                const query = `*[_type == "student" && 
+                    (session == $source || (!defined(session) && $source == "2025-2026")) && 
+                    admissionFor == $cls
+                ]{
+                    _id, _type, fullName, fatherName, fatherCnic, dob, rollNumber, grNumber, 
+                    gender, nationality, medicalCondition, cnicOrBform, email, phoneNumber, 
+                    whatsappNumber, address, formerEducation, previousInstitute, lastExamPercentage,
+                    guardianName, guardianContact, guardianCnic, guardianRelation, photo,
+                    issueDate, expiryDate
+                }`;
+
+                const students = await serverClient.fetch(query, { source: sourceSession, cls: fromClass });
+
+                for (const student of students) {
+                    const newDoc = {
+                        ...student,
+                        _id: undefined,
+                        session: targetSession,
+                        admissionFor: toClass,
+                    };
+                    transaction.create(newDoc);
+                    totalCreated++;
+                }
             }
         }
 
@@ -76,8 +93,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             ok: true,
             message: `Successfully transferred ${totalCreated} students.`,
-            count: totalCreated,
-            processed: totalProcessed
+            count: totalCreated
         });
 
     } catch (error: any) {

@@ -4,13 +4,10 @@ import SessionGrid from '@/components/SessionSelection/SessionGrid';
 import AuthLayout from '@/components/Auth/AuthLayout';
 import AdminLoginForm from '@/components/Auth/AdminLoginForm';
 import { useAuth } from '@/hooks/use-auth';
-import { SessionProvider } from '@/context/SessionContext';
 
 const AdminPage = () => {
   return (
-    <SessionProvider>
-      <AdminEntryContent />
-    </SessionProvider>
+    <AdminEntryContent />
   );
 };
 

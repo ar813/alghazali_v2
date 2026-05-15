@@ -64,6 +64,7 @@ import { Button } from "@/components/ui/button";
 import AccessDeniedDialog from '@/components/Auth/AccessDeniedDialog';
 import LogoutConfirmationDialog from "../Auth/LogoutConfirmationDialog";
 import ProfileUpdateDialog from "../Auth/ProfileUpdateDialog";
+import OTPVerificationModal from '@/components/Security/OTPVerificationModal';
 
 export default function SessionGrid() {
     const { sessions, addSession, renameSession, deleteSession, isLoading, refreshSessions } = useSession();
@@ -109,6 +110,10 @@ export default function SessionGrid() {
     // Gender Selection Dialog
     const [genderDialogOpen, setGenderDialogOpen] = useState(false);
     const [selectedSessionForGender, setSelectedSessionForGender] = useState<string | null>(null);
+
+    // OTP State
+    const [showOTPModal, setShowOTPModal] = useState(false);
+    const [otpAction, setOtpAction] = useState<{ type: 'deleteSession', label: string } | null>(null);
 
     // Sanity API Configuration
     const SANITY_PROJECT_ID = "3u9cr7x9";
@@ -205,11 +210,21 @@ export default function SessionGrid() {
 
     const handleDelete = async () => {
         if (!sessionToDelete || isDeleteDisabled) return;
+
+        // Require OTP
+        if (!showOTPModal && !otpAction) {
+            setOtpAction({ type: 'deleteSession', label: `Delete Session ${sessionToDelete}` });
+            setShowOTPModal(true);
+            return;
+        }
+
         setIsProcessing(true);
         try {
             await deleteSession(sessionToDelete);
             toast.success("Deleted successfully");
             setDeleteAlertOpen(false);
+            setShowOTPModal(false);
+            setOtpAction(null);
         } catch {
             toast.error("Failed to delete");
         } finally {
@@ -883,6 +898,19 @@ export default function SessionGrid() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {user && (
+                <OTPVerificationModal
+                    isOpen={showOTPModal}
+                    onClose={() => { setShowOTPModal(false); setOtpAction(null); }}
+                    onVerifySuccess={() => {
+                        if (otpAction?.type === 'deleteSession') handleDelete();
+                    }}
+                    email={user.email || ''}
+                    userId={user.uid}
+                    actionName={otpAction?.label || 'Critical Session Deletion'}
+                />
+            )}
         </div>
     );
 }
