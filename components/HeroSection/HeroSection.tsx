@@ -1,14 +1,14 @@
-import { Megaphone, ChevronRight } from 'lucide-react'
+"use client"
+import { Megaphone, ChevronRight, ArrowRight, BookOpen } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import { TypewriterLoop } from '@/components/ui/typewriter-loop'
-import { BackgroundBeamsWithCollision } from '@/components/ui/background-beams-with-collision'
-import { Button as MovingBorderButton, MovingBorder } from "@/components/ui/moving-border"
 import Image from 'next/image'
+import Link from 'next/link'
+import VerseBox from './VerseBox'
 
 const HeroSection = () => {
     const [mounted, setMounted] = useState(false)
-    const [headlineTitle, setHeadlineTitle] = useState<string>('')
-    const [headlineContent, setHeadlineContent] = useState<string>('')
+    const [headlineNotices, setHeadlineNotices] = useState<any[]>([])
     const [openHeadline, setOpenHeadline] = useState(false)
 
     const names = [
@@ -22,15 +22,12 @@ const HeroSection = () => {
     }, [])
 
     useEffect(() => {
-        // fetch most-recent headline notice (title + content)
         (async () => {
             try {
-                const res = await fetch('/api/notices?headline=true&limit=1', { cache: 'no-store' })
+                const res = await fetch('/api/notices?headline=true&limit=5', { cache: 'no-store' })
                 const json = await res.json()
-                const item = json?.data?.[0]
-                if (item) {
-                    setHeadlineTitle(item.title || '')
-                    setHeadlineContent(item.content || '')
+                if (json?.data && Array.isArray(json.data)) {
+                    setHeadlineNotices(json.data)
                 }
             } catch { }
         })()
@@ -40,129 +37,137 @@ const HeroSection = () => {
 
     return (
         <>
-            <section id="home" className="relative w-full overflow-hidden">
-                <BackgroundBeamsWithCollision className="min-h-screen sm:min-h-[90vh] flex flex-col justify-start sm:justify-center items-center pt-40 sm:pt-28 pb-16 px-4">
-                    <div className="relative z-20 w-full max-w-5xl mx-auto text-center flex flex-col items-center justify-start sm:justify-center space-y-7 sm:space-y-10">
+            <section
+                id="home"
+                className="relative w-full min-h-screen flex flex-col justify-center items-center overflow-hidden bg-white"
+            >
+                {/* Background Image from Stitch */}
+                <div className="absolute inset-0 z-0 opacity-25">
+                    <Image
+                        src="/hero_bg.png"
+                        alt="Modern Islamic Architectural Space"
+                        fill
+                        className="object-cover object-center"
+                        priority
+                    />
+                </div>
 
-                        {/* Est. Badge - Compact */}
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 dark:bg-black/20 border border-white/20 dark:border-white/10 shadow-[0_0_10px_rgba(0,0,0,0.05)] backdrop-blur-md animate-fade-in-up">
-                            <span className="relative flex h-1.5 w-1.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                            </span>
-                            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-neutral-600 dark:text-neutral-300">
-                                Est. 1994
-                            </span>
-                        </div>
+                {/* Islamic Geometric Background Pattern */}
+                <div className="absolute inset-0 bg-islamic-pattern opacity-10 pointer-events-none" />
 
-                        {/* Logo & Welcome Group - Tighter */}
-                        <div className="flex flex-col items-center gap-2">
-                            {/* Logo - Premium Moving Border */}
-                            <div className="relative w-16 h-16 sm:w-20 sm:h-20 bg-white dark:bg-black rounded-full flex items-center justify-center p-[2px] overflow-hidden select-none">
-                                <MovingBorder duration={3500} rx="50%" ry="50%">
-                                    <div className="h-20 w-20 bg-[radial-gradient(#3b82f6_40%,transparent_60%)] opacity-[0.8]" />
-                                </MovingBorder>
-                                <div className="relative z-10 w-full h-full bg-white dark:bg-black rounded-full flex items-center justify-center border border-neutral-100 dark:border-neutral-900">
-                                    <Image
-                                        src="/logo.png"
-                                        alt="Al Ghazali High School Logo"
-                                        width={48}
-                                        height={48}
-                                        className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
-                                    />
-                                </div>
-                            </div>
+                {/* Radial Emerald Glow — Center */}
+                <div
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
+                    style={{
+                        background: 'radial-gradient(ellipse at center, rgba(5,150,105,0.06) 0%, rgba(5,150,105,0.02) 40%, transparent 70%)',
+                    }}
+                />
 
-                            <h2 className="text-lg sm:text-xl font-semibold text-neutral-500 dark:text-neutral-400 tracking-tight select-none">
-                                Welcome to
-                            </h2>
-                        </div>
+                {/* Corner Accent Lines */}
+                <div className="absolute top-0 left-0 w-24 h-24 pointer-events-none">
+                    <div className="absolute top-8 left-8 w-12 h-[1px] bg-[#065f46] opacity-30" />
+                    <div className="absolute top-8 left-8 w-[1px] h-12 bg-[#065f46] opacity-30" />
+                </div>
+                <div className="absolute top-0 right-0 w-24 h-24 pointer-events-none">
+                    <div className="absolute top-8 right-8 w-12 h-[1px] bg-[#065f46] opacity-30" />
+                    <div className="absolute top-8 right-8 w-[1px] h-12 bg-[#065f46] opacity-30" />
+                </div>
 
-                        {/* Typewriter with Backspace Animation */}
-                        <div className="min-h-[50px] flex items-center justify-center w-full px-2 -mt-2">
-                            <TypewriterLoop
-                                texts={names}
-                                className="text-xl sm:text-2xl md:text-4xl text-blue-600 dark:text-blue-400"
-                                cursorClassName="h-5 sm:h-7 md:h-10 bg-black dark:bg-white"
-                                typingSpeed={2}
-                                deletingSpeed={1.5}
-                                pauseDuration={2000}
-                            />
-                        </div>
+                {/* Main Content */}
+                <div className="relative z-10 w-full max-w-5xl mx-auto text-center flex flex-col items-center justify-center px-4 pt-32 pb-44 space-y-8">
 
-                        {/* Description - Compact */}
-                        <p className="text-sm sm:text-base md:text-lg text-neutral-600 dark:text-neutral-300 max-w-xl mx-auto leading-relaxed font-medium -mt-2">
-                            Nurturing young minds with <span className="text-neutral-900 dark:text-white font-semibold">academic excellence</span>, Islamic values, and modern education.
-                        </p>
+                    {/* Est. Badge */}
+                    <div className="inline-flex items-center gap-2.5 px-4 py-1.5 border border-[#e5e7eb] bg-[#f9fafb] animate-fade-in-up">
+                        <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#065f46] opacity-75" />
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#065f46]" />
+                        </span>
+                        <span className="label-mono">Est. 1994 · Landhi, Karachi</span>
+                    </div>
 
-                        <div className="flex flex-col sm:flex-row gap-5 w-full sm:w-auto justify-center items-center pt-0">
-                            <MovingBorderButton
-                                as="a"
-                                href="/student-portal"
-                                borderRadius="1.75rem"
-                                containerClassName="w-[280px] sm:w-48 h-12 sm:h-14"
-                                className="bg-black dark:bg-white text-white dark:text-black border-neutral-800 dark:border-neutral-200 font-bold text-base sm:text-lg"
-                                borderClassName="bg-[radial-gradient(#4299e1_40%,transparent_70%)] opacity-[1.0] scale-[2.0]" // Slightly larger and brighter glow for more visibility
+                    {/* Dynamic Verse/Hadith Box */}
+                    <VerseBox />
+
+                    {/* Typewriter Headline */}
+                    <div className="min-h-[56px] sm:min-h-[72px] flex items-center justify-center w-full px-2">
+                        <TypewriterLoop
+                            texts={names}
+                            className="text-2xl sm:text-3xl md:text-5xl font-bold text-[#065f46] tracking-tight"
+                            cursorClassName="h-7 sm:h-10 md:h-14 bg-[#065f46]"
+                            typingSpeed={2}
+                            deletingSpeed={1.5}
+                            pauseDuration={2500}
+                        />
+                    </div>
+
+                    {/* Tagline */}
+                    <p className="text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed text-[#6b7280]">
+                        A world-class modern education grounded in{' '}
+                        <span className="text-[#111827] font-semibold">Islamic values</span>
+                        {' '}and dedicated to{' '}
+                        <span className="text-[#111827] font-semibold">academic excellence</span>.
+                    </p>
+
+                    {/* CTA Buttons — Sharp Stitch Style */}
+                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center items-center pt-2">
+                        <Link
+                            href="/student-portal"
+                            className="group flex items-center gap-3 px-8 py-4 font-bold text-sm uppercase tracking-widest bg-[#111] text-white border border-[#111] transition-all duration-200 hover:bg-[#065f46] hover:border-[#065f46] active:scale-95 w-[260px] sm:w-auto justify-center"
+                        >
+                            Student Portal
+                            <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" />
+                        </Link>
+
+                        <Link
+                            href="/schedule"
+                            className="group flex items-center gap-3 px-8 py-4 font-bold text-sm uppercase tracking-widest bg-transparent text-[#374151] border-2 border-[#065f46]/60 transition-all duration-200 hover:border-[#065f46] hover:text-[#065f46] active:scale-95 w-[260px] sm:w-auto justify-center"
+                        >
+                            View Schedule
+                        </Link>
+                    </div>
+
+                    {/* Notice Pill */}
+                    {headlineNotices.length > 0 && (
+                        <div className="animate-fade-in w-full max-w-lg mx-auto pt-8 pb-4">
+                            <button
+                                onClick={() => setOpenHeadline(true)}
+                                className="group relative w-full overflow-hidden border border-[#e5e7eb] bg-[#f9fafb] p-0 pr-4 transition-all hover:border-[#065f46] active:scale-95 flex items-center"
                             >
-                                <span className="flex items-center gap-2 group">
-                                    Student Portal
-                                    <svg
-                                        width="15"
-                                        height="15"
-                                        viewBox="0 0 15 15"
-                                        fill="none"
-                                        className="transition-transform duration-300 group-hover:translate-x-1"
-                                    >
-                                        <path d="M8.14645 3.14645C8.34171 2.95118 8.65829 2.95118 8.85355 3.14645L12.8536 7.14645C13.0488 7.34171 13.0488 7.65829 12.8536 7.85355L8.85355 11.8536C8.65829 12.0488 8.34171 12.0488 8.14645 11.8536C7.95118 11.6583 7.95118 11.3417 8.14645 11.1464L11.2929 8H2.5C2.22386 8 2 7.77614 2 7.5C2 7.22386 2.22386 7 2.5 7H11.2929L8.14645 3.85355C7.95118 3.65829 7.95118 3.34171 8.14645 3.14645Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-                                    </svg>
-                                </span>
-                            </MovingBorderButton>
-
-                            <MovingBorderButton
-                                as="a"
-                                href="/schedule"
-                                borderRadius="1.75rem"
-                                containerClassName="w-[280px] sm:w-48 h-12 sm:h-14"
-                                className="bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-white/10 font-bold text-base sm:text-lg"
-                                borderClassName="bg-[radial-gradient(#808080_40%,transparent_60%)] opacity-[0.2] scale-75" // Sharper, smaller glow to prevent bleed
-                            >
-                                View Schedule
-                            </MovingBorderButton>
-                        </div>
-
-                        {/* Notice Pill - Glassmorphic & Clean */}
-                        {(headlineTitle || headlineContent) && (
-                            <div className="animate-fade-in w-full max-w-sm mx-auto pt-4 sm:pt-6">
-                                <div
-                                    onClick={() => setOpenHeadline(true)}
-                                    className="cursor-pointer group relative overflow-hidden rounded-full border border-neutral-200/50 dark:border-white/10 bg-white/40 dark:bg-neutral-900/40 backdrop-blur-md p-1 pr-3 transition-all hover:bg-white/60 dark:hover:bg-neutral-800/60 hover:border-blue-500/30 hover:shadow-[0_0_15px_rgba(59,130,246,0.1)] active:scale-95"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                                            <Megaphone size={12} className="animate-pulse" />
-                                        </div>
-                                        <div className="flex-1 overflow-hidden">
-                                            <div className="relative h-4 w-full">
-                                                <div className="marquee-track absolute flex items-center whitespace-nowrap text-[10px] sm:text-xs font-medium text-neutral-600 dark:text-neutral-300">
-                                                    <span className="font-bold text-neutral-900 dark:text-white mr-2">{headlineTitle}:</span>
-                                                    <span className="mr-8">{headlineContent}</span>
-
-                                                    <span className="font-bold text-neutral-900 dark:text-white mr-2">{headlineTitle}:</span>
-                                                    <span className="mr-8">{headlineContent}</span>
-                                                </div>
+                                <div className="flex items-center gap-3 w-full">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-[#065f46]/10 text-[#065f46] border-r border-[#e5e7eb]">
+                                        <Megaphone size={14} />
+                                    </div>
+                                    <div className="flex-1 overflow-hidden py-2.5 text-left">
+                                        <div className="relative h-4 w-full">
+                                            <div className="marquee-track absolute flex items-center whitespace-nowrap text-xs font-medium text-[#6b7280]">
+                                                {/* Map through notices multiple times for a continuous loop if needed */}
+                                                {[...headlineNotices, ...headlineNotices].map((notice, idx) => (
+                                                    <React.Fragment key={idx}>
+                                                        <span className="font-bold text-[#065f46] mr-2">
+                                                            {notice.title}:
+                                                        </span>
+                                                        <span className="mr-12 italic">{notice.content}</span>
+                                                    </React.Fragment>
+                                                ))}
                                             </div>
                                         </div>
-                                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                            <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                                        </div>
                                     </div>
+                                    <ChevronRight
+                                        size={14}
+                                        className="shrink-0 text-[#9ca3af] group-hover:text-[#065f46] transition-colors group-hover:translate-x-0.5 duration-200"
+                                    />
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                </BackgroundBeamsWithCollision>
-            </section >
+                            </button>
+                        </div>
+                    )}
+                </div>
 
+                {/* Bottom Scroll Indicator */}
+                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40">
+                    <span className="label-mono text-[#9ca3af]">scroll</span>
+                    <div className="w-[1px] h-8 bg-gradient-to-b from-[#065f46] to-transparent" />
+                </div>
+            </section>
 
             <style jsx>{`
                 @keyframes marquee {
@@ -170,60 +175,62 @@ const HeroSection = () => {
                     100% { transform: translateX(-50%) translateZ(0); }
                 }
                 .marquee-track {
-                    animation: marquee 30s linear infinite;
+                    animation: marquee 32s linear infinite;
                     will-change: transform;
-                    backface-visibility: hidden;
-                    perspective: 1000;
                 }
                 .group:hover .marquee-track {
                     animation-play-state: paused;
                 }
             `}</style>
 
-            {/* Modal Overlay - Enterprise Smooth */}
+            {/* Modal Overlay */}
             {openHeadline && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
-                    {/* Backdrop with Fade */}
                     <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+                        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
                         onClick={() => setOpenHeadline(false)}
-                    ></div>
-
-                    {/* Modal Content - Responsive & Safe */}
-                    <div className="relative w-full max-w-[95%] sm:max-w-lg bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-5 duration-300 max-h-[85vh] flex flex-col">
-                        <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500"></div>
-
+                    />
+                    <div
+                        className="relative w-full max-w-[95%] sm:max-w-lg overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-200 max-h-[85vh] flex flex-col bg-white"
+                        style={{ border: '1px solid #e5e7eb' }}
+                    >
+                        <div className="absolute top-0 inset-x-0 h-[2px] bg-[#065f46]" />
                         <button
                             onClick={() => setOpenHeadline(false)}
-                            className="absolute top-3 right-3 p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors z-20"
-                            aria-label="Close Announcement"
+                            className="absolute top-4 right-4 p-2 border border-[#e5e7eb] hover:border-[#065f46] transition-colors z-20"
+                            aria-label="Close"
                         >
-                            <svg width="18" height="18" viewBox="0 0 15 15" fill="none" className="text-neutral-500"><path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.50005L3.21846 10.9685C2.99391 11.193 2.99391 11.5571 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31322L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.5571 12.0062 11.193 11.7816 10.9685L8.31322 7.50005L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path></svg>
+                            <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
+                                <path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.50005L3.21846 10.9685C2.99391 11.193 2.99391 11.5571 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31322L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.5571 12.0062 11.193 11.7816 10.9685L8.31322 7.50005L11.7816 4.03157Z" fill="#6b7280" fillRule="evenodd" clipRule="evenodd" />
+                            </svg>
                         </button>
-
-                        <div className="p-6 sm:p-8 flex flex-col items-center text-center overflow-y-auto custom-scrollbar">
-                            <div className="shrink-0 mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-4 sm:mb-5 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50 shadow-inner">
-                                <Megaphone size={24} className="sm:w-8 sm:h-8" />
+                        <div className="p-6 sm:p-10 flex flex-col items-center overflow-y-auto custom-scrollbar">
+                            <div className="shrink-0 mx-auto w-14 h-14 flex items-center justify-center mb-6 text-[#065f46] border border-[#e5e7eb] bg-[#f9fafb]">
+                                <Megaphone size={22} />
                             </div>
-
-                            <h3 className="text-lg sm:text-2xl font-bold text-neutral-900 dark:text-white mb-3 tracking-tight leading-snug">
-                                {headlineTitle || 'Latest Announcement'}
+                            <p className="label-mono mb-2 text-[#065f46] uppercase tracking-[0.2em] text-[10px]">Campus Updates</p>
+                            <h3 className="text-xl sm:text-2xl font-bold text-[#111827] mb-8 tracking-tight">
+                                Important Announcements
                             </h3>
 
-                            <div className="w-full prose prose-sm prose-blue dark:prose-invert max-w-none text-neutral-600 dark:text-neutral-300">
-                                <p className="whitespace-pre-wrap leading-relaxed text-sm sm:text-base">
-                                    {headlineContent || 'No details available currently.'}
-                                </p>
+                            <div className="w-full space-y-6 text-left">
+                                {headlineNotices.map((notice, idx) => (
+                                    <div key={idx} className="relative pl-6 border-l-2 border-[#065f46]/20 hover:border-[#065f46] transition-colors duration-300">
+                                        <h4 className="font-bold text-[#111827] text-base mb-1">{notice.title}</h4>
+                                        <p className="text-[#6b7280] text-sm leading-relaxed">{notice.content}</p>
+                                        {notice.date && (
+                                            <p className="text-[10px] font-medium text-[#9ca3af] mt-2 uppercase tracking-wider">{notice.date}</p>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
 
-                            <div className="mt-6 sm:mt-8 w-full sm:w-auto">
-                                <button
-                                    onClick={() => setOpenHeadline(false)}
-                                    className="w-full sm:w-auto px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 rounded-lg font-bold text-sm transition-all transform active:scale-95 shadow-lg shadow-neutral-500/20"
-                                >
-                                    Dismiss
-                                </button>
-                            </div>
+                            <button
+                                onClick={() => setOpenHeadline(false)}
+                                className="mt-10 w-full py-4 bg-[#111] text-white font-bold text-xs uppercase tracking-[0.2em] hover:bg-[#065f46] transition-all duration-300 active:scale-[0.98] shadow-lg shadow-black/5"
+                            >
+                                Close Notices
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Anta, Outfit } from "next/font/google";
+import { Anta, Outfit, Amiri } from "next/font/google";
 import "./globals.css";
 import { Provider } from "@/components/ui/provider";
 import AppDownloadPromo from "@/components/AppDownloadPromo/AppDownloadPromo";
@@ -20,6 +20,12 @@ const anta = Anta({
 const outfit = Outfit({
   subsets: ["latin"],
   variable: "--font-outfit",
+});
+
+const amiri = Amiri({
+  subsets: ["arabic"],
+  weight: ["400", "700"],
+  variable: "--font-amiri",
 });
 
 const geistSans = localFont({
@@ -126,7 +132,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${anta.variable} ${outfit.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${anta.variable} ${outfit.variable} ${amiri.variable} antialiased`}
       >
         <GoogleAnalytics ga_id="G-75E96W9EMG" />
         <LordIconInitializer />

@@ -152,7 +152,7 @@ export async function DELETE(request: Request) {
   try {
     const body = await request.json();
     id = body.id;
-  } catch (e) {
+  } catch {
     // If JSON parsing fails, check query params as a fallback for single ID
     id = url.searchParams.get('id');
   }

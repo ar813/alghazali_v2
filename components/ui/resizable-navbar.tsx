@@ -121,7 +121,7 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
             }}
             className={cn(
                 "relative z-[60] mx-auto hidden w-full max-w-none flex-row items-center justify-between px-8 py-2 lg:flex border-b border-transparent transition-all duration-500 ease-in-out",
-                visible && "bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border-neutral-200/50 dark:border-neutral-800/50",
+                visible && "bg-white/90 backdrop-blur-xl border-neutral-200/50",
                 className,
             )}
         >
@@ -153,11 +153,11 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
                         <motion.div
                             layoutId="hovered"
                             transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                            className="absolute inset-0 h-full w-full rounded-full bg-neutral-100 dark:bg-neutral-800"
+                            className="absolute inset-0 h-full w-full rounded-none bg-neutral-100 dark:bg-neutral-800 border-b-2 border-neutral-900 dark:border-white"
                             style={{ zIndex: -1 }}
                         />
                     )}
-                    <span className="relative z-10">{item.name}</span>
+                    <span className="relative z-10 label-mono uppercase tracking-widest text-[11px] font-bold">{item.name}</span>
                 </a>
             ))}
         </motion.div>
@@ -183,7 +183,7 @@ export const MobileNav = ({ children, className, visible }: MobileNavProps) => {
             }}
             className={cn(
                 "relative z-[100] mx-auto flex w-full flex-col items-center justify-between px-4 py-2 lg:hidden border-b border-transparent transition-all duration-300",
-                visible && "bg-white/80 dark:bg-neutral-950/80 backdrop-blur-xl border-neutral-200/50 dark:border-neutral-800/50",
+                visible && "bg-white/90 backdrop-blur-xl border-neutral-200/50",
                 className,
             )}
         >
@@ -261,18 +261,18 @@ export const MobileNavMenu = ({
                             damping: 30,
                         }}
                         className={cn(
-                            "fixed right-0 top-0 z-[9999] flex h-full w-[320px] max-w-[85vw] flex-col bg-white dark:bg-neutral-950 shadow-2xl lg:hidden",
+                            "fixed right-0 top-0 z-[9999] flex h-full w-[320px] max-w-[85vw] flex-col bg-white shadow-2xl lg:hidden",
                             className,
                         )}
                     >
                         {/* Drawer Header */}
-                        <div className="flex h-16 items-center justify-between border-b border-neutral-100 dark:border-neutral-800 px-4 xs:px-6">
+                        <div className="flex h-16 items-center justify-between border-b border-neutral-100 px-4 xs:px-6">
                             <div className="flex-1 min-w-0 mr-2">
                                 <NavbarLogo />
                             </div>
                             <button
                                 onClick={onClose}
-                                className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                                className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-none border border-neutral-200 bg-neutral-100 text-neutral-600 hover:bg-neutral-200 transition-colors"
                                 aria-label="Close menu"
                             >
                                 <IconX size={18} strokeWidth={2} />
@@ -318,17 +318,17 @@ export const MobileNavMenu = ({
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: 0.1 + idx * 0.05 }}
                                                 className={cn(
-                                                    "flex h-12 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors text-left",
+                                                    "flex h-12 w-full items-center gap-3 rounded-none px-3 text-sm font-medium transition-colors text-left",
                                                     item.isActive
                                                         ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900"
-                                                        : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100"
+                                                        : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 border border-transparent hover:border-neutral-200"
                                                 )}
                                             >
                                                 {item.icon && (
                                                     <span className={cn(
-                                                        "flex h-8 w-8 items-center justify-center rounded-lg",
+                                                        "flex h-8 w-8 items-center justify-center rounded-none",
                                                         item.isActive
-                                                            ? "bg-white/20 dark:bg-neutral-900/20"
+                                                            ? "bg-[#059669]/20"
                                                             : "bg-neutral-100 dark:bg-neutral-800"
                                                     )}>
                                                         {item.icon}
@@ -347,7 +347,7 @@ export const MobileNavMenu = ({
                                     <div className="flex items-center gap-3 px-3 mb-4">
                                         <div
                                             onClick={userInfo.onUpdateName}
-                                            className="relative h-10 w-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center border border-neutral-200 dark:border-neutral-700 cursor-pointer group"
+                                            className="relative h-10 w-10 rounded-none bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center border border-neutral-200 dark:border-neutral-700 cursor-pointer group"
                                         >
                                             {userInfo.image ? (
                                                 <Image
@@ -355,13 +355,13 @@ export const MobileNavMenu = ({
                                                     alt={userInfo.name || ''}
                                                     width={40}
                                                     height={40}
-                                                    className="h-full w-full object-cover rounded-full"
+                                                    className="h-full w-full object-cover rounded-none"
                                                 />
                                             ) : (
                                                 <IconUser size={20} className="text-neutral-500" />
                                             )}
                                             {/* Edit Badge Overlay */}
-                                            <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-blue-600 border-2 border-white dark:border-neutral-950 flex items-center justify-center text-white shadow-sm">
+                                            <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-none bg-blue-600 border border-white dark:border-neutral-950 flex items-center justify-center text-white shadow-sm">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                                             </div>
                                         </div>
@@ -379,9 +379,9 @@ export const MobileNavMenu = ({
                                             <a
                                                 href="/admin/users"
                                                 onClick={onClose}
-                                                className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors text-left"
+                                                className="flex h-11 w-full items-center gap-3 rounded-none px-3 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors text-left"
                                             >
-                                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800">
+                                                <div className="flex h-8 w-8 items-center justify-center rounded-none bg-neutral-100 dark:bg-neutral-800">
                                                     <IconUser size={18} />
                                                 </div>
                                                 <span>Manage Users</span>
@@ -389,9 +389,9 @@ export const MobileNavMenu = ({
                                         )}
                                         <button
                                             onClick={userInfo.onLogout}
-                                            className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
+                                            className="flex h-11 w-full items-center gap-3 rounded-none px-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
                                         >
-                                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-none bg-red-50 dark:bg-red-900/20">
                                                 <IconLogout size={18} />
                                             </div>
                                             <span>Log out</span>
@@ -419,7 +419,7 @@ export const MobileNavToggle = ({
     return (
         <button
             onClick={onClick}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-none bg-neutral-100 text-neutral-600 border border-neutral-200 hover:bg-neutral-200 transition-colors"
             aria-label={isOpen ? "Close menu" : "Open menu"}
         >
             {isOpen ? (
@@ -443,7 +443,7 @@ export const NavbarLogo = () => {
                     alt="Al Ghazali Logo"
                     width={28}
                     height={28}
-                    className="rounded-lg shadow-sm"
+                    className="rounded-none shadow-sm"
                 />
             </div>
             <span className="font-bold text-foreground select-none text-[13px] xs:text-[14px] sm:text-[15px] tracking-[0.05em] xs:tracking-[0.1em] uppercase leading-tight block truncate xs:whitespace-normal">
@@ -471,7 +471,7 @@ export const NavbarButton = ({
         | React.ComponentPropsWithoutRef<"button">
     )) => {
     const baseStyles =
-        "px-4 py-1.5 rounded-xl font-medium text-sm relative cursor-pointer transition duration-200 inline-flex items-center justify-center";
+        "px-4 py-1.5 rounded-none font-bold text-[11px] uppercase tracking-widest relative cursor-pointer transition duration-200 inline-flex items-center justify-center border";
 
     const variantStyles = {
         primary:
@@ -512,7 +512,7 @@ export const MobileNavLink = ({
             href={href}
             onClick={onClick}
             className={cn(
-                "flex h-[72px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 p-2 text-center transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95",
+                "flex h-[72px] flex-col items-center justify-center gap-1.5 rounded-none border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 p-2 text-center transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95",
                 className,
             )}
         >
@@ -521,7 +521,7 @@ export const MobileNavLink = ({
                     {icon}
                 </span>
             )}
-            <span className="text-[11px] font-semibold text-neutral-900 dark:text-neutral-100 uppercase tracking-wider text-center line-clamp-1">
+            <span className="text-[10px] font-bold text-neutral-900 dark:text-neutral-100 uppercase tracking-widest text-center line-clamp-1 label-mono">
                 {children}
             </span>
         </a>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import NextImage from "next/image";
 import type { Student } from "@/types/student";
 
 // Helper utility for Roman Numerals
@@ -59,8 +60,7 @@ const QRPreview = ({ src, size = 80 }: { src: string; size?: number }) => {
         })();
         return () => { mounted = false };
     }, [src]);
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={out || src} alt="QR" style={{ width: size, height: size }} />;
+    return <NextImage src={out || src} alt="QR" width={size} height={size} unoptimized />;
 };
 
 interface IDCardProps {
@@ -88,15 +88,13 @@ const IDCard = ({ student: s, side, issueDate, expiryDate }: IDCardProps) => {
         return (
             <div className="w-[189px] h-[321px] bg-white rounded-xl shadow-lg relative overflow-hidden ring-1 ring-zinc-900/5 mx-auto select-none group hover:scale-[1.02] transition-transform duration-300">
                 <div className="absolute inset-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={frontBg} alt="front" className="absolute inset-0 w-full h-full object-cover" />
+                    <NextImage src={frontBg} alt="front" fill className="object-cover" priority />
                 </div>
                 <div className="relative z-10 p-3 h-full flex flex-col">
                     <div className="mt-[46px] mr-2 flex-1 flex flex-col items-center justify-start">
                         <div className="w-[103px] h-[103px] rounded-full overflow-hidden ring-4 ring-white/30 shadow-inner bg-zinc-100">
                             {s.photoUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={s.photoUrl} alt={s.fullName} className="w-full h-full object-cover" />
+                                <NextImage src={s.photoUrl} alt={s.fullName} fill className="object-cover" />
                             ) : null}
                         </div>
 
@@ -126,8 +124,7 @@ const IDCard = ({ student: s, side, issueDate, expiryDate }: IDCardProps) => {
     return (
         <div className="w-[189px] h-[321px] bg-white rounded-xl shadow-lg relative overflow-hidden ring-1 ring-zinc-900/5 mx-auto select-none group hover:scale-[1.02] transition-transform duration-300">
             <div className="absolute inset-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={backBg} alt="back" className="absolute inset-0 w-full h-full object-cover" />
+                <NextImage src={backBg} alt="back" fill className="object-cover" priority />
             </div>
             <div className="relative z-10 p-3 h-full flex flex-col">
                 <div className="mt-[116px] w-full text-[8px] text-[#231f55]">

@@ -1,4 +1,5 @@
 import { Upload, Users, PieChart, BarChart2, Loader2, X, Search, FileDown, Image as ImageIcon, Database, Receipt, FolderArchive, LayoutGrid, Eye, Filter, User } from 'lucide-react'
+import NextImage from 'next/image'
 import StudentDetailModal from '../AdminStudents/StudentDetailModal'
 import React, { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -1465,7 +1466,13 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden flex items-center justify-center border border-neutral-200 dark:border-neutral-700 shrink-0">
                                   {s.photoUrl || s.imageUrl ? (
-                                    <img src={(s.photoUrl || s.imageUrl) + '?w=64&h=64&fit=crop'} alt={s.fullName} className="w-full h-full object-cover" />
+                                    <NextImage
+                                      src={(s.photoUrl || s.imageUrl) + "?w=64&h=64&fit=crop"}
+                                      alt={s.fullName}
+                                      width={32}
+                                      height={32}
+                                      className="w-full h-full object-cover"
+                                    />
                                   ) : (
                                     <User size={14} className="text-neutral-400" />
                                   )}

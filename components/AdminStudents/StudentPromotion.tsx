@@ -1,11 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-    ArrowRight,
     CheckCircle2,
-    AlertCircle,
     Zap,
     RefreshCcw,
     X,
@@ -13,18 +11,11 @@ import {
     Users,
     UserCheck,
     Search,
-    Filter,
     ChevronRight,
     GraduationCap,
-    Info,
-    Settings2,
     Hash,
-    ArrowUpDown,
     ArrowUp,
     ArrowDown,
-    MoreHorizontal,
-    LayoutGrid,
-    ListFilter
 } from 'lucide-react';
 import { useSession } from '@/context/SessionContext';
 import { client } from '@/sanity/lib/client';
@@ -79,14 +70,12 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
     
     // Bulk State
     const [mapping, setMapping] = useState<Record<string, string>>({});
-    const [classStats, setClassStats] = useState<ClassStat[]>([]);
-    const [isLoadingClasses, setIsLoadingClasses] = useState(false);
     
     // Manual State
     const [students, setStudents] = useState<Student[]>([]);
     const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+    const [isLoadingClasses, setIsLoadingClasses] = useState(false);
     const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
-    const [manualTargetClass, setManualTargetClass] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState('');
     const [filterClass, setFilterClass] = useState('All');
     const [filterGender, setFilterGender] = useState('All');
@@ -144,7 +133,6 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                     className,
                     count
                 })).sort((a, b) => sortClasses(a.className, b.className));
-                setClassStats(statsArray);
                 const initialMapping: Record<string, string> = {};
                 statsArray.forEach(({ className }) => {
                     initialMapping[className] = getNextClass(className);
@@ -152,8 +140,8 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                 setMapping(initialMapping);
                 setIsLoadingClasses(false);
             }).catch(() => {
-                toast.error("Failed to load classes");
                 setIsLoadingClasses(false);
+                toast.error("Failed to load classes");
             });
         } else {
             setIsLoadingStudents(true);
@@ -171,7 +159,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
     }, [sourceSession, mode]);
 
     const filteredStudents = useMemo(() => {
-        let result = students.filter(s => {
+        const result = students.filter(s => {
             const matchesSearch = s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                  s.grNumber?.includes(searchQuery) ||
                                  s.rollNumber?.includes(searchQuery);
@@ -197,7 +185,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
     const handlePrepareRefinement = () => {
         const selected = students.filter(s => selectedStudentIds.has(s._id));
         const refined = selected.map(s => {
-            const targetCls = manualTargetClass || getNextClass(s.admissionFor);
+            const targetCls = getNextClass(s.admissionFor);
             return {
                 ...s,
                 targetClass: targetCls,
@@ -224,7 +212,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
         setIsExecuting(true);
         try {
             const token = await auth.currentUser?.getIdToken();
-            let payload: any = { sourceSession, targetSession: selectedSession };
+            const payload: any = { sourceSession, targetSession: selectedSession };
             if (mode === 'bulk') {
                 payload.mapping = mapping;
             } else {
@@ -257,6 +245,18 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
             key,
             direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
         }));
+    };
+
+    const toggleStudentSelection = (id: string) => {
+        setSelectedStudentIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
     };
 
     // --- Components ---
