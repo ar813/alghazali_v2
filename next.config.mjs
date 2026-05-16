@@ -14,6 +14,20 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        // Firebase Storage — for admin profile photos
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        // Google user photos (if any OAuth users)
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   async headers() {
@@ -37,6 +51,12 @@ const nextConfig = {
       include: /node_modules/,
       type: 'javascript/auto',
     });
+    // Suppress noisy onnxruntime-web / imgly warnings
+    config.ignoreWarnings = [
+      { module: /node_modules\/onnxruntime-web/ },
+      { module: /node_modules\/@imgly\/background-removal/ },
+      { message: /Critical dependency: require function is used in a way in which dependencies cannot be statically extracted/ }
+    ];
     return config;
   },
 };

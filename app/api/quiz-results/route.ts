@@ -38,20 +38,21 @@ export async function GET(req: NextRequest) {
     const session = searchParams.get('session')
 
     // Session Logic for Quiz Results: Filter by the SESSION OF THE QUIZ
-    const quizSessionFilter = `($session == null || quiz->session == $session || (!defined(quiz->session) && $session == "2025-2026"))`
+    const quizSessionFilter = `(quiz->session == $session || (!defined(quiz->session) && $session == "2025-2026"))`
+    const genderFilterStr = `($gender == null || student->gender == $gender)`
 
-    const params: Record<string, any> = { limit, session }
-    let query = `*[_type == "quizResult" && ${quizSessionFilter}] | order(coalesce(submittedAt, _createdAt) desc) [0...$limit]{
-      _id, quiz->{_id, title, subject, resultsAnnounced, session, 'totalQuestions': coalesce(questionLimit, count(questions))}, student->{_id, fullName, grNumber, admissionFor}, answers, score, submittedAt, _createdAt,
+    const params: Record<string, any> = { limit, session, gender: searchParams.get('gender') || null }
+    let query = `*[_type == "quizResult" && ${quizSessionFilter} && ${genderFilterStr}] | order(coalesce(submittedAt, _createdAt) desc) [0...$limit]{
+      _id, quiz->{_id, title, subject, resultsAnnounced, session, 'totalQuestions': coalesce(questionLimit, count(questions))}, student->{_id, fullName, grNumber, admissionFor, gender}, answers, score, submittedAt, _createdAt,
       studentName, studentGrNumber, studentRollNumber, className, studentEmail, questionOrder
     }`
 
     if (quizId || studentId) {
-      const whereParts: string[] = ['_type == "quizResult"', quizSessionFilter]
+      const whereParts: string[] = ['_type == "quizResult"', quizSessionFilter, genderFilterStr]
       if (quizId) { whereParts.push('quiz._ref == $quizId'); params.quizId = quizId }
       if (studentId) { whereParts.push('student._ref == $studentId'); params.studentId = studentId }
       query = `*[$where] | order(coalesce(submittedAt, _createdAt) desc) [0...$limit]{
-        _id, quiz->{_id, title, subject, resultsAnnounced, session, 'totalQuestions': coalesce(questionLimit, count(questions))}, student->{_id, fullName, grNumber, admissionFor}, answers, score, submittedAt, _createdAt,
+        _id, quiz->{_id, title, subject, resultsAnnounced, session, 'totalQuestions': coalesce(questionLimit, count(questions))}, student->{_id, fullName, grNumber, admissionFor, gender}, answers, score, submittedAt, _createdAt,
         studentName, studentGrNumber, studentRollNumber, className, studentEmail, questionOrder
       }`.replace('$where', whereParts.join(' && '))
     }

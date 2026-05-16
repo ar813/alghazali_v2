@@ -242,12 +242,12 @@ const AdminCards = ({ genderFilter, onLoadingChange }: { genderFilter?: string; 
 
     try {
       setIsDownloading(true);
-      const [{ jsPDF }, JSZip] = await Promise.all([
-        import("jspdf"),
-        import("jszip")
-      ]);
-
-      const zip = new JSZip.default();
+      const jspdfModule = await import("jspdf");
+      const jsPDF = jspdfModule.jsPDF;
+      const { default: JSZip } = await import("jszip") as any;
+      const fileSaver = await import("file-saver");
+      const saveAs = (fileSaver as any).default?.saveAs || (fileSaver as any).saveAs;
+      const zip = new (JSZip as any)();
       const cardW = 189;
       const cardH = 321;
 
@@ -293,11 +293,11 @@ const AdminCards = ({ genderFilter, onLoadingChange }: { genderFilter?: string; 
           doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
 
-          doc.text(String(s.rollNumber || ''), 65, cardH - 67.3);
-          doc.text(String(s.grNumber || ''), 65, cardH - 52.4);
+          doc.text(String(s.rollNumber || ''), 84, cardH - 67.3);
+          doc.text(String(s.grNumber || ''), 84, cardH - 52.4);
 
           const dobFormatted = s.dob ? new Date(s.dob).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-          doc.text(dobFormatted, 65, cardH - 38);
+          doc.text(dobFormatted, 84, cardH - 38);
         };
 
         const drawBack = async () => {
@@ -342,7 +342,6 @@ const AdminCards = ({ genderFilter, onLoadingChange }: { genderFilter?: string; 
       }
 
       const content = await zip.generateAsync({ type: 'blob' });
-      const { saveAs } = await import('file-saver');
       saveAs(content, 'student_cards.zip');
       toast.success("ZIP Downloaded successfully");
     } catch (e) {
@@ -383,7 +382,7 @@ const AdminCards = ({ genderFilter, onLoadingChange }: { genderFilter?: string; 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6 items-start">
 
         {/* Left Sidebar: List */}
-        <div className="lg:col-span-3 lg:sticky lg:top-24 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar bg-white dark:bg-zinc-950/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
+        <div className="lg:col-span-3 lg:sticky lg:top-24 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar bg-white dark:bg-zinc-950/50 rounded-none border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
           <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-10">
             <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Students ({sorted.length})</h3>
           </div>
@@ -399,11 +398,11 @@ const AdminCards = ({ genderFilter, onLoadingChange }: { genderFilter?: string; 
 
         {/* Right Area: Preview Grid */}
         <div className="lg:col-span-9 space-y-4">
-          <div className="bg-zinc-50 dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 min-h-[500px]">
+          <div className="bg-zinc-50 dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-800 rounded-none p-6 min-h-[500px]">
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
                 {[...Array(8)].map((_, i) => (
-                  <div key={i} className="w-[189px] h-[321px] bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800 mx-auto animate-pulse" />
+                  <div key={i} className="w-[189px] h-[321px] bg-white dark:bg-zinc-900 rounded-none shadow-sm border border-zinc-100 dark:border-zinc-800 mx-auto animate-pulse" />
                 ))}
               </div>
             ) : toPrint.length === 0 ? (

@@ -9,9 +9,10 @@ import { toast } from "sonner";
 import FeeToolbar from './FeeToolbar';
 import FeeTable from './FeeTable';
 import FeeDrawer from './FeeDrawer';
-import FeeDetails from './FeeDetails';
 import { useAuth } from '@/hooks/use-auth';
 import OTPVerificationModal from '@/components/Security/OTPVerificationModal';
+import FeeConfirmationModal from './FeeConfirmationModal';
+import FeeDetails from './FeeDetails';
 
 const MONTHS = ['Month', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'admission'] as const
 
@@ -36,12 +37,16 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
   const [showModal, setShowModal] = useState(false)
   const [editingFee, setEditingFee] = useState<any | null>(null)
   const [detailFee, setDetailFee] = useState<any | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null)
   const [importLoading, setImportLoading] = useState(false)
   const [showOTPModal, setShowOTPModal] = useState(false)
   const [otpAction, setOtpAction] = useState<{ type: 'deleteSingle' | 'deleteAll', label: string, id?: string } | null>(null)
+  
+  // Security Modal State
+  const [showSecurityModal, setShowSecurityModal] = useState(false)
+  const [feeToDelete, setFeeToDelete] = useState<string | null>(null)
 
   // Load students
   useEffect(() => {
@@ -170,6 +175,7 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
           amountPaid: isNaN(amountPaid) ? 0 : amountPaid,
           receiptNumber: (r[10] ?? '').toString().trim() || undefined,
           feeType: month.toLowerCase() === 'admission' ? 'admission' : 'monthly',
+          session: selectedSession
         })
       }
 
@@ -192,7 +198,8 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
   }
 
   const deleteFee = async (id: string) => {
-    confirmDeleteFee(id);
+    setFeeToDelete(id);
+    setShowSecurityModal(true);
   }
 
   const confirmDeleteFee = async (id: string) => {
@@ -263,19 +270,43 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
   }
 
   const handleSubmitFee = async (formData: any) => {
-    setSubmitting(true)
+    setSaving(true)
+    console.log('[AdminFees] Submitting fee with session:', selectedSession);
+
+    if (!selectedSession) {
+      toast.error('Session context missing. Please refresh the page.');
+      setSaving(false);
+      return;
+    }
+
     try {
       const token = await user?.getIdToken();
-      const method = editingFee ? 'PATCH' : 'POST'
-      const payload = editingFee ? { id: editingFee._id, patch: formData } : formData
+      const payload = editingFee 
+        ? { id: editingFee._id, patch: { ...formData, session: selectedSession } } 
+        : { ...formData, session: selectedSession }
+
       const res = await fetch('/api/fees', {
-        method,
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        method: editingFee ? 'PATCH' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       })
+
       const json = await res.json()
-      if (json?.ok) { setShowModal(false); await loadFees(); toast.success('Saved') }
-    } finally { setSubmitting(false) }
+      if (json?.ok) {
+        toast.success(editingFee ? 'Fee record updated' : 'Fee payment recorded')
+        setEditingFee(null)
+        loadFees()
+      } else {
+        throw new Error(json?.error || 'Operation failed')
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save fee')
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Reload on filter change or initial session load
@@ -329,7 +360,7 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
       <FeeDrawer
         isOpen={showModal} onClose={() => setShowModal(false)}
         onSubmit={handleSubmitFee} initialData={editingFee}
-        students={students} MONTHS={MONTHS} submitting={submitting}
+        students={students} MONTHS={MONTHS} submitting={saving}
       />
 
       {detailFee && <FeeDetails fee={detailFee} onClose={() => setDetailFee(null)} />}
@@ -346,6 +377,24 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
           actionName={otpAction?.label || 'Critical Data Deletion'}
         />
       )}
+
+      <FeeConfirmationModal
+        isOpen={showSecurityModal}
+        onClose={() => {
+          setShowSecurityModal(false);
+          setFeeToDelete(null);
+        }}
+        onConfirm={() => {
+          if (feeToDelete) {
+            confirmDeleteFee(feeToDelete);
+            setShowSecurityModal(false);
+            setFeeToDelete(null);
+          }
+        }}
+        title="Delete Fee Record"
+        description="Are you sure you want to permanently delete this fee record? This action cannot be undone."
+        loading={deletingId === feeToDelete}
+      />
     </div>
   )
 }

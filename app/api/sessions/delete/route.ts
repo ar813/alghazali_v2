@@ -20,14 +20,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ ok: false, error: 'Master session "2025-2026" cannot be deleted.' }, { status: 403 });
         }
 
-        console.log(`[Session Delete] Starting deletion for session: ${session}`);
+
 
         // 1. Delete all related records
         const typesToDelete = ['student', 'fee', 'notice', 'examResultSet', 'schedule', 'attendance', 'quizResult'];
         const dataQuery = `*[_type in $types && session == $session]._id`;
         const dataIds = await serverClient.fetch(dataQuery, { types: typesToDelete, session });
 
-        console.log(`[Session Delete] Found ${dataIds.length} related documents to delete.`);
+
 
         // 2. Delete the sessionMeta document itself
         const metaQuery = `*[_type == "sessionMeta" && sessionName == $session]._id`;
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
             await transaction.commit();
             totalDeleted += batch.length;
-            console.log(`[Session Delete] Deleted batch ${i / batchSize + 1}, total: ${totalDeleted}`);
+
         }
 
         return NextResponse.json({

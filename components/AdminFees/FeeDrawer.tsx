@@ -106,6 +106,21 @@ const FeeDrawer = ({
             (s.fullName || '').toLowerCase().includes(q);
     }).slice(0, 50);
 
+    // Auto-select logic
+    useEffect(() => {
+        const query = studentQuickFilter.trim().toLowerCase();
+        if (query !== '' && filteredStudents.length === 1) {
+            const student = filteredStudents[0];
+            if (form.studentId !== student._id) {
+                setForm(prev => ({
+                    ...prev,
+                    studentId: student._id || '',
+                    className: student.admissionFor || prev.className
+                }));
+            }
+        }
+    }, [studentQuickFilter, filteredStudents, form.studentId]);
+
     return (
         <Drawer
             isOpen={isOpen}
@@ -134,7 +149,7 @@ const FeeDrawer = ({
                     <form id="fee-form" onSubmit={handleSubmit}>
                         <VStack spacing="5" align="stretch">
                             {/* Student Selection */}
-                            <FormControl isRequired>
+                            <FormControl>
                                 <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
                                     Student
                                 </FormLabel>
@@ -146,7 +161,7 @@ const FeeDrawer = ({
                                         value={studentQuickFilter}
                                         onChange={e => setStudentQuickFilter(e.target.value)}
                                         placeholder="Search by Name, Roll, or GR..."
-                                        rounded="xl"
+                                        rounded-none="xl"
                                         fontSize="sm"
                                         bg="gray.50"
                                         _dark={{ bg: "gray.900/50" }}
@@ -162,10 +177,11 @@ const FeeDrawer = ({
                                             className: s?.admissionFor || prev.className
                                         }));
                                     }}
-                                    rounded="xl"
+                                    rounded-none="xl"
                                     fontSize="sm"
                                     placeholder="Select Student"
                                     className="dark:bg-gray-900"
+                                    isRequired
                                 >
                                     {filteredStudents.map(s => (
                                         <option key={s._id} value={s._id}>
@@ -187,7 +203,7 @@ const FeeDrawer = ({
                                     <Input
                                         value={form.className}
                                         onChange={e => setForm({ ...form, className: e.target.value })}
-                                        rounded="xl"
+                                        rounded-none="xl"
                                         fontSize="sm"
                                         bg="gray.50"
                                         _dark={{ bg: "gray.900/50" }}
@@ -204,7 +220,7 @@ const FeeDrawer = ({
                                     <Select
                                         value={form.month}
                                         onChange={e => setForm({ ...form, month: e.target.value })}
-                                        rounded="xl"
+                                        rounded-none="xl"
                                         fontSize="sm"
                                     >
                                         {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
@@ -213,7 +229,7 @@ const FeeDrawer = ({
                                         type="number"
                                         value={form.year}
                                         onChange={e => setForm({ ...form, year: Number(e.target.value) })}
-                                        rounded="xl"
+                                        rounded-none="xl"
                                         fontSize="sm"
                                     />
                                 </SimpleGrid>
@@ -232,7 +248,7 @@ const FeeDrawer = ({
                                         type="number"
                                         value={form.amountPaid}
                                         onChange={e => setForm({ ...form, amountPaid: e.target.value === '' ? '' : Number(e.target.value) })}
-                                        rounded="xl"
+                                        rounded-none="xl"
                                         fontSize="md"
                                         fontWeight="bold"
                                         fontFamily="mono"
@@ -250,7 +266,7 @@ const FeeDrawer = ({
                                             size="xs"
                                             variant="outline"
                                             onClick={() => setForm(prev => ({ ...prev, amountPaid: amt }))}
-                                            rounded="md"
+                                            rounded-none="md"
                                             _hover={{ bg: "gray.50", _dark: { bg: "gray.800" } }}
                                         >
                                             {amt}
@@ -272,7 +288,7 @@ const FeeDrawer = ({
                                         type="date"
                                         value={form.paidDate}
                                         onChange={e => setForm({ ...form, paidDate: e.target.value })}
-                                        rounded="xl"
+                                        rounded-none="xl"
                                         fontSize="sm"
                                         className="font-mono"
                                     />
@@ -292,7 +308,7 @@ const FeeDrawer = ({
                                         <Input
                                             value={form.receiptNumber}
                                             onChange={e => setForm({ ...form, receiptNumber: e.target.value })}
-                                            rounded="xl"
+                                            rounded-none="xl"
                                             fontSize="sm"
                                             className="font-mono"
                                         />
@@ -309,7 +325,7 @@ const FeeDrawer = ({
                                         <Input
                                             value={form.bookNumber}
                                             onChange={e => setForm({ ...form, bookNumber: e.target.value })}
-                                            rounded="xl"
+                                            rounded-none="xl"
                                             fontSize="sm"
                                             className="font-mono"
                                         />
@@ -325,7 +341,7 @@ const FeeDrawer = ({
                                 <Textarea
                                     value={form.notes}
                                     onChange={e => setForm({ ...form, notes: e.target.value })}
-                                    rounded="xl"
+                                    rounded-none="xl"
                                     fontSize="sm"
                                     rows={3}
                                     resize="none"
@@ -340,7 +356,7 @@ const FeeDrawer = ({
                         variant="ghost"
                         mr={2}
                         onClick={onClose}
-                        rounded="lg"
+                        rounded-none="lg"
                         fontSize="xs"
                         fontWeight="bold"
                         size="sm"
@@ -356,7 +372,7 @@ const FeeDrawer = ({
                         color="white"
                         _hover={{ bg: "gray.800" }}
                         _dark={{ bg: "white", color: "gray.900", _hover: { bg: "gray.100" } }}
-                        rounded="lg"
+                        rounded-none="lg"
                         px="6"
                         fontSize="xs"
                         fontWeight="bold"

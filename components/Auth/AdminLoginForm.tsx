@@ -75,8 +75,8 @@ const AdminLoginForm = ({ onLoginSuccess }: AdminLoginFormProps) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-                <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm font-semibold flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                <div className="p-3.5 rounded-none bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm font-semibold flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
+                    <div className="w-1.5 h-1.5 rounded bg-red-500 shrink-0" />
                     {error}
                 </div>
             )}
@@ -91,7 +91,7 @@ const AdminLoginForm = ({ onLoginSuccess }: AdminLoginFormProps) => {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-600 transition-all font-semibold text-neutral-900 dark:text-white placeholder:text-neutral-300 dark:placeholder:text-neutral-700 shadow-sm"
+                        className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-none focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-600 transition-all font-semibold text-neutral-900 dark:text-white placeholder:text-neutral-300 dark:placeholder:text-neutral-700 shadow-sm"
                         placeholder="admin@alghazali.edu"
                         required
                     />
@@ -117,7 +117,7 @@ const AdminLoginForm = ({ onLoginSuccess }: AdminLoginFormProps) => {
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-600 transition-all font-semibold text-neutral-900 dark:text-white placeholder:text-neutral-300 dark:placeholder:text-neutral-700 shadow-sm"
+                        className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-none focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-600 transition-all font-semibold text-neutral-900 dark:text-white placeholder:text-neutral-300 dark:placeholder:text-neutral-700 shadow-sm"
                         placeholder="••••••••"
                         required
                     />
@@ -126,7 +126,7 @@ const AdminLoginForm = ({ onLoginSuccess }: AdminLoginFormProps) => {
 
             <div className="flex items-center justify-between pt-1">
                 <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all duration-200 ${rememberMe ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 group-hover:border-indigo-500 shadow-sm'}`}>
+                    <div className={`w-5 h-5 rounded-none border flex items-center justify-center transition-all duration-200 ${rememberMe ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 group-hover:border-indigo-500 shadow-sm'}`}>
                         {rememberMe && <Check size={12} strokeWidth={4} />}
                     </div>
                     <input
@@ -142,7 +142,7 @@ const AdminLoginForm = ({ onLoginSuccess }: AdminLoginFormProps) => {
             <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-4 rounded-xl bg-neutral-900 dark:bg-indigo-600 hover:bg-neutral-800 dark:hover:bg-indigo-700 text-white font-bold text-sm shadow-xl shadow-indigo-500/10 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed group flex items-center justify-center gap-3"
+                className="w-full py-4 rounded-none bg-neutral-900 dark:bg-indigo-600 hover:bg-neutral-800 dark:hover:bg-indigo-700 text-white font-bold text-sm shadow-xl shadow-indigo-500/10 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed group flex items-center justify-center gap-3"
             >
                 {isLoading ? (
                     <>

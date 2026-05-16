@@ -24,7 +24,13 @@ type Quiz = {
   questionLimit?: number
 }
 
-const AdminQuiz = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
+const AdminQuiz = ({ 
+  onLoadingChange,
+  genderFilter
+}: { 
+  onLoadingChange?: (loading: boolean) => void,
+  genderFilter?: "male" | "female"
+}) => {
   const { selectedSession } = useSession()
   const [students, setStudents] = useState<any[]>([])
   const [items, setItems] = useState<Quiz[]>([])
@@ -44,7 +50,15 @@ const AdminQuiz = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) =
     setLoading(true)
     onLoadingChange?.(true)
     try {
-      const s = await client.fetch(getAllStudentsQuery, { session: selectedSession })
+      // Filter students by session AND gender if filter is active
+      let studentQuery = `*[_type == "student" && session == $session`
+      if (genderFilter) studentQuery += ` && gender == $gender`
+      studentQuery += `]`
+      
+      const s = await client.fetch(studentQuery, { 
+        session: selectedSession,
+        gender: genderFilter 
+      })
       setStudents(s)
 
       const res = await fetch(`/api/quizzes?limit=50&session=${selectedSession}`, { cache: 'no-store' })
@@ -56,7 +70,7 @@ const AdminQuiz = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) =
       setLoading(false)
       onLoadingChange?.(false)
     }
-  }, [onLoadingChange, selectedSession])
+  }, [onLoadingChange, selectedSession, genderFilter])
 
   useEffect(() => { loadData() }, [loadData, selectedSession])
 

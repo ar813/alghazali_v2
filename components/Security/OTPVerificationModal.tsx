@@ -135,11 +135,11 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="relative w-full max-w-md bg-white dark:bg-neutral-950 rounded-3xl shadow-2xl overflow-hidden border border-neutral-100 dark:border-neutral-900"
+                    className="relative w-full max-w-md bg-white dark:bg-neutral-950 rounded-none shadow-2xl overflow-hidden border border-neutral-100 dark:border-neutral-900"
                 >
                     <div className="p-8">
                         <div className="flex flex-col items-center text-center mb-8">
-                            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-4 text-blue-600">
+                            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-none flex items-center justify-center mb-4 text-blue-600">
                                 <ShieldCheck size={32} />
                             </div>
                             <h3 className="text-xl font-black text-neutral-900 dark:text-white mb-2 uppercase tracking-tight">Email Verification</h3>
@@ -161,13 +161,13 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                                     onChange={e => handleChange(index, e.target.value)}
                                     onKeyDown={e => handleKeyDown(index, e)}
                                     onPaste={handlePaste}
-                                    className="w-12 h-14 text-center text-2xl font-black bg-neutral-50 dark:bg-neutral-900 border-2 border-neutral-100 dark:border-neutral-800 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-neutral-900 dark:text-white"
+                                    className="w-12 h-14 text-center text-2xl font-black bg-neutral-50 dark:bg-neutral-900 border-2 border-neutral-100 dark:border-neutral-800 rounded-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-neutral-900 dark:text-white"
                                 />
                             ))}
                         </div>
 
                         {error && (
-                            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center gap-3 text-red-600 border border-red-100 dark:border-red-900/30">
+                            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-none flex items-center gap-3 text-red-600 border border-red-100 dark:border-red-900/30">
                                 <AlertCircle size={18} className="flex-shrink-0" />
                                 <p className="text-xs font-bold leading-tight">{error}</p>
                             </div>
@@ -177,10 +177,10 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                             <button
                                 onClick={handleVerify}
                                 disabled={loading || otp.some(d => !d)}
-                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-2xl font-black uppercase tracking-wider text-sm shadow-xl shadow-blue-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-none font-black uppercase tracking-wider text-sm shadow-xl shadow-blue-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                             >
                                 {loading ? (
-                                    <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded animate-spin" />
                                 ) : (
                                     'Verify & Continue'
                                 )}

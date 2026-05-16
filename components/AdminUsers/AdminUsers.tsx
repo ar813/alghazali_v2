@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
-import { Trash2, Shield, UserCog, Search, Plus, X, AlertCircle, Edit3, Loader2, Mail, RefreshCw, Clock, Eye, EyeOff } from "lucide-react";
+import { Trash2, Shield, UserCog, Search, Plus, X, AlertCircle, Edit3, Loader2, Mail, RefreshCw, Clock, Eye, EyeOff, Camera, Upload } from "lucide-react";
+import Image from "next/image";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import OTPVerificationModal from "@/components/Security/OTPVerificationModal";
+import DeletePhotoConfirmationDialog from "@/components/Auth/DeletePhotoConfirmationDialog";
 
 interface UserData {
     uid: string;
@@ -14,9 +16,47 @@ interface UserData {
     displayName?: string;
     role?: "admin" | "super_admin";
     gender?: "male" | "female";
+    photoURL?: string;
     lastLoginAt?: string;
     createdAt?: string;
 }
+
+const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new window.Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 400;
+                const MAX_HEIGHT = 400;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.7));
+            };
+            img.onerror = reject;
+        };
+        reader.onerror = reject;
+    });
+};
 
 const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
     const [users, setUsers] = useState<UserData[]>([]);
@@ -24,6 +64,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
     const [searchTerm, setSearchTerm] = useState("");
     const currentUserUid = auth.currentUser?.uid;
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Add Dialog state
     const [showAddDialog, setShowAddDialog] = useState(false);
@@ -42,6 +83,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
     const [editPassword, setEditPassword] = useState("");
     const [editRole, setEditRole] = useState<"admin" | "super_admin">("admin");
     const [editGender, setEditGender] = useState<"male" | "female" | "">("");
+    const [editPhotoURL, setEditPhotoURL] = useState("");
     const [showEditPassword, setShowEditPassword] = useState(false);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,6 +93,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
     const [showOTPModal, setShowOTPModal] = useState(false);
+    const [showRemovePhotoConfirm, setShowRemovePhotoConfirm] = useState(false);
 
     const fetchUsers = async (silent = false) => {
         if (!silent) {
@@ -114,6 +157,28 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
         }
     };
 
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                toast.error("Image size must be less than 2MB");
+                return;
+            }
+            try {
+                const compressed = await compressImage(file);
+                setEditPhotoURL(compressed);
+            } catch (error) {
+                toast.error("Failed to process image");
+            }
+        }
+    };
+
+    const handleRemoveUserPhoto = () => {
+        setEditPhotoURL("");
+        setShowRemovePhotoConfirm(false);
+        toast.success("Photo removed from UI");
+    };
+
     const handleUpdateUser = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingUser) return;
@@ -132,6 +197,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                     email: editEmail,
                     role: editRole,
                     gender: editGender,
+                    photoURL: editPhotoURL,
                     ...(editPassword ? { password: editPassword } : {})
                 }),
             });
@@ -236,6 +302,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
         setEditEmail(user.email || "");
         setEditRole(user.role || "admin");
         setEditGender(user.gender || "");
+        setEditPhotoURL(user.photoURL || "");
         setEditPassword("");
         setShowEditPassword(false);
         setShowEditDialog(true);
@@ -308,7 +375,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                             <tbody className="divide-y divide-neutral-100 dark:divide-[#1F1F1F]">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-20 text-center">
+                                        <td colSpan={5} className="px-6 py-20 text-center">
                                             <div className="flex flex-col items-center gap-4">
                                                 <div className="relative">
                                                     <div className="w-12 h-12 border-4 border-neutral-200 dark:border-[#1F1F1F] rounded-full"></div>
@@ -323,7 +390,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                     </tr>
                                 ) : filteredUsers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-16 text-center text-neutral-500">
+                                        <td colSpan={5} className="px-6 py-16 text-center text-neutral-500">
                                             No users found.
                                         </td>
                                     </tr>
@@ -334,8 +401,12 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                     )}>
                                         <td className="px-6 py-5">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-700 font-semibold text-lg border border-neutral-200 dark:border-[#1F1F1F]">
-                                                    {(user.displayName || user.email)[0].toUpperCase()}
+                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-neutral-700 font-semibold text-lg border border-neutral-200 dark:border-[#1F1F1F] overflow-hidden shrink-0">
+                                                    {user.photoURL ? (
+                                                        <Image src={user.photoURL} alt="" width={40} height={40} className="w-full h-full object-contain" unoptimized />
+                                                    ) : (
+                                                        (user.displayName || user.email)[0].toUpperCase()
+                                                    )}
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <div className="flex items-center gap-2">
@@ -426,8 +497,12 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                 user.uid === currentUserUid ? "border-indigo-300 ring-1 ring-indigo-100" : "border-neutral-200 dark:border-[#1F1F1F]",
                             )}>
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-700 font-bold text-xl border border-neutral-200 dark:border-[#1F1F1F]">
-                                        {(user.displayName || user.email)[0].toUpperCase()}
+                                    <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-neutral-700 font-bold text-xl border border-neutral-200 dark:border-[#1F1F1F] overflow-hidden shrink-0">
+                                        {user.photoURL ? (
+                                            <Image src={user.photoURL} alt="" width={48} height={48} className="w-full h-full object-contain" unoptimized />
+                                        ) : (
+                                            (user.displayName || user.email)[0].toUpperCase()
+                                        )}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
@@ -493,7 +568,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
             {/* Add User Dialog */}
             {
                 showAddDialog && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-start justify-center pt-8 sm:items-center sm:pt-0 p-4 animate-in fade-in duration-200">
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[9999] flex items-start justify-center pt-8 sm:items-center sm:pt-0 p-4 animate-in fade-in duration-200">
                         <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in duration-300">
                             <div className="p-5 sm:p-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
                                 <div>
@@ -619,7 +694,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
             {/* Edit User Dialog */}
             {
                 showEditDialog && editingUser && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-start justify-center pt-8 sm:items-center sm:pt-0 p-4 animate-in fade-in duration-200">
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[9999] flex items-start justify-center pt-8 sm:items-center sm:pt-0 p-4 animate-in fade-in duration-200">
                         <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in duration-300">
                             <div className="p-5 sm:p-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
                                 <div>
@@ -633,6 +708,63 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
 
                             <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
                                 <form id="edit-user-form" onSubmit={handleUpdateUser} className="space-y-5">
+                                    {/* Profile Picture Section */}
+                                    <div className="flex flex-col items-center gap-4 py-2">
+                                        <div className="relative group">
+                                            <div className="w-24 h-24 rounded-2xl bg-white border-2 border-neutral-200 dark:border-[#1F1F1F] overflow-hidden shadow-inner flex items-center justify-center">
+                                                {editPhotoURL ? (
+                                                    <Image
+                                                        src={editPhotoURL}
+                                                        alt="Profile"
+                                                        width={96}
+                                                        height={96}
+                                                        className="w-full h-full object-contain"
+                                                        unoptimized
+                                                    />
+                                                ) : (
+                                                    <span className="text-3xl font-bold text-neutral-400">
+                                                        {(editDisplayName || editEmail)[0].toUpperCase()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="absolute -bottom-2 -right-2 p-2 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 transition-all active:scale-90"
+                                            >
+                                                <Camera size={16} />
+                                            </button>
+                                        </div>
+                                        <div className="text-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1.5"
+                                            >
+                                                <Upload size={14} />
+                                                Update Image
+                                            </button>
+                                            {editPhotoURL && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowRemovePhotoConfirm(true)}
+                                                    className="text-xs font-semibold text-red-600 hover:text-red-700 flex items-center gap-1.5 mt-2 mx-auto"
+                                                >
+                                                    <Trash2 size={14} />
+                                                    Remove Image
+                                                </button>
+                                            )}
+                                            <p className="text-[10px] text-neutral-400 mt-1">PNG, JPG up to 2MB</p>
+                                        </div>
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            onChange={handleFileSelect}
+                                            accept="image/*"
+                                            className="hidden"
+                                        />
+                                    </div>
+
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Full Name</label>
                                         <input
@@ -780,6 +912,13 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                     actionName={`Delete Admin User: ${userToDelete?.email || 'this account'}`}
                 />
             )}
+            <DeletePhotoConfirmationDialog 
+                open={showRemovePhotoConfirm}
+                onOpenChange={setShowRemovePhotoConfirm}
+                onConfirm={handleRemoveUserPhoto}
+                title="Remove User Photo"
+                description={`Are you sure you want to remove the profile picture for ${editingUser?.displayName || 'this user'}?`}
+            />
         </>
     );
 };

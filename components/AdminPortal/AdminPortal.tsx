@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { LayoutDashboard, Users as UsersIcon, BarChart3, Calendar, IdCard, Banknote, Megaphone, Smartphone, MessageSquare, FileQuestion, ClipboardList, Printer } from 'lucide-react';
+import { LayoutDashboard, Users as UsersIcon, BarChart3, Calendar, IdCard, Banknote, Megaphone, Smartphone, MessageSquare, FileQuestion, ClipboardList, Printer, GraduationCap, Award } from 'lucide-react';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import AccessDeniedDialog from '@/components/Auth/AccessDeniedDialog';
@@ -23,6 +23,7 @@ const AdminMobileAttendance = dynamic(() => import('@/components/AdminMobileAtte
 const AdminChatBot = dynamic(() => import('@/components/AdminChatBot/AdminChatBot'), { ssr: false });
 const AdminUsers = dynamic(() => import('@/components/AdminUsers/AdminUsers'), { ssr: false });
 const AdminAdmitCards = dynamic(() => import('@/components/AdminAdmitCards/AdminAdmitCards'), { ssr: false });
+const AdminResult = dynamic(() => import('@/components/AdminResult/AdminResult'), { ssr: false });
 
 const AdminPortal = ({ 
     isBlurred = false, 
@@ -37,7 +38,7 @@ const AdminPortal = ({
 }) => {
     // useAuth hook for global state
     const { loading: authLoading, isSuperAdmin, logout } = useAuth();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'schedule' | 'reports' | 'cards' | 'admit-cards' | 'fees' | 'notice' | 'quiz' | 'results' | 'examResults' | 'mobile-attendance' | 'chatbot' | 'users'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'schedule' | 'reports' | 'cards' | 'admit-cards' | 'fees' | 'notice' | 'quiz' | 'results' | 'exam-results' | 'mobile-attendance' | 'chatbot' | 'users'>('dashboard');
     const [showAccessDenied, setShowAccessDenied] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -56,7 +57,8 @@ const AdminPortal = ({
             { id: 'fees', label: 'Fees', icon: Banknote },
             { id: 'notice', label: 'Notice', icon: Megaphone },
             { id: 'quiz', label: 'Quiz', icon: FileQuestion },
-            { id: 'results', label: 'Results', icon: ClipboardList },
+            { id: 'results', label: 'Quiz Results', icon: ClipboardList },
+            { id: 'exam-results', label: 'Exam Results', icon: GraduationCap },
             { id: 'mobile-attendance', label: 'Mobile Attendance', icon: Smartphone },
             { id: 'chatbot', label: 'AI Assistant', icon: MessageSquare },
         ];
@@ -117,7 +119,7 @@ const AdminPortal = ({
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="text-center">
-                    <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded animate-spin mx-auto mb-4"></div>
                 </div>
             </div>
         );
@@ -158,8 +160,9 @@ const AdminPortal = ({
                         {activeTab === 'admit-cards' && <AdminAdmitCards onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'fees' && <AdminFees onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'notice' && <AdminNotice onLoadingChange={onLoadingChange} />}
-                        {activeTab === 'quiz' && <AdminQuiz onLoadingChange={onLoadingChange} />}
+                        {activeTab === 'quiz' && <AdminQuiz onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'results' && <AdminResults onLoadingChange={onLoadingChange} genderFilter={gender} />}
+                        {activeTab === 'exam-results' && <AdminResult onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'mobile-attendance' && <AdminMobileAttendance onLoadingChange={onLoadingChange} />}
                         {activeTab === 'chatbot' && <AdminChatBot />}
                         {activeTab === 'users' && isSuperAdmin && <AdminUsers onLoadingChange={onLoadingChange} />}

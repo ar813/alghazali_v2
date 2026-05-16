@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const session = searchParams.get('session')
 
     // Session Logic
-    const sessionFilter = `($session == null || session == $session || (!defined(session) && $session == "2025-2026"))`
+    const sessionFilter = `(session == $session || (!defined(session) && $session == "2025-2026"))`
 
     // If no filters are provided, return ALL notices for admin/overview screens
     const params: Record<string, any> = { limit, session }
@@ -76,6 +76,13 @@ export async function POST(req: NextRequest) {
     }
     const body = await req.json()
     const { title, content, targetType, className, studentId, sendEmail, isEvent, eventDate, eventType, isHeadline, session } = body || {}
+
+    // STRICT SESSION ENFORCEMENT
+    if (!session) {
+      console.error('[API/Notices/POST] CRITICAL: Session missing in request body!', body);
+      return NextResponse.json({ ok: false, error: 'Session context is required for all notices.' }, { status: 400 })
+    }
+
     if (!title || !content || !targetType) {
       return NextResponse.json({ ok: false, error: 'title, content and targetType are required' }, { status: 400 })
     }
@@ -93,8 +100,9 @@ export async function POST(req: NextRequest) {
       targetType,
       className: className || undefined,
       createdAt: new Date().toISOString(),
-      session: session || '2025-2026'
+      session: session
     }
+
     if (typeof isEvent === 'boolean') doc.isEvent = isEvent
     if (typeof isHeadline === 'boolean') doc.isHeadline = isHeadline
     if (isEvent && eventDate) doc.eventDate = eventDate
@@ -110,8 +118,8 @@ export async function POST(req: NextRequest) {
       // Collect recipients based on target
       let recipients: string[] = []
       // Use sessionFilter for finding recipients too!
-      const sessionFilter = `($session == null || session == $session || (!defined(session) && $session == "2025-2026"))`
-      const params = { className, id: studentId, session: session || '2025-2026' }
+      const sessionFilter = `(session == $session || (!defined(session) && $session == "2025-2026"))`
+      const params = { className, id: studentId, session }
 
       if (targetType === 'all') {
         const emails = await serverClient.fetch(`*[_type == "student" && defined(email) && ${sessionFilter}]{ email }`, params)
@@ -216,7 +224,7 @@ export async function DELETE(req: NextRequest) {
       if (!session) {
         return NextResponse.json({ ok: false, error: 'Session is required for bulk delete' }, { status: 400 })
       }
-      const sessionFilter = `($session == null || session == $session || (!defined(session) && $session == "2025-2026"))`
+      const sessionFilter = `(session == $session || (!defined(session) && $session == "2025-2026"))`
       await serverClient.delete({ query: `*[_type == "notice" && ${sessionFilter}]`, params: { session } } as any)
       return NextResponse.json({ ok: true, deleted: 'all' })
     } else if (id) {

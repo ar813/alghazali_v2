@@ -69,7 +69,7 @@ import OTPVerificationModal from '@/components/Security/OTPVerificationModal';
 export default function SessionGrid() {
     const { sessions, addSession, renameSession, deleteSession, isLoading, refreshSessions } = useSession();
     const router = useRouter();
-    const { user, logout, isSuperAdmin, gender } = useAuth();
+    const { user, logout, isSuperAdmin, gender, photoURL } = useAuth();
     const [isProcessing, setIsProcessing] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
     const [clickedSession, setClickedSession] = useState<string | null>(null);
@@ -337,13 +337,14 @@ export default function SessionGrid() {
                                         "bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700",
                                         "hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors duration-200"
                                     )}>
-                                        {user?.photoURL ? (
+                                        {photoURL ? (
                                             <Image
-                                                src={user.photoURL}
+                                                src={photoURL}
                                                 alt="Profile"
                                                 width={36}
                                                 height={36}
                                                 className="h-full w-full object-cover"
+                                                unoptimized
                                             />
                                         ) : (
                                             <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400 select-none">

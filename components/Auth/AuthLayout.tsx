@@ -21,9 +21,9 @@ const AuthLayout = ({ children, title, subtitle, homeLink = "/", type = "student
             <div className="hidden lg:flex lg:w-[45%] xl:w-[40%] relative bg-neutral-900 overflow-hidden border-r border-white/5">
                 {/* Advanced Mesh Gradient */}
                 <div className="absolute inset-0 bg-[#0a0a0a]" />
-                <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-blue-600/20 rounded-full blur-[120px] animate-pulse" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-emerald-600/10 rounded-full blur-[100px]" />
-                <div className="absolute top-[20%] right-[10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[80px]" />
+                <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-blue-600/20 rounded blur-[120px] animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-emerald-600/10 rounded blur-[100px]" />
+                <div className="absolute top-[20%] right-[10%] w-[40%] h-[40%] bg-purple-600/10 rounded blur-[80px]" />
 
                 {/* Subtle Grid Pattern */}
                 <div
@@ -37,7 +37,7 @@ const AuthLayout = ({ children, title, subtitle, homeLink = "/", type = "student
                 <div className="relative z-10 flex flex-col justify-between w-full h-full p-12">
                     {/* Top Branding */}
                     <Link href={homeLink} className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-2xl transition-transform group-hover:scale-105">
+                        <div className="w-10 h-10 bg-white rounded-none flex items-center justify-center shadow-2xl transition-transform group-hover:scale-105">
                             <Image src="/logo.png" alt="Logo" width={28} height={28} />
                         </div>
                         <span className="text-white font-bold tracking-tight text-lg">Al Ghazali High School</span>
@@ -45,7 +45,7 @@ const AuthLayout = ({ children, title, subtitle, homeLink = "/", type = "student
 
                     {/* Center Message */}
                     <div className="max-w-md">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest mb-6">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest mb-6">
                             <Sparkles size={14} />
                             Building Tomorrow's Leaders
                         </div>
@@ -60,7 +60,7 @@ const AuthLayout = ({ children, title, subtitle, homeLink = "/", type = "student
                     {/* Bottom Info */}
                     <div className="flex items-center gap-6 text-neutral-500 text-sm">
                         <span>Est. 1994</span>
-                        <span className="w-1 h-1 rounded-full bg-neutral-700" />
+                        <span className="w-1 h-1 rounded bg-neutral-700" />
                         <span>Secure Enterprise Auth</span>
                     </div>
                 </div>
@@ -71,7 +71,7 @@ const AuthLayout = ({ children, title, subtitle, homeLink = "/", type = "student
 
                 {/* Mobile Header (Only visible on small screens) */}
                 <div className="lg:hidden flex items-center justify-between p-6 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-900 sticky top-0 z-50">
-                    <Link href={homeLink} className="w-10 h-10 bg-neutral-100 dark:bg-neutral-900 rounded-lg flex items-center justify-center">
+                    <Link href={homeLink} className="w-10 h-10 bg-neutral-100 dark:bg-neutral-900 rounded-none flex items-center justify-center">
                         <Image src="/logo.png" alt="Logo" width={24} height={24} />
                     </Link>
                     <span className="font-bold text-sm dark:text-white">Al Ghazali School</span>
@@ -95,7 +95,7 @@ const AuthLayout = ({ children, title, subtitle, homeLink = "/", type = "student
                         {/* Dynamic Heading */}
                         <div className="mb-10">
                             <div className={cn(
-                                "w-12 h-1 bg-blue-600 mb-6 rounded-full animate-in slide-in-from-left duration-700",
+                                "w-12 h-1 bg-blue-600 mb-6 rounded animate-in slide-in-from-left duration-700",
                                 type === "admin" ? "bg-indigo-600" : "bg-emerald-600"
                             )} />
                             <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-3 tracking-tight">
@@ -108,7 +108,7 @@ const AuthLayout = ({ children, title, subtitle, homeLink = "/", type = "student
 
                         {/* Form Specific Background Decoration */}
                         <div className="relative group">
-                            <div className="absolute inset-[-20px] bg-neutral-50 dark:bg-neutral-900/50 rounded-[2rem] -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            <div className="absolute inset-[-20px] bg-neutral-50 dark:bg-neutral-900/50 rounded -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                             {children}
                         </div>
 

@@ -1,11 +1,13 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { toast } from "sonner";
 import { client } from '@/sanity/lib/client'
 import { getAllStudentsQuery } from '@/sanity/lib/queries'
 import type { Student } from '@/types/student'
-import { RotateCw } from 'lucide-react'
+import { RotateCw, ChevronLeft, Save, Trash2, Search } from 'lucide-react'
+import { useSession } from '@/context/SessionContext'
+import { useAuth } from '@/hooks/use-auth'
 
 const classes = ['KG', '1', '2', '3', '4', '5', '6', '7', '8', 'SSCI', 'SSCII']
 
@@ -22,7 +24,16 @@ type Entry = {
   remarks: string
 }
 
-const AdminResult = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
+const AdminResult = ({ 
+  onLoadingChange,
+  genderFilter
+}: { 
+  onLoadingChange?: (loading: boolean) => void,
+  genderFilter?: "male" | "female"
+}) => {
+  const { selectedSession } = useSession()
+  const { user } = useAuth()
+  
   const [className, setClassName] = useState('')
   const [examTitle, setExamTitle] = useState('')
   const [subjectsCount, setSubjectsCount] = useState<number>(0)
@@ -41,11 +52,15 @@ const AdminResult = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
   // Marks state: studentId -> number[]
   const [marksMap, setMarksMap] = useState<Record<string, (number | null)[]>>({})
 
-  // Load classes available in Sanity (unique admissionFor values)
+  // Load classes available in Sanity (unique admissionFor values, session-aware)
   useEffect(() => {
     const loadClasses = async () => {
+      if (!selectedSession) return
       try {
-        const list = await client.fetch("*[_type == 'student' && defined(admissionFor)].admissionFor")
+        const list = await client.fetch(
+          "*[_type == 'student' && defined(admissionFor) && session == $session].admissionFor",
+          { session: selectedSession }
+        )
         const unique = Array.from(new Set((Array.isArray(list) ? list : []).map((v: any) => String(v))))
         // Sort using existing order fallback
         const order = (c: string) => {
@@ -59,57 +74,92 @@ const AdminResult = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
       } catch { }
     }
     loadClasses()
-  }, [])
+  }, [selectedSession])
 
   // Load students when class and step is table
   useEffect(() => {
     const load = async () => {
-      if (step !== 'table' || !className) return
+      if (step !== 'table' || !className || !selectedSession) return
       setLoading(true); onLoadingChange?.(true)
       try {
-        const data: Student[] = await client.fetch(getAllStudentsQuery)
-        const filtered = (Array.isArray(data) ? data : []).filter(s => (s.admissionFor || '') === className)
-        // sort by rollNumber numeric
-        const num = (v: string) => { const n = parseInt((v || '').replace(/[^0-9]/g, ''), 10); return isNaN(n) ? Number.POSITIVE_INFINITY : n }
-        filtered.sort((a, b) => num(a.rollNumber) - num(b.rollNumber))
+        // Fetch students for the class and session, and gender if filtered
+        let query = `*[_type == "student" && admissionFor == $className && session == $session`
+        if (genderFilter) query += ` && gender == $gender`
+        query += `] | order(rollNumber asc)`
+        
+        const data: Student[] = await client.fetch(query, { 
+          className, 
+          session: selectedSession,
+          gender: genderFilter 
+        })
+        
+        const filtered = Array.isArray(data) ? data : []
         setStudents(filtered)
+        
         // init marks map if empty
         const init: Record<string, (number | null)[]> = {}
-        for (const s of filtered) { init[s._id || s.grNumber] = Array.from({ length: subjects.length }, () => null) }
+        for (const s of filtered) { 
+          init[s._id || s.grNumber] = Array.from({ length: subjects.length }, () => null) 
+        }
         setMarksMap(prev => Object.keys(prev).length ? prev : init)
+      } catch (err) {
+        console.error("Failed to load students:", err)
       } finally { setLoading(false); onLoadingChange?.(false) }
     }
     load()
-  }, [step, className, subjects.length, onLoadingChange])
+  }, [step, className, subjects.length, onLoadingChange, selectedSession, genderFilter])
 
   // Load existing saved results for given class and examTitle (when in table step)
   useEffect(() => {
     const loadExisting = async () => {
-      if (step !== 'table' || !className || !examTitle.trim()) { setExistingResults([]); return }
+      if (step !== 'table' || !className || !examTitle.trim() || !selectedSession) { 
+        setExistingResults([]); return 
+      }
       try {
-        const docs = await client.fetch(
-          `*[_type == "result" && className == $cls && examTitle == $title]{
-            _id, studentName, fatherName, rollNumber, grNumber, className, subjects, marks, percentage, grade, remarks, createdAt
-          } | order(studentName asc)`,
-          { cls: className, title: examTitle.trim() }
-        )
-        setExistingResults(Array.isArray(docs) ? docs : [])
+        const url = new URL('/api/exam-results', window.location.origin)
+        url.searchParams.set('className', className)
+        url.searchParams.set('examTitle', examTitle.trim())
+        url.searchParams.set('session', selectedSession)
+        if (genderFilter) url.searchParams.set('gender', genderFilter)
+        
+        const res = await fetch(url.toString())
+        const j = await res.json()
+        if (j?.ok && j.data?.students) {
+          setExistingResults(j.data.students)
+          // Hydrate marksMap if results exist
+          const newMarks: Record<string, (number | null)[]> = {}
+          j.data.students.forEach((sr: any) => {
+            const sid = sr.student?._id || sr.grNumber
+            if (sid) newMarks[sid] = sr.marks
+          })
+          if (Object.keys(newMarks).length > 0) {
+            setMarksMap(prev => ({ ...prev, ...newMarks }))
+          }
+        } else {
+          setExistingResults([])
+        }
       } catch { setExistingResults([]) }
     }
     loadExisting()
-  }, [step, className, examTitle])
+  }, [step, className, examTitle, selectedSession, genderFilter])
 
-  // Load all exam titles (optionally filter by selected class)
+  // Load all exam titles for the session (optionally filter by selected class)
   useEffect(() => {
     const loadTitles = async () => {
+      if (!selectedSession) return
       try {
-        const docs = await client.fetch(`*[_type == "result"${className ? ' && className == $cls' : ''}][]{ examTitle }`, className ? { cls: className } : {})
-        const uniq = Array.from(new Set((Array.isArray(docs) ? docs : []).map((d: any) => String(d?.examTitle || '')).filter(Boolean)))
-        setExamTitles(uniq)
+        const url = new URL('/api/exam-results', window.location.origin)
+        url.searchParams.set('list', 'titles')
+        if (className) url.searchParams.set('className', className)
+        url.searchParams.set('session', selectedSession)
+        
+        const res = await fetch(url.toString())
+        const j = await res.json()
+        if (j?.ok) setExamTitles(j.titles || [])
       } catch { setExamTitles([]) }
     }
     loadTitles()
-  }, [className])
+  }, [className, selectedSession])
 
   const canContinue = useMemo(() => {
     if (!className) return false
@@ -177,33 +227,58 @@ const AdminResult = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
     }))
   }
 
-  const handleSave = async () => {
-    if (!subjects.length || students.length === 0) return
+  const handleSave = async (studentToSave?: Entry) => {
+    if (!subjects.length || !selectedSession) return
     setSaving(true)
     try {
-      const payload = {
-        className,
-        examTitle: examTitle.trim(),
-        maxMarksPerSubject,
-        minPassPercentage,
-        subjects,
-        entries: entries.map(e => ({
-          studentId: e.studentId,
-          studentName: e.studentName,
-          fatherName: e.fatherName,
-          rollNumber: e.rollNumber,
-          grNumber: e.grNumber,
-          className: e.className,
-          marks: e.marks.map(m => m == null ? 0 : Number(m)),
-          percentage: e.percentage,
-          grade: e.grade,
-          remarks: e.remarks,
-        }))
+      const token = await user?.getIdToken()
+      // If studentToSave is provided, we save just that one, else save all non-empty ones
+      const targetEntries = studentToSave ? [studentToSave] : entries.filter(e => e.marks.some(m => m !== null))
+      
+      if (targetEntries.length === 0) {
+        toast.error("No marks entered to save")
+        return
       }
-      const res = await fetch('/api/results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`)
-      toast.success('Results saved successfully')
+
+      for (const entry of targetEntries) {
+        const payload = {
+          studentId: entry.studentId,
+          className,
+          examTitle: examTitle.trim(),
+          maxMarksPerSubject,
+          minPassPercentage,
+          minMarksPerSubject: 0, // Default or add field if needed
+          subjects,
+          marks: entry.marks.map(m => m === null ? 0 : Number(m)),
+          studentName: entry.studentName,
+          fatherName: entry.fatherName,
+          rollNumber: entry.rollNumber,
+          grNumber: entry.grNumber,
+          session: selectedSession
+        }
+
+        const res = await fetch('/api/exam-results', { 
+          method: 'POST', 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }, 
+          body: JSON.stringify(payload) 
+        })
+        const j = await res.json()
+        if (!res.ok || !j?.ok) throw new Error(j?.error || `Failed to save for ${entry.studentName}`)
+      }
+
+      toast.success(targetEntries.length > 1 ? 'All results saved' : 'Result saved')
+      
+      // Refresh existing results
+      const url = new URL('/api/exam-results', window.location.origin)
+      url.searchParams.set('className', className)
+      url.searchParams.set('examTitle', examTitle.trim())
+      url.searchParams.set('session', selectedSession)
+      const fresh = await fetch(url.toString()).then(r => r.json())
+      if (fresh?.ok && fresh.data?.students) setExistingResults(fresh.data.students)
+
     } catch (e: any) {
       toast.error(`Save failed: ${e?.message || e}`)
     } finally {
@@ -249,13 +324,31 @@ const AdminResult = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
       )}
 
       {step === 'table' && (
-        <div className="bg-white rounded-2xl shadow p-4 sm:p-6 overflow-auto">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm text-gray-700">Class: <span className="font-semibold">{className}</span> • Exam: <span className="font-semibold">{examTitle}</span> • Subjects: {subjects.join(', ')}</div>
+        <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden">
+          <div className="p-4 sm:p-6 border-b border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-neutral-50/50">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Exam Mode</span>
+                <span className="text-xs font-medium text-neutral-500">{selectedSession}</span>
+              </div>
+              <h3 className="text-lg font-bold text-neutral-900">{examTitle}</h3>
+              <p className="text-sm text-neutral-500">Class {className} • {subjects.length} Subjects</p>
+            </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => { setStep('setup') }} className="px-3 py-2 border rounded">Back</button>
-              <button onClick={() => { setStudents([]); setMarksMap({}) }} className="px-3 py-2 border rounded inline-flex items-center gap-2"><RotateCw size={16} /> Reset Marks</button>
-              <button onClick={handleSave} disabled={saving || students.length === 0 || !examTitle.trim()} className={`px-4 py-2 rounded ${saving ? 'bg-gray-300' : 'bg-emerald-600 text-white'}`}>{saving ? 'Saving...' : 'Enter'}</button>
+              <button onClick={() => setStep('setup')} className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-600 hover:bg-white border border-neutral-200 rounded-lg transition-colors shadow-sm">
+                <ChevronLeft size={16} /> Back
+              </button>
+              <button onClick={() => { setMarksMap({}); toast.info("Marks cleared locally") }} className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-600 hover:bg-white border border-neutral-200 rounded-lg transition-colors shadow-sm">
+                <RotateCw size={16} /> Clear
+              </button>
+              <button 
+                onClick={() => handleSave()} 
+                disabled={saving || students.length === 0} 
+                className="flex items-center gap-2 px-4 py-1.5 text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-200 rounded-lg transition-all shadow-sm shadow-neutral-200"
+              >
+                {saving ? <RotateCw size={16} className="animate-spin" /> : <Save size={16} />}
+                {saving ? 'Saving...' : 'Save All'}
+              </button>
             </div>
           </div>
           {loading ? (
@@ -310,23 +403,29 @@ const AdminResult = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
               </tbody>
             </table>
           )}
-          <div className="mt-3 flex items-center gap-2">
+          <div className="p-4 border-t border-neutral-100 bg-neutral-50/30">
             <button
               onClick={async () => {
-                if (!examTitle.trim() || !className) return toast.error('Select class and exam title')
-                if (!confirm(`Delete all results for "${examTitle}" in class "${className}"?`)) return
+                if (!examTitle.trim() || !className || !selectedSession) return toast.error('Selection incomplete')
+                if (!confirm(`Delete all results for "${examTitle}" in class "${className}" for session "${selectedSession}"?`)) return
                 try {
-                  const res = await fetch(`/api/results?className=${encodeURIComponent(className)}&examTitle=${encodeURIComponent(examTitle)}`, { method: 'DELETE' })
-                  const j = await res.json().catch(() => ({}))
+                  const token = await user?.getIdToken()
+                  const res = await fetch(`/api/exam-results?className=${encodeURIComponent(className)}&examTitle=${encodeURIComponent(examTitle)}&session=${encodeURIComponent(selectedSession)}`, { 
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  })
+                  const j = await res.json()
                   if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`)
                   setExistingResults([])
-                  toast.success('Deleted')
+                  toast.success('Results deleted successfully')
                 } catch (e: any) {
                   toast.error(`Delete failed: ${e?.message || e}`)
                 }
               }}
-              className="px-3 py-2 border border-red-300 text-red-700 rounded"
-            >Delete All (This Exam)</button>
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 border border-red-100 rounded-lg transition-colors"
+            >
+              <Trash2 size={14} /> Delete Entire Exam Set
+            </button>
           </div>
           {/* Existing saved results for this Exam Title */}
           {!!existingResults.length && (
@@ -378,28 +477,36 @@ const AdminResult = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
                 <button
                   key={title}
                   onClick={async () => {
-                    if (!className) { toast.error('Please select a Class first'); return }
+                    if (!className || !selectedSession) { toast.error('Please select a Class first'); return }
                     try {
-                      // Fetch saved config for this exam to hydrate subjects/max/min
-                      const cfg = await client.fetch(
-                        `*[_type == "result" && className == $cls && examTitle == $title][0]{ subjects, maxMarksPerSubject, minPassPercentage }`,
-                        { cls: className, title }
-                      )
-                      const subs: string[] = Array.isArray(cfg?.subjects) ? cfg.subjects : []
-                      if (subs.length > 0) {
-                        setSubjects(subs)
-                        setSubjectsCount(subs.length)
+                      const url = new URL('/api/exam-results', window.location.origin)
+                      url.searchParams.set('className', className)
+                      url.searchParams.set('examTitle', title)
+                      url.searchParams.set('session', selectedSession)
+                      
+                      const res = await fetch(url.toString())
+                      const j = await res.json()
+                      if (j?.ok && j.data) {
+                        const cfg = j.data
+                        const subs: string[] = Array.isArray(cfg?.subjects) ? cfg.subjects : []
+                        if (subs.length > 0) {
+                          setSubjects(subs)
+                          setSubjectsCount(subs.length)
+                        }
+                        if (cfg?.maxMarksPerSubject) setMaxMarksPerSubject(Number(cfg.maxMarksPerSubject))
+                        if (cfg?.minPassPercentage != null) setMinPassPercentage(Number(cfg.minPassPercentage))
+                        setExamTitle(title)
+                        setStep('table')
+                      } else {
+                        setExamTitle(title)
+                        setStep('table')
                       }
-                      if (cfg?.maxMarksPerSubject) setMaxMarksPerSubject(Number(cfg.maxMarksPerSubject))
-                      if (cfg?.minPassPercentage != null) setMinPassPercentage(Number(cfg.minPassPercentage))
-                      setExamTitle(title)
-                      setStep('table')
                     } catch {
                       setExamTitle(title)
                       setStep('table')
                     }
                   }}
-                  className="px-3 py-1.5 border rounded hover:bg-gray-50 text-sm"
+                  className="px-3 py-1.5 border border-neutral-200 rounded-lg hover:bg-neutral-50 text-sm font-medium text-neutral-700 transition-colors"
                 >
                   {title}
                 </button>
@@ -426,49 +533,27 @@ const AdminResult = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
             >Delete All (This Exam)</button>
           </div>
           {/* Danger Zone: Delete ALL results in schema */}
-          <div className="mt-6 border-t pt-4">
-            <div className="text-sm font-semibold text-red-700 mb-2">Danger Zone</div>
+          <div className="mt-6 border-t border-neutral-100 pt-4">
+            <div className="text-xs font-bold uppercase tracking-wider text-red-600 mb-2">Danger Zone</div>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={async () => {
-                  if (!confirm('Delete ALL Manual Results (result) from Sanity? This cannot be undone.')) return
+                  if (!confirm('Delete ALL Results for this session? This cannot be undone.')) return
                   try {
-                    const res = await fetch('/api/results?all=true&type=manual', { method: 'DELETE' })
-                    const j = await res.json().catch(() => ({}))
+                    const token = await user?.getIdToken()
+                    const res = await fetch(`/api/exam-results?all=true&session=${encodeURIComponent(selectedSession || '')}`, { 
+                      method: 'DELETE',
+                      headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                    const j = await res.json()
                     if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`)
                     setExistingResults([])
                     setExamTitles([])
-                    toast.success('All manual results deleted')
+                    toast.success('All results for session deleted')
                   } catch (e: any) { toast.error(`Delete failed: ${e?.message || e}`) }
                 }}
-                className="px-3 py-2 border border-red-300 text-red-700 rounded"
-              >Delete ALL Manual Results</button>
-              <button
-                onClick={async () => {
-                  if (!confirm('Delete ALL Quiz Results (quizResult) from Sanity? This cannot be undone.')) return
-                  try {
-                    const res = await fetch('/api/results?all=true&type=quiz', { method: 'DELETE' })
-                    const j = await res.json().catch(() => ({}))
-                    if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`)
-                    toast.success('All quiz results deleted')
-                  } catch (e: any) { toast.error(`Delete failed: ${e?.message || e}`) }
-                }}
-                className="px-3 py-2 border border-red-300 text-red-700 rounded"
-              >Delete ALL Quiz Results</button>
-              <button
-                onClick={async () => {
-                  if (!confirm('Delete ALL Results (manual + quiz) from Sanity? This cannot be undone.')) return
-                  try {
-                    const res = await fetch('/api/results?all=true&type=both', { method: 'DELETE' })
-                    const j = await res.json().catch(() => ({}))
-                    if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`)
-                    setExistingResults([])
-                    setExamTitles([])
-                    toast.success('All results deleted (manual + quiz)')
-                  } catch (e: any) { toast.error(`Delete failed: ${e?.message || e}`) }
-                }}
-                className="px-3 py-2 border border-red-300 text-red-700 rounded"
-              >Delete ALL Results</button>
+                className="px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 border border-red-100 rounded-lg transition-colors"
+              >Delete ALL Session Results</button>
             </div>
           </div>
         </div>

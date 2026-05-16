@@ -15,6 +15,7 @@ interface AdminUserData {
     displayName: string;
     role: string;
     gender?: string;
+    photoURL?: string | null;
 }
 
 export const syncAdminToSanity = async (userData: AdminUserData) => {
@@ -33,6 +34,7 @@ export const syncAdminToSanity = async (userData: AdminUserData) => {
             displayName: userData.displayName,
             role: userData.role,
             gender: userData.gender || null,
+            photoURL: userData.photoURL || null,
             lastSyncedAt: new Date().toISOString(),
         });
 
@@ -49,12 +51,24 @@ export const patchAdminInSanity = async (uid: string, updates: Partial<AdminUser
             return;
         }
 
-        const patch = sanityWriteClient.patch(`admin-${uid}`);
+        const docId = `admin-${uid}`;
+        
+        // Ensure document exists first
+        await sanityWriteClient.createIfNotExists({
+            _id: docId,
+            _type: 'adminUser',
+            uid: uid,
+            displayName: updates.displayName || 'Admin',
+            role: updates.role || 'admin',
+        });
+
+        const patch = sanityWriteClient.patch(docId);
 
         if (updates.email) patch.set({ email: updates.email });
         if (updates.displayName) patch.set({ displayName: updates.displayName });
         if (updates.role) patch.set({ role: updates.role });
         if (updates.gender) patch.set({ gender: updates.gender });
+        if (updates.photoURL !== undefined) patch.set({ photoURL: updates.photoURL });
 
         patch.set({ lastSyncedAt: new Date().toISOString() });
 

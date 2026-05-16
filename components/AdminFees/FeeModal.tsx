@@ -70,13 +70,6 @@ const FeeModal = ({
         }
     }, [isOpen, initialData, MONTHS]);
 
-    if (!isOpen) return null;
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSubmit(form);
-    };
-
     const filteredStudents = students.filter(s => {
         const q = studentQuickFilter.trim().toLowerCase();
         if (!q) return true;
@@ -85,9 +78,31 @@ const FeeModal = ({
             (s.fullName || '').toLowerCase().includes(q);
     }).slice(0, 50); // Limit results for performance
 
+    // Auto-select logic
+    useEffect(() => {
+        const query = studentQuickFilter.trim().toLowerCase();
+        if (query !== '' && filteredStudents.length === 1) {
+            const student = filteredStudents[0];
+            if (form.studentId !== student._id) {
+                setForm(prev => ({
+                    ...prev,
+                    studentId: student._id || '',
+                    className: student.admissionFor || prev.className
+                }));
+            }
+        }
+    }, [studentQuickFilter, filteredStudents, form.studentId]);
+
+    if (!isOpen) return null;
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSubmit(form);
+    };
+
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-2xl border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in duration-200">
+            <div className="bg-white dark:bg-zinc-900 rounded-none shadow-2xl w-full max-w-2xl border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in duration-200">
 
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-zinc-100 dark:border-zinc-800">
@@ -99,7 +114,7 @@ const FeeModal = ({
                             {initialData ? 'Update details for this transaction.' : 'Record a new fee payment from a student.'}
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors text-zinc-500">
+                    <button onClick={onClose} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors text-zinc-500">
                         <X size={20} />
                     </button>
                 </div>
@@ -115,7 +130,7 @@ const FeeModal = ({
                                 value={studentQuickFilter}
                                 onChange={e => setStudentQuickFilter(e.target.value)}
                                 placeholder="Search by Name, Roll, or GR..."
-                                className="w-full px-3 py-2 text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 mb-2 focus:ring-2 focus:ring-zinc-900 outline-none"
+                                className="w-full px-3 py-2 text-sm border border-zinc-200 dark:border-zinc-800 rounded-none bg-zinc-50 dark:bg-zinc-900/50 mb-2 focus:ring-2 focus:ring-zinc-900 outline-none"
                             />
                             <select
                                 value={form.studentId}
@@ -127,7 +142,7 @@ const FeeModal = ({
                                         className: s?.admissionFor || prev.className
                                     }));
                                 }}
-                                className="w-full px-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none"
+                                className="w-full px-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-none bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none"
                                 required
                             >
                                 <option value="">Select Student</option>
@@ -145,7 +160,7 @@ const FeeModal = ({
                             <input
                                 value={form.className}
                                 onChange={e => setForm({ ...form, className: e.target.value })}
-                                className="w-full px-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none font-medium"
+                                className="w-full px-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-none bg-zinc-50 dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none font-medium"
                                 required
                             />
                         </div>
@@ -157,7 +172,7 @@ const FeeModal = ({
                                 <select
                                     value={form.month}
                                     onChange={e => setForm({ ...form, month: e.target.value })}
-                                    className="w-full px-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none"
+                                    className="w-full px-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-none bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none"
                                     required
                                 >
                                     {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
@@ -166,7 +181,7 @@ const FeeModal = ({
                                     type="number"
                                     value={form.year}
                                     onChange={e => setForm({ ...form, year: Number(e.target.value) })}
-                                    className="w-full px-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none"
+                                    className="w-full px-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-none bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none"
                                     required
                                 />
                             </div>
@@ -181,7 +196,7 @@ const FeeModal = ({
                                     type="number"
                                     value={form.amountPaid}
                                     onChange={e => setForm({ ...form, amountPaid: e.target.value === '' ? '' : Number(e.target.value) })}
-                                    className="w-full pl-9 pr-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none font-mono font-medium"
+                                    className="w-full pl-9 pr-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-none bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none font-mono font-medium"
                                     required
                                 />
                             </div>
@@ -192,7 +207,7 @@ const FeeModal = ({
                                         key={amt}
                                         type="button"
                                         onClick={() => setForm(prev => ({ ...prev, amountPaid: amt }))}
-                                        className="px-2 py-1 text-xs border border-zinc-200 rounded-md hover:bg-zinc-50 text-zinc-600"
+                                        className="px-2 py-1 text-xs border border-zinc-200 rounded-none hover:bg-zinc-50 text-zinc-600"
                                     >
                                         {amt}
                                     </button>
@@ -209,7 +224,7 @@ const FeeModal = ({
                                     type="date"
                                     value={form.paidDate}
                                     onChange={e => setForm({ ...form, paidDate: e.target.value })}
-                                    className="w-full pl-9 pr-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none font-mono"
+                                    className="w-full pl-9 pr-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-none bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none font-mono"
                                     required
                                 />
                             </div>
@@ -224,7 +239,7 @@ const FeeModal = ({
                                     <input
                                         value={form.receiptNumber}
                                         onChange={e => setForm({ ...form, receiptNumber: e.target.value })}
-                                        className="w-full pl-9 pr-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none font-mono"
+                                        className="w-full pl-9 pr-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-none bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none font-mono"
                                         required
                                     />
                                 </div>
@@ -236,7 +251,7 @@ const FeeModal = ({
                                     <input
                                         value={form.bookNumber}
                                         onChange={e => setForm({ ...form, bookNumber: e.target.value })}
-                                        className="w-full pl-9 pr-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none font-mono"
+                                        className="w-full pl-9 pr-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-none bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none font-mono"
                                         required
                                     />
                                 </div>
@@ -250,7 +265,7 @@ const FeeModal = ({
                                 value={form.notes}
                                 onChange={e => setForm({ ...form, notes: e.target.value })}
                                 rows={2}
-                                className="w-full px-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none resize-none"
+                                className="w-full px-3 py-2.5 text-sm border border-zinc-200 dark:border-zinc-800 rounded-none bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-zinc-900 outline-none resize-none"
                             />
                         </div>
 
@@ -260,14 +275,14 @@ const FeeModal = ({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-sm"
+                            className="px-5 py-2.5 rounded-none border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-sm"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="px-5 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold hover:opacity-90 transition-all shadow-sm active:scale-95 flex items-center gap-2 text-sm disabled:opacity-50"
+                            className="px-5 py-2.5 rounded-none bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold hover:opacity-90 transition-all shadow-sm active:scale-95 flex items-center gap-2 text-sm disabled:opacity-50"
                         >
                             {submitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                             <span>Save Transaction</span>

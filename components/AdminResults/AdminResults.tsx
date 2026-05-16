@@ -168,7 +168,7 @@ const AdminResults = ({ genderFilter, onLoadingChange }: { genderFilter?: string
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ id: quiz._id, resultsAnnounced: newVal })
+        body: JSON.stringify({ id: quiz._id, resultsAnnounced: newVal, session: selectedSession })
       });
 
       setQuizzes(prev => prev.map(q => q._id === quiz._id ? { ...q, resultsAnnounced: newVal } : q));

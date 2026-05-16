@@ -11,7 +11,7 @@ import {
   MobileNavMenu,
   MobileNavLink,
 } from "@/components/ui/resizable-navbar";
-import { useState, createElement } from "react";
+import { useState, createElement, useMemo } from "react";
 import { Home, ReceiptText, GraduationCap, KeyRound, Smartphone, FileDown, Library } from "lucide-react";
 import { useMobileNav, PortalNavConfig } from "@/contexts/MobileNavContext";
 import { useAuth } from "@/context/AuthContext";
@@ -49,6 +49,7 @@ export default function NavBar() {
       icon: <KeyRound size={16} />,
     },
   ];
+
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -104,9 +105,9 @@ export default function NavBar() {
                 variant="primary"
                 href={process.env.NEXT_PUBLIC_MOBILE_APP_URL || "#"}
                 target="_blank"
+                className="h-10 w-10 !p-0 bg-black text-white border-black hover:bg-neutral-800"
               >
-                <Smartphone size={16} className="mr-2" />
-                Get Mobile App
+                <Smartphone size={18} />
               </NavbarButton>
             )}
           </div>
@@ -117,11 +118,13 @@ export default function NavBar() {
           <MobileNavHeader>
             <NavbarLogo />
             <div className="flex items-center gap-3">
-              {user && !loading && (
+              {loading ? (
+                <div className="h-10 w-10 bg-neutral-100 dark:bg-neutral-800 animate-pulse rounded-none" />
+              ) : user ? (
                 <div className="flex items-center">
                   <AdminDropdown user={user} role={role} logout={logout} />
                 </div>
-              )}
+              ) : null}
               <MobileNavToggle
                 isOpen={isMobileMenuOpen}
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -164,12 +167,11 @@ export default function NavBar() {
               </MobileNavLink>
             ))}
 
-            {/* CTA Buttons Grid */}
             <div className="col-span-2 mt-4 flex flex-col gap-2 border-t border-neutral-100 dark:border-neutral-800 pt-4">
               <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-1">
                 Downloads
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 <NavbarButton
                   onClick={closeMobileMenu}
                   variant="primary"
@@ -179,16 +181,6 @@ export default function NavBar() {
                 >
                   <FileDown size={18} className="mb-0.5" />
                   <span className="text-[10px] uppercase tracking-tight">Admission Form</span>
-                </NavbarButton>
-                <NavbarButton
-                  onClick={closeMobileMenu}
-                  variant="secondary"
-                  className="w-full h-12 flex-col !rounded-none !py-2"
-                  href={process.env.NEXT_PUBLIC_MOBILE_APP_URL || "#"}
-                  target="_blank"
-                >
-                  <Smartphone size={18} className="mb-0.5" />
-                  <span className="text-[10px] uppercase tracking-tight">Mobile App</span>
                 </NavbarButton>
               </div>
             </div>

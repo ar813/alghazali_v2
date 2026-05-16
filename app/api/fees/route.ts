@@ -34,9 +34,12 @@ export async function GET(req: NextRequest) {
     const sessionParam = filters.session || null;
 
     // Build GROQ filter
-    const sessionFilter = `($session == null || session == $session || (!defined(session) && $session == "2025-2026"))`
-    const where: string[] = ['_type == "fee"', sessionFilter]
-    const params: Record<string, any> = { session: sessionParam }
+    const sessionFilter = `(session == $session || (!defined(session) && $session == "2025-2026"))`
+    const gender = searchParams.get('gender') || null;
+    const genderFilterStr = `($gender == null || student->gender == $gender)`
+
+    const where: string[] = ['_type == "fee"', sessionFilter, genderFilterStr]
+    const params: Record<string, any> = { session: sessionParam, gender }
 
     if (filters.studentId) { where.push('student._ref == $studentId'); params.studentId = filters.studentId }
     if (filters.className) { where.push('className == $className'); params.className = filters.className }
@@ -85,6 +88,16 @@ export async function POST(req: NextRequest) {
     }
     const body = await req.json()
     const { studentId, className, month, year, amountPaid = 0, paidDate, receiptNumber, bookNumber, feeType = 'monthly', notes, session } = body || {}
+    
+    // STRICT SESSION ENFORCEMENT
+    if (!session) {
+      console.error('[API/Fees/POST] CRITICAL: Session missing in request body!', body);
+      return NextResponse.json({ ok: false, error: 'Session context is required for all fee entries.' }, { status: 400 })
+    }
+
+    const targetSession = session
+
+
     // Determine fee type without mutation
     const effectiveFeeType: 'monthly' | 'admission' = month === 'admission' ? 'admission' : feeType
 
@@ -97,24 +110,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Upsert unique
-    // For admission fees: only one record per student (per session? usually admission is once per session)
-    // For monthly fees: unique by (studentId + month + year + session)
-    // If session is provided, use it. If not, match documents with no session or default.
-    // Simplifying: If session is passed, we filter by it. existing check:
-
-    // Construct query for existing check
-    // Actually, session awareness in upsert is tricky if old data has no session.
-    // If we are creating new fee WITH session, we should check for existing fee WITH SAME session. (or no session if default)
-    // But `AdminFees` now sends `session`.
-    // So we match exact session.
-
-    // If session is not provided (should be required now?), default to '2025-2026'?
-    const targetSession = session || '2025-2026'; // Fallback
-
     const existing = await serverClient.fetch(
       effectiveFeeType === 'admission'
-        ? `*[_type == "fee" && student._ref == $studentId && feeType == 'admission' && session == $targetSession][0]{ _id }`
-        : `*[_type == "fee" && student._ref == $studentId && month == $month && year == $year && session == $targetSession][0]{ _id }`,
+        ? `*[_type == "fee" && student._ref == $studentId && feeType == 'admission' && (session == $targetSession || (!defined(session) && $targetSession == "2025-2026"))][0]{ _id }`
+        : `*[_type == "fee" && student._ref == $studentId && month == $month && year == $year && (session == $targetSession || (!defined(session) && $targetSession == "2025-2026"))][0]{ _id }`,
       effectiveFeeType === 'admission'
         ? { studentId, targetSession }
         : { studentId, month, year, targetSession }
@@ -202,8 +201,14 @@ export async function DELETE(req: NextRequest) {
         q: searchParams.get('q') || undefined,
       }
 
-      const where: string[] = ['_type == "fee"']
-      const params: Record<string, any> = {}
+      const session = searchParams.get('session') || null
+      const gender = searchParams.get('gender') || null
+
+      const sessionFilter = `(session == $session || (!defined(session) && $session == "2025-2026"))`
+      const genderFilterStr = `($gender == null || student->gender == $gender)`
+
+      const where: string[] = ['_type == "fee"', sessionFilter, genderFilterStr]
+      const params: Record<string, any> = { session, gender }
       if (filters.className) { where.push('className == $className'); params.className = filters.className }
       if (filters.month) { where.push('month == $month'); params.month = filters.month }
       if (typeof filters.year === 'number' && !Number.isNaN(filters.year)) { where.push('year == $year'); params.year = filters.year }

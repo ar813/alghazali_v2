@@ -265,7 +265,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
         <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-neutral-100 dark:border-neutral-900 bg-white dark:bg-neutral-950">
             <div className="flex flex-col sm:flex-row items-center gap-4 sm:justify-between">
                 <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-none">
                         <GraduationCap className="w-5 h-5 text-blue-600" />
                     </div>
                     <div>
@@ -278,7 +278,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                     {[1, 2, 3, 4].map((s) => (
                         <React.Fragment key={s}>
                             <div className="flex flex-col items-center gap-1 group relative">
-                                <div className={`flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[10px] font-bold transition-all border-2 ${
+                                <div className={`flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded text-[10px] font-bold transition-all border-2 ${
                                     step >= s 
                                     ? 'bg-neutral-900 border-neutral-900 text-white dark:bg-white dark:border-white dark:text-black shadow-sm' 
                                     : 'bg-transparent border-neutral-100 dark:border-neutral-800 text-neutral-300'
@@ -289,12 +289,12 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                                     {s === 1 ? 'Session' : s === 2 ? 'Selection' : s === 3 ? 'Refine' : 'Review'}
                                 </span>
                             </div>
-                            {s < 4 && <div className={`flex-1 h-[1px] sm:h-[1.5px] rounded-full mx-1 sm:mx-2 ${step > s ? 'bg-neutral-900 dark:bg-white' : 'bg-neutral-50 dark:bg-neutral-900'}`} />}
+                            {s < 4 && <div className={`flex-1 h-[1px] sm:h-[1.5px] rounded mx-1 sm:mx-2 ${step > s ? 'bg-neutral-900 dark:bg-white' : 'bg-neutral-50 dark:bg-neutral-900'}`} />}
                         </React.Fragment>
                     ))}
                 </div>
 
-                <button onClick={onClose} className="hidden sm:block p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-full transition-colors text-neutral-400">
+                <button onClick={onClose} className="hidden sm:block p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-400">
                     <X className="w-4 h-4" />
                 </button>
             </div>
@@ -313,7 +313,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                     <button
                         key={s}
                         onClick={() => setSourceSession(s)}
-                        className={`p-4 sm:p-5 rounded-xl border text-left transition-all ${
+                        className={`p-4 sm:p-5 rounded-none border text-left transition-all ${
                             sourceSession === s 
                             ? 'border-neutral-900 bg-neutral-50 dark:border-white dark:bg-neutral-900 shadow-sm ring-1 ring-neutral-900 dark:ring-white' 
                             : 'border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-900'
@@ -331,11 +331,11 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                     onClick={() => setMode('bulk')}
-                    className={`flex gap-4 p-4 rounded-xl border text-left transition-all ${
+                    className={`flex gap-4 p-4 rounded-none border text-left transition-all ${
                         mode === 'bulk' ? 'border-blue-500 bg-blue-50/20 shadow-sm' : 'border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50'
                     }`}
                 >
-                    <div className={`p-2.5 rounded-lg ${mode === 'bulk' ? 'bg-blue-600 text-white' : 'bg-neutral-100 dark:bg-neutral-900 text-neutral-400'}`}>
+                    <div className={`p-2.5 rounded-none ${mode === 'bulk' ? 'bg-blue-600 text-white' : 'bg-neutral-100 dark:bg-neutral-900 text-neutral-400'}`}>
                         <Users size={18} />
                     </div>
                     <div>
@@ -345,11 +345,11 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                 </button>
                 <button
                     onClick={() => setMode('manual')}
-                    className={`flex gap-4 p-4 rounded-xl border text-left transition-all ${
+                    className={`flex gap-4 p-4 rounded-none border text-left transition-all ${
                         mode === 'manual' ? 'border-purple-500 bg-purple-50/20 shadow-sm' : 'border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50'
                     }`}
                 >
-                    <div className={`p-2.5 rounded-lg ${mode === 'manual' ? 'bg-purple-600 text-white' : 'bg-neutral-100 dark:bg-neutral-900 text-neutral-400'}`}>
+                    <div className={`p-2.5 rounded-none ${mode === 'manual' ? 'bg-purple-600 text-white' : 'bg-neutral-100 dark:bg-neutral-900 text-neutral-400'}`}>
                         <UserCheck size={18} />
                     </div>
                     <div>
@@ -363,7 +363,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                 <button
                     disabled={!sourceSession}
                     onClick={() => setStep(2)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-neutral-900 dark:bg-white text-white dark:text-black px-10 py-3 rounded-xl font-medium shadow-lg hover:opacity-90 active:scale-95 disabled:opacity-30 transition-all"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-neutral-900 dark:bg-white text-white dark:text-black px-10 py-3 rounded-none font-medium shadow-lg hover:opacity-90 active:scale-95 disabled:opacity-30 transition-all"
                 >
                     Continue <ChevronRight size={16} />
                 </button>
@@ -381,13 +381,13 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                 <div className="flex gap-2">
                     <button 
                         onClick={() => setSelectedStudentIds(new Set(filteredStudents.map(s => s._id)))}
-                        className="text-[10px] font-bold uppercase tracking-widest text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-all"
+                        className="text-[10px] font-bold uppercase tracking-widest text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-none transition-all"
                     >
                         Select All
                     </button>
                     <button 
                         onClick={() => setSelectedStudentIds(new Set())}
-                        className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 hover:bg-neutral-50 px-3 py-1.5 rounded-lg transition-all"
+                        className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 hover:bg-neutral-50 px-3 py-1.5 rounded-none transition-all"
                     >
                         Reset
                     </button>
@@ -403,13 +403,13 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                         placeholder="Search Name, GR, or Roll No..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 text-sm border border-neutral-100 dark:border-neutral-900 rounded-xl bg-neutral-50/30 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        className="w-full pl-10 pr-4 py-2 text-sm border border-neutral-100 dark:border-neutral-900 rounded-none bg-neutral-50/30 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     />
                 </div>
                 <select 
                     value={filterClass}
                     onChange={(e) => setFilterClass(e.target.value)}
-                    className="text-xs font-medium border border-neutral-100 dark:border-neutral-800 rounded-xl px-3 py-2 bg-white dark:bg-neutral-900"
+                    className="text-xs font-medium border border-neutral-100 dark:border-neutral-800 rounded-none px-3 py-2 bg-white dark:bg-neutral-900"
                 >
                     <option value="All">All Classes</option>
                     {CLASS_ORDER.map(cls => <option key={cls} value={cls}>{cls}</option>)}
@@ -417,7 +417,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                 <select 
                     value={filterGender}
                     onChange={(e) => setFilterGender(e.target.value)}
-                    className="text-xs font-medium border border-neutral-100 dark:border-neutral-800 rounded-xl px-3 py-2 bg-white dark:bg-neutral-900"
+                    className="text-xs font-medium border border-neutral-100 dark:border-neutral-800 rounded-none px-3 py-2 bg-white dark:bg-neutral-900"
                 >
                     <option value="All">All Genders</option>
                     <option value="male">Male</option>
@@ -426,7 +426,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
             </div>
 
             {/* Sorting Header */}
-            <div className="flex items-center gap-4 px-4 py-2 bg-neutral-50/50 dark:bg-neutral-900/50 rounded-lg">
+            <div className="flex items-center gap-4 px-4 py-2 bg-neutral-50/50 dark:bg-neutral-900/50 rounded-none">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mr-auto">Sort By:</span>
                 {[
                     { key: 'name', label: 'Name' },
@@ -447,7 +447,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                 ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto border border-neutral-100 dark:border-neutral-900 rounded-xl bg-white dark:bg-neutral-950 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto border border-neutral-100 dark:border-neutral-900 rounded-none bg-white dark:bg-neutral-950 custom-scrollbar">
                 {isLoadingStudents ? (
                     <div className="flex flex-col items-center justify-center h-full gap-2">
                         <Loader2 className="animate-spin text-neutral-200" />
@@ -459,13 +459,13 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                             <div 
                                 key={s._id}
                                 onClick={() => toggleStudentSelection(s._id)}
-                                className={`group flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                                className={`group flex items-center gap-3 p-3 rounded-none border transition-all cursor-pointer ${
                                     selectedStudentIds.has(s._id) 
                                     ? 'border-blue-500 bg-blue-50/10 dark:bg-blue-900/5' 
                                     : 'border-transparent hover:bg-neutral-50 dark:hover:bg-neutral-900'
                                 }`}
                             >
-                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                                <div className={`w-4 h-4 rounded-none border flex items-center justify-center transition-all ${
                                     selectedStudentIds.has(s._id) ? 'bg-blue-600 border-blue-600' : 'border-neutral-200 dark:border-neutral-800'
                                 }`}>
                                     {selectedStudentIds.has(s._id) && <CheckCircle2 className="w-3 h-3 text-white" />}
@@ -476,7 +476,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                                         Roll: {s.rollNumber || 'N/A'} • GR: {s.grNumber}
                                     </p>
                                 </div>
-                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 font-bold">
+                                <span className="text-[9px] px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 font-bold">
                                     {s.admissionFor}
                                 </span>
                             </div>
@@ -490,7 +490,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                 <button
                     onClick={handlePrepareRefinement}
                     disabled={selectedStudentIds.size === 0}
-                    className="bg-neutral-900 dark:bg-white text-white dark:text-black px-8 py-2.5 rounded-xl text-sm font-medium shadow-md disabled:opacity-30"
+                    className="bg-neutral-900 dark:bg-white text-white dark:text-black px-8 py-2.5 rounded-none text-sm font-medium shadow-md disabled:opacity-30"
                 >
                     Continue to Refine
                 </button>
@@ -513,12 +513,12 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                             placeholder="Starting Roll No..."
                             value={bulkRollPrefix}
                             onChange={(e) => setBulkRollPrefix(e.target.value)}
-                            className="pl-9 pr-3 py-2 text-xs border border-neutral-100 dark:border-neutral-900 rounded-lg w-40 bg-neutral-50/50"
+                            className="pl-9 pr-3 py-2 text-xs border border-neutral-100 dark:border-neutral-900 rounded-none w-40 bg-neutral-50/50"
                         />
                     </div>
                     <button 
                         onClick={applyBulkRollNumbers}
-                        className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm"
+                        className="p-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-all shadow-sm"
                         title="Apply sequence to all"
                     >
                         <RefreshCcw size={16} />
@@ -526,7 +526,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-x-auto border border-neutral-100 dark:border-neutral-900 rounded-xl overflow-y-auto bg-white dark:bg-neutral-950 custom-scrollbar shadow-sm">
+            <div className="flex-1 overflow-x-auto border border-neutral-100 dark:border-neutral-900 rounded-none overflow-y-auto bg-white dark:bg-neutral-950 custom-scrollbar shadow-sm">
                 <table className="w-full text-left border-collapse min-w-[600px]">
                     <thead className="bg-neutral-50/50 dark:bg-neutral-900/50 sticky top-0 z-10 border-b border-neutral-100 dark:border-neutral-900">
                         <tr>
@@ -583,7 +583,7 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
                 <button onClick={() => setStep(2)} className="text-xs font-medium text-neutral-400 hover:text-neutral-900">Back</button>
                 <button
                     onClick={() => setStep(4)}
-                    className="bg-neutral-900 dark:bg-white text-white dark:text-black px-8 py-2.5 rounded-xl text-sm font-medium shadow-md"
+                    className="bg-neutral-900 dark:bg-white text-white dark:text-black px-8 py-2.5 rounded-none text-sm font-medium shadow-md"
                 >
                     Review Final
                 </button>
@@ -593,14 +593,14 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
 
     const renderSuccess = () => (
         <div className="flex flex-col items-center justify-center text-center p-8 h-full space-y-6">
-            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center text-green-600 shadow-inner">
+            <div className="w-20 h-20 bg-green-50 rounded flex items-center justify-center text-green-600 shadow-inner">
                 <CheckCircle2 size={40} />
             </div>
             <div className="space-y-2">
                 <h3 className="text-2xl font-medium text-neutral-900">Success!</h3>
                 <p className="text-sm text-neutral-500">Students have been promoted to the {selectedSession} session.</p>
             </div>
-            <button onClick={onClose} className="bg-neutral-900 text-white px-10 py-3 rounded-xl font-medium">Close Wizard</button>
+            <button onClick={onClose} className="bg-neutral-900 text-white px-10 py-3 rounded-none font-medium">Close Wizard</button>
         </div>
     );
 
@@ -609,14 +609,14 @@ const StudentPromotion = ({ onClose, onSuccess }: StudentPromotionProps) => {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-neutral-950 w-full max-w-7xl h-[95vh] sm:h-[90vh] rounded-xl sm:rounded-2xl border border-neutral-100 dark:border-neutral-900 shadow-2xl overflow-hidden flex flex-col relative"
+                className="bg-white dark:bg-neutral-950 w-full max-w-7xl h-[95vh] sm:h-[90vh] rounded-none sm:rounded-none border border-neutral-100 dark:border-neutral-900 shadow-2xl overflow-hidden flex flex-col relative"
             >
                 {step < 5 && <ProgressHeader />}
                 <div className="flex-1 overflow-y-auto">
                     {step === 1 && renderStep1()}
                     {step === 2 && (mode === 'bulk' ? <div>Bulk Step...</div> : renderStep2Manual())}
                     {step === 3 && renderStep3Refine()}
-                    {step === 4 && <div className="p-8 text-center"><Zap className="mx-auto mb-4 text-blue-600" /><h3 className="text-xl font-medium">Ready to Execute?</h3><button onClick={handleExecute} className="mt-4 bg-neutral-900 text-white px-10 py-3 rounded-xl">{isExecuting ? 'Processing...' : 'Execute Promotion'}</button></div>}
+                    {step === 4 && <div className="p-8 text-center"><Zap className="mx-auto mb-4 text-blue-600" /><h3 className="text-xl font-medium">Ready to Execute?</h3><button onClick={handleExecute} className="mt-4 bg-neutral-900 text-white px-10 py-3 rounded-none">{isExecuting ? 'Processing...' : 'Execute Promotion'}</button></div>}
                     {step === 5 && renderSuccess()}
                 </div>
             </motion.div>

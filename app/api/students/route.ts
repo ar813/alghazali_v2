@@ -14,13 +14,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'Server is missing SANITY_API_WRITE_TOKEN' }, { status: 500 })
   }
   const body = await request.json()
-  console.log('API POST /api/students body:', body)
+  const { session, ...rest } = body || {}
+
+  // STRICT SESSION ENFORCEMENT
+  if (!session) {
+    console.error('[API/Students/POST] CRITICAL: Session missing in request body!', body);
+    return NextResponse.json({ ok: false, error: 'Academic session is required for all new student registrations.' }, { status: 400 })
+  }
+
   try {
+
     // minimal validation: must have fullName and admissionFor at least
-    if (!body?.fullName || !body?.admissionFor) {
+    if (!rest.fullName || !rest.admissionFor) {
       return NextResponse.json({ ok: false, error: 'fullName and admissionFor are required' }, { status: 400 })
     }
-    const doc = await serverClient.create({ _type: 'student', ...body })
+    const doc = await serverClient.create({ _type: 'student', ...rest, session })
     return NextResponse.json({ ok: true, doc })
   } catch (err) {
     console.error('API POST error', err)
@@ -36,7 +44,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, error: 'Server is missing SANITY_API_WRITE_TOKEN' }, { status: 500 })
   }
   const { id, patch } = await request.json()
-  console.log('API PATCH /api/students', id, patch)
+
   try {
     if (!id || !patch || typeof patch !== 'object') {
       return NextResponse.json({ ok: false, error: 'id and patch are required' }, { status: 400 })
@@ -63,14 +71,14 @@ export async function DELETE(request: Request) {
   const session = url.searchParams.get('session')?.trim() || url.searchParams.get('year')?.trim() // Handle session or year
 
   // Session Filter Logic
-  const sessionFilter = `($session == null || session == $session || (!defined(session) && $session == "2025-2026"))`
+  const sessionFilter = `(session == $session || (!defined(session) && $session == "2025-2026"))`
 
   // If bulk delete is requested, delete all students via GROQ query
   if (all) {
     if (!session) {
       return NextResponse.json({ ok: false, error: 'Session is required for bulk delete' }, { status: 400 })
     }
-    console.log('API DELETE /api/students (bulk delete all)', session)
+
     try {
       // Collect all student IDs in the session
       const query = `*[_type == "student" && ${sessionFilter}]._id`
@@ -103,7 +111,7 @@ export async function DELETE(request: Request) {
     if (!session) {
       return NextResponse.json({ ok: false, error: 'Session is required for delete by class' }, { status: 400 })
     }
-    console.log('API DELETE /api/students (by class):', className, session)
+
     try {
       // Guard against accidental wildcards
       if (className.toLowerCase() === 'all') {
@@ -157,7 +165,7 @@ export async function DELETE(request: Request) {
     id = url.searchParams.get('id');
   }
 
-  console.log('API DELETE /api/students', id)
+
   try {
     if (!id) {
       return NextResponse.json({ ok: false, error: 'id is required' }, { status: 400 })

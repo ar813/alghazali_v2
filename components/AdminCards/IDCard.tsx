@@ -86,15 +86,22 @@ const IDCard = ({ student: s, side, issueDate, expiryDate }: IDCardProps) => {
 
     if (side === 'front') {
         return (
-            <div className="w-[189px] h-[321px] bg-white rounded-xl shadow-lg relative overflow-hidden ring-1 ring-zinc-900/5 mx-auto select-none group hover:scale-[1.02] transition-transform duration-300">
+            <div className="w-[189px] h-[321px] bg-white rounded-none shadow-lg relative overflow-hidden ring-1 ring-zinc-900/5 mx-auto select-none group hover:scale-[1.02] transition-transform duration-300">
                 <div className="absolute inset-0">
                     <NextImage src={frontBg} alt="front" fill className="object-cover" priority />
                 </div>
                 <div className="relative z-10 p-3 h-full flex flex-col">
                     <div className="mt-[46px] mr-2 flex-1 flex flex-col items-center justify-start">
-                        <div className="w-[103px] h-[103px] rounded-full overflow-hidden ring-4 ring-white/30 shadow-inner bg-zinc-100">
+                        <div className="w-[103px] h-[103px] relative rounded-full overflow-hidden ring-4 ring-white/30 shadow-inner bg-zinc-100 shrink-0">
                             {s.photoUrl ? (
-                                <NextImage src={s.photoUrl} alt={s.fullName} fill className="object-cover" />
+                                <NextImage 
+                                    src={s.photoUrl} 
+                                    alt={s.fullName} 
+                                    width={103} 
+                                    height={103} 
+                                    className="w-full h-full object-cover"
+                                    unoptimized
+                                />
                             ) : null}
                         </div>
 
@@ -104,7 +111,7 @@ const IDCard = ({ student: s, side, issueDate, expiryDate }: IDCardProps) => {
                             <div className="mt-[3.5px] text-[9px] font-bold text-white truncate drop-shadow-sm font-mono tracking-wider">LEVEL-{intToRoman(s.admissionFor)}</div>
                         </div>
 
-                        <div className="mt-[15px] ml-24 w-full text-[9px] text-[#231f55] font-medium">
+                        <div className="mt-[15px] ml-[84px] w-full text-[9px] text-[#231f55] font-medium">
                             <div className="mb-[2px]">
                                 <span className="tracking-widest">{s.rollNumber || ""}</span>
                             </div>
@@ -122,7 +129,7 @@ const IDCard = ({ student: s, side, issueDate, expiryDate }: IDCardProps) => {
     }
 
     return (
-        <div className="w-[189px] h-[321px] bg-white rounded-xl shadow-lg relative overflow-hidden ring-1 ring-zinc-900/5 mx-auto select-none group hover:scale-[1.02] transition-transform duration-300">
+        <div className="w-[189px] h-[321px] bg-white rounded-none shadow-lg relative overflow-hidden ring-1 ring-zinc-900/5 mx-auto select-none group hover:scale-[1.02] transition-transform duration-300">
             <div className="absolute inset-0">
                 <NextImage src={backBg} alt="back" fill className="object-cover" priority />
             </div>

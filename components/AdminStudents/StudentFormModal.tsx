@@ -104,7 +104,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-4xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+                className="bg-white w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-4xl sm:rounded-none shadow-2xl flex flex-col overflow-hidden"
             >
 
                 {/* Header */}
@@ -113,7 +113,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                         <h2 className="text-xl font-bold text-gray-800">{initialData ? 'Edit Student' : 'Add New Student'}</h2>
                         <p className="text-sm text-gray-500">Please fill in the details below. Fields in tabs must be completed.</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors">
+                    <button onClick={onClose} className="p-2 hover:bg-red-50 hover:text-red-600 rounded transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -158,9 +158,9 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                             {activeTab === 'personal' && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     {/* Photo Section */}
-                                    <div className="sm:col-span-2 flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50 hover:border-blue-300 transition-colors">
+                                    <div className="sm:col-span-2 flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-none bg-gray-50/50 hover:border-blue-300 transition-colors">
                                         <div className="relative group cursor-pointer" onClick={() => { if (photoPreview) { setCropSource(photoPreview); setShowCropper(true); } else { document.getElementById('photo-upload')?.click(); } }}>
-                                            <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 border-4 border-white shadow-md">
+                                            <div className="w-24 h-24 rounded overflow-hidden bg-gray-200 border-4 border-white shadow-md">
                                                 {photoPreview ? (
                                                     <Image src={photoPreview} alt="Preview" fill className="object-cover" unoptimized />
 
@@ -170,7 +170,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-medium">
+                                            <div className="absolute inset-0 bg-black/40 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-medium">
                                                 Change
                                             </div>
                                         </div>
@@ -186,27 +186,27 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
 
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">Full Name</label>
-                                        <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.fullName} onChange={(e) => handleChange('fullName', e.target.value)} />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">Father's Name</label>
-                                        <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.fatherName} onChange={(e) => handleChange('fatherName', e.target.value)} />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">Date of Birth</label>
-                                        <input type="date" className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input type="date" className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.dob} onChange={(e) => handleChange('dob', e.target.value)} />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">CNIC / B-Form</label>
-                                        <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.cnicOrBform} onChange={(e) => handleChange('cnicOrBform', e.target.value)} />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">Father CNIC</label>
-                                        <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.fatherCnic} onChange={(e) => handleChange('fatherCnic', e.target.value)} />
                                     </div>
                                     <div className="space-y-1">
@@ -250,19 +250,19 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">Admission For Class</label>
-                                        <select className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
+                                        <select className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
                                             value={formData.admissionFor} onChange={(e) => handleChange('admissionFor', e.target.value)}>
                                             {['KG', '1', '2', '3', '4', '5', '6', '7', '8', 'SSCI', 'SSCII'].map(c => (<option key={c} value={c}>{c}</option>))}
                                         </select>
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">Roll Number</label>
-                                        <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.rollNumber} onChange={(e) => handleChange('rollNumber', e.target.value)} />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">GR Number</label>
-                                        <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.grNumber} onChange={(e) => handleChange('grNumber', e.target.value)} />
                                     </div>
                                     <div className="col-span-full border-t pt-4 mt-2">
@@ -270,7 +270,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                             <div className="space-y-1">
                                                 <label className="text-sm font-medium text-gray-700">Former Education Class</label>
-                                                <select className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
+                                                <select className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
                                                     value={formData.formerEducation} onChange={(e) => handleChange('formerEducation', e.target.value)}>
                                                     <option value="">Select</option>
                                                     {['KG', '1', '2', '3', '4', '5', '6', '7', '8', 'SSCI', 'SSCII'].map(c => (<option key={c} value={c}>{c}</option>))}
@@ -278,12 +278,12 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-sm font-medium text-gray-700">Previous Institute</label>
-                                                <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                                <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                                     value={formData.previousInstitute} onChange={(e) => handleChange('previousInstitute', e.target.value)} />
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-sm font-medium text-gray-700">Last Exam Percentage</label>
-                                                <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                                <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                                     value={formData.lastExamPercentage} onChange={(e) => handleChange('lastExamPercentage', e.target.value)} />
                                             </div>
                                         </div>
@@ -296,12 +296,12 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">Email Address</label>
-                                        <input type="email" className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input type="email" className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.email} onChange={(e) => handleChange('email', e.target.value)} />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">Phone Number</label>
-                                        <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.phoneNumber} onChange={(e) => {
                                                 const val = e.target.value.replace(/[^0-9]/g, '');
                                                 handleChange('phoneNumber', val.startsWith('0') ? val : '0' + val);
@@ -309,7 +309,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">WhatsApp Number</label>
-                                        <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.whatsappNumber} onChange={(e) => {
                                                 const val = e.target.value.replace(/[^0-9]/g, '');
                                                 handleChange('whatsappNumber', val.startsWith('0') ? val : '0' + val);
@@ -317,7 +317,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                                     </div>
                                     <div className="space-y-1 sm:col-span-2">
                                         <label className="text-sm font-medium text-gray-700">Residential Address</label>
-                                        <textarea rows={3} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
+                                        <textarea rows={3} className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
                                             value={formData.address} onChange={(e) => handleChange('address', e.target.value)} />
                                     </div>
                                 </div>
@@ -328,12 +328,12 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">Guardian Name</label>
-                                        <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.guardianName} onChange={(e) => handleChange('guardianName', e.target.value)} />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">Guardian Contact</label>
-                                        <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.guardianContact} onChange={(e) => {
                                                 const val = e.target.value.replace(/[^0-9]/g, '');
                                                 handleChange('guardianContact', val.startsWith('0') ? val : '0' + val);
@@ -341,7 +341,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">Guardian CNIC</label>
-                                        <input className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        <input className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                             value={formData.guardianCnic} onChange={(e) => handleChange('guardianCnic', e.target.value)} />
                                     </div>
                                     <div className="space-y-1 sm:col-span-2">
@@ -367,15 +367,15 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                         * All changes are saved directly to database
                     </div>
                     <div className="flex w-full sm:w-auto gap-3">
-                        <button onClick={onClose} className="flex-1 sm:flex-none px-4 py-2 sm:px-6 sm:py-2.5 rounded-lg border border-gray-200 text-gray-700 font-medium hover:bg-gray-100 transition-colors text-sm sm:text-base">
+                        <button onClick={onClose} className="flex-1 sm:flex-none px-4 py-2 sm:px-6 sm:py-2.5 rounded-none border border-gray-200 text-gray-700 font-medium hover:bg-gray-100 transition-colors text-sm sm:text-base">
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={loading}
-                            className="flex-1 sm:flex-none px-4 py-2 sm:px-6 sm:py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed text-sm sm:text-base"
+                            className="flex-1 sm:flex-none px-4 py-2 sm:px-6 sm:py-2.5 rounded-none bg-primary text-white font-medium hover:bg-primary/90 shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed text-sm sm:text-base"
                         >
-                            {loading ? <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Upload size={18} />}
+                            {loading ? <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded animate-spin" /> : <Upload size={18} />}
 
                             {initialData ? 'Update Student' : 'Save Student'}
                         </button>
@@ -388,7 +388,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                     {/* Backdrop - click does NOT close */}
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-                    <div className="relative z-10 w-full max-w-md bg-white dark:bg-neutral-900 rounded-xl overflow-hidden shadow-2xl">
+                    <div className="relative z-10 w-full max-w-md bg-white dark:bg-neutral-900 rounded-none overflow-hidden shadow-2xl">
                         <ImageCropper
                             src={cropSource}
                             onCropped={handleCropComplete}

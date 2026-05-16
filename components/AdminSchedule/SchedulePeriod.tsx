@@ -17,6 +17,7 @@ const getSubjectColor = (subject: string) => {
     if (s.includes('urd')) return 'bg-orange-100/50 text-orange-700 border-orange-200/50 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-900/30';
     if (s.includes('his') || s.includes('geo')) return 'bg-amber-100/50 text-amber-700 border-amber-200/50 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-900/30';
     if (s.includes('phy') || s.includes('spo')) return 'bg-rose-100/50 text-rose-700 border-rose-200/50 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-900/30';
+    if (s.includes('break')) return 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-500/20 dark:text-amber-200 dark:border-amber-800 animate-pulse';
 
     // Default for others
     return 'bg-zinc-100/80 text-zinc-600 border-zinc-200/50 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-800';

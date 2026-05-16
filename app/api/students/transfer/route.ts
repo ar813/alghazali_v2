@@ -58,10 +58,7 @@ export async function POST(req: NextRequest) {
                 const toClass = mapping[fromClass];
                 if (!toClass) continue;
 
-                const query = `*[_type == "student" && 
-                    (session == $source || (!defined(session) && $source == "2025-2026")) && 
-                    admissionFor == $cls
-                ]{
+                const query = `*[_type == "student" && (session == $source || (!defined(session) && $source == "2025-2026")) && admissionFor == $cls]{
                     _id, _type, fullName, fatherName, fatherCnic, dob, rollNumber, grNumber, 
                     gender, nationality, medicalCondition, cnicOrBform, email, phoneNumber, 
                     whatsappNumber, address, formerEducation, previousInstitute, lastExamPercentage,

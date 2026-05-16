@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Access Denied: Super Admin privileges required." }, { status: 403 });
         }
 
-        const { email, password, displayName, role } = await req.json();
+        const { email, password, displayName, role, gender, photoURL } = await req.json();
 
         if (!email || !password) {
             return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
@@ -42,6 +42,8 @@ export async function POST(req: NextRequest) {
             email,
             displayName: displayName || "Admin",
             role: role || "admin",
+            gender: gender || null,
+            photoURL: photoURL || null,
             createdAt: new Date().toISOString(),
         });
 
@@ -51,6 +53,8 @@ export async function POST(req: NextRequest) {
             email,
             displayName: displayName || "Admin",
             role: role || "admin",
+            gender: gender || null,
+            photoURL: photoURL || null,
         });
 
         return NextResponse.json({
@@ -109,7 +113,7 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: "Access Denied: Super Admin privileges required." }, { status: 403 });
         }
 
-        const { uid, email, password, displayName, role } = await req.json();
+        const { uid, email, password, displayName, role, gender, photoURL } = await req.json();
 
         if (!uid) {
             return NextResponse.json({ error: "User UID is required." }, { status: 400 });
@@ -140,6 +144,8 @@ export async function PUT(req: NextRequest) {
         if (email) firestoreUpdate.email = email;
         if (displayName) firestoreUpdate.displayName = displayName;
         if (role) firestoreUpdate.role = role;
+        if (gender !== undefined) firestoreUpdate.gender = gender;
+        if (photoURL !== undefined) firestoreUpdate.photoURL = photoURL;
 
         if (Object.keys(firestoreUpdate).length > 0) {
             await dbAdmin.collection("users").doc(uid).update(firestoreUpdate);
@@ -150,6 +156,8 @@ export async function PUT(req: NextRequest) {
         if (email) sanityUpdates.email = email;
         if (displayName) sanityUpdates.displayName = displayName;
         if (role) sanityUpdates.role = role;
+        if (gender !== undefined) sanityUpdates.gender = gender;
+        if (photoURL !== undefined) sanityUpdates.photoURL = photoURL;
 
         if (Object.keys(sanityUpdates).length > 0) {
             await patchAdminInSanity(uid, sanityUpdates);

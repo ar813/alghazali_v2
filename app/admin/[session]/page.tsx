@@ -20,7 +20,7 @@ const SessionPage = ({ params }: { params: { session: string } }) => {
 
 const SessionContent = ({ sessionName }: { sessionName: string }) => {
     const { setSelectedSession, selectedSession } = useSession();
-    const { user, loading } = useAuth();
+    const { user, loading, gender, isSuperAdmin } = useAuth();
     const [childLoading, setChildLoading] = useState(true);
 
     // Force the session context to match the URL
@@ -35,7 +35,7 @@ const SessionContent = ({ sessionName }: { sessionName: string }) => {
         return (
             <div className="min-h-screen flex items-center justify-center bg-white dark:bg-neutral-950">
                 <div className="text-center">
-                    <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded animate-spin mx-auto mb-4"></div>
                 </div>
             </div>
         );
@@ -53,12 +53,19 @@ const SessionContent = ({ sessionName }: { sessionName: string }) => {
         );
     }
 
+    // Determine gender filter for regular admins. Super admins see all.
+    const activeGenderFilter = !isSuperAdmin && gender ? gender : undefined;
+
     return (
         <div className="relative pt-20">
             <NavBar />
             {/* Top non-blocking progress bar for child loading */}
             <TopLoader loading={childLoading} />
-            <AdminPortal onLoadingChange={setChildLoading} childLoading={childLoading} />
+            <AdminPortal 
+                onLoadingChange={setChildLoading} 
+                childLoading={childLoading} 
+                gender={activeGenderFilter} 
+            />
         </div>
     );
 };
