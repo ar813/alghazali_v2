@@ -64,12 +64,12 @@ const SecurityConfirmationModal: React.FC<SecurityConfirmationModalProps> = ({
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100"
+                    className="relative w-full max-w-md bg-white rounded-none shadow-2xl overflow-hidden border border-gray-100"
                 >
                     {/* Header */}
                     <div className={`px-6 py-4 border-b border-gray-100 bg-${baseColor}-50/50 flex items-center justify-between`}>
                         <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-full bg-${baseColor}-100 text-${baseColor}-600`}>
+                            <div className={`p-2 rounded bg-${baseColor}-100 text-${baseColor}-600`}>
                                 <AlertTriangle size={20} className={variant === 'danger' ? "stroke-red-600" : "stroke-amber-600"} />
                             </div>
                             <h3 className={`text-lg font-bold text-gray-900`}>{title}</h3>
@@ -87,7 +87,7 @@ const SecurityConfirmationModal: React.FC<SecurityConfirmationModalProps> = ({
 
                         <div className="space-y-4">
                             <label className="block text-sm font-medium text-gray-700">
-                                To confirm, type <span className="font-bold select-all bg-gray-100 px-1 rounded border border-gray-200">{verificationText}</span> below:
+                                To confirm, type <span className="font-bold select-all bg-gray-100 px-1 rounded-none border border-gray-200">{verificationText}</span> below:
                             </label>
 
                             <div>
@@ -100,7 +100,7 @@ const SecurityConfirmationModal: React.FC<SecurityConfirmationModalProps> = ({
                                     }}
                                     onPaste={(e) => e.preventDefault()} // Force typing for security
                                     placeholder={verificationText}
-                                    className={`w-full px-4 py-3 rounded-xl border-2 outline-none transition-all font-medium ${error
+                                    className={`w-full px-4 py-3 rounded-none border-2 outline-none transition-all font-medium ${error
                                         ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-500/10'
                                         : 'border-gray-200 focus:border-gray-900 focus:ring-4 focus:ring-gray-100'
                                         }`}
@@ -122,16 +122,16 @@ const SecurityConfirmationModal: React.FC<SecurityConfirmationModalProps> = ({
                     <div className="px-6 py-4 bg-gray-50 flex gap-3 justify-end">
                         <button
                             onClick={onClose}
-                            className="px-5 py-2.5 rounded-xl text-gray-700 font-medium hover:bg-gray-200 transition-colors text-sm"
+                            className="px-5 py-2.5 rounded-none text-gray-700 font-medium hover:bg-gray-200 transition-colors text-sm"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleConfirm}
                             disabled={loading || inputValue !== verificationText}
-                            className={`px-5 py-2.5 rounded-xl text-white font-medium shadow-lg shadow-gray-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center gap-2 ${activeColor}`}
+                            className={`px-5 py-2.5 rounded-none text-white font-medium shadow-lg shadow-gray-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center gap-2 ${activeColor}`}
                         >
-                            {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded animate-spin" />}
                             {loading ? 'Processing...' : 'Confirm Action'}
                         </button>
                     </div>

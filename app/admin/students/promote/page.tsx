@@ -260,7 +260,7 @@ export default function StudentPromotionPage() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => router.push(`/admin/${encodeURIComponent(selectedSession || "")}`)}
-                        className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors text-neutral-500"
+                        className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-none transition-colors text-neutral-500"
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </button>
@@ -294,7 +294,7 @@ export default function StudentPromotionPage() {
                                 onClick={() => isClickable && !isExecuting && setStep(s.id)}
                                 className={`flex items-center gap-3 ${isClickable ? 'cursor-pointer group/step' : 'cursor-not-allowed'}`}
                             >
-                                <div className={`flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-bold transition-all ${
+                                <div className={`flex items-center justify-center w-6 h-6 rounded-none text-[11px] font-bold transition-all ${
                                     step === s.id
                                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
                                         : step > s.id || isClickable
@@ -319,7 +319,7 @@ export default function StudentPromotionPage() {
                 </div>
 
                 <div className="flex md:hidden items-center gap-2">
-                    <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-md">Step {step}/4</span>
+                    <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-none">Step {step}/4</span>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -327,7 +327,7 @@ export default function StudentPromotionPage() {
                         <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Target Session</p>
                         <p className="text-sm font-semibold text-blue-600">{selectedSession}</p>
                     </div>
-                    <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600">
+                    <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-none flex items-center justify-center text-blue-600">
                         <GraduationCap className="w-6 h-6" />
                     </div>
                 </div>
@@ -355,10 +355,10 @@ export default function StudentPromotionPage() {
 
                             <div className="grid gap-6">
                                 {/* Source Session Card */}
-                                <section className="bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full -mr-16 -mt-16" />
+                                <section className="bg-white dark:bg-neutral-900 p-6 rounded-none border border-neutral-200 dark:border-neutral-800 shadow-sm relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded -mr-16 -mt-16" />
                                     <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-4 flex items-center gap-2 relative">
-                                        <div className="w-1.5 h-4 bg-blue-600 rounded-full" />
+                                        <div className="w-1.5 h-4 bg-blue-600 rounded" />
                                         Step 1: Select Source Session
                                     </h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative">
@@ -366,7 +366,7 @@ export default function StudentPromotionPage() {
                                             <button
                                                 key={s}
                                                 onClick={() => setSourceSession(s)}
-                                                className={`p-4 rounded-xl border-2 text-left transition-all relative group ${sourceSession === s
+                                                className={`p-4 rounded-none border-2 text-left transition-all relative group ${sourceSession === s
                                                         ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/10'
                                                         : 'bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-neutral-200'
                                                     }`}
@@ -378,7 +378,7 @@ export default function StudentPromotionPage() {
                                                             Previous Cycle
                                                         </span>
                                                     </div>
-                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${sourceSession === s ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-300 group-hover:text-neutral-400'}`}>
+                                                    <div className={`w-8 h-8 rounded-none flex items-center justify-center transition-all ${sourceSession === s ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-300 group-hover:text-neutral-400'}`}>
                                                         <RefreshCcw size={16} className={sourceSession === s ? 'animate-spin-slow' : ''} />
                                                     </div>
                                                 </div>
@@ -388,21 +388,21 @@ export default function StudentPromotionPage() {
                                 </section>
 
                                 {/* Strategy Card */}
-                                <section className="bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm relative overflow-hidden">
-                                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full -ml-16 -mb-16" />
+                                <section className="bg-white dark:bg-neutral-900 p-6 rounded-none border border-neutral-200 dark:border-neutral-800 shadow-sm relative overflow-hidden">
+                                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded -ml-16 -mb-16" />
                                     <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-4 flex items-center gap-2 relative">
-                                        <div className="w-1.5 h-4 bg-blue-600 rounded-full" />
+                                        <div className="w-1.5 h-4 bg-blue-600 rounded" />
                                         Step 2: Choose Strategy
                                     </h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
                                         <button
                                             onClick={() => setMode('bulk')}
-                                            className={`flex items-start gap-4 p-5 rounded-2xl border-2 transition-all text-left group ${mode === 'bulk'
+                                            className={`flex items-start gap-4 p-5 rounded-none border-2 transition-all text-left group ${mode === 'bulk'
                                                     ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/10'
                                                     : 'bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-neutral-200'
                                                 }`}
                                         >
-                                            <div className={`p-3.5 rounded-xl transition-all ${mode === 'bulk' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 group-hover:scale-110'}`}>
+                                            <div className={`p-3.5 rounded-none transition-all ${mode === 'bulk' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 group-hover:scale-110'}`}>
                                                 <Users size={24} />
                                             </div>
                                             <div>
@@ -413,12 +413,12 @@ export default function StudentPromotionPage() {
 
                                         <button
                                             onClick={() => setMode('manual')}
-                                            className={`flex items-start gap-4 p-4 rounded-xl border-2 transition-all text-left group ${mode === 'manual'
+                                            className={`flex items-start gap-4 p-4 rounded-none border-2 transition-all text-left group ${mode === 'manual'
                                                     ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/10'
                                                     : 'bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-neutral-200'
                                                 }`}
                                         >
-                                            <div className={`p-3 rounded-lg transition-all ${mode === 'manual' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 group-hover:scale-105'}`}>
+                                            <div className={`p-3 rounded-none transition-all ${mode === 'manual' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 group-hover:scale-105'}`}>
                                                 <UserCheck size={20} />
                                             </div>
                                             <div>
@@ -434,7 +434,7 @@ export default function StudentPromotionPage() {
                                 <button
                                     disabled={!sourceSession}
                                     onClick={() => setStep(2)}
-                                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
+                                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-none font-bold text-xs transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
                                 >
                                     Proceed to Selection
                                     <ChevronRight size={16} />
@@ -458,9 +458,9 @@ export default function StudentPromotionPage() {
                         >
                             {mode === 'bulk' ? (
                                 <div className="space-y-6">
-                                    <div className="bg-white dark:bg-neutral-900 p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm flex items-center justify-between mb-6">
+                                    <div className="bg-white dark:bg-neutral-900 p-4 rounded-none border border-neutral-200 dark:border-neutral-800 shadow-sm flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600">
+                                            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-none text-blue-600">
                                                 <Users size={20} />
                                             </div>
                                             <div>
@@ -471,13 +471,13 @@ export default function StudentPromotionPage() {
                                         <div className="flex items-center gap-2">
                                             <button 
                                                 onClick={() => setSelectedBulkClasses(new Set(classStats.map(s => s.className)))}
-                                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-600 hover:text-white transition-all"
+                                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-none hover:bg-blue-600 hover:text-white transition-all"
                                             >
                                                 Select All
                                             </button>
                                             <button 
                                                 onClick={() => setSelectedBulkClasses(new Set())}
-                                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500 bg-neutral-100 dark:bg-neutral-800 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
+                                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500 bg-neutral-100 dark:bg-neutral-800 rounded-none hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
                                             >
                                                 Clear
                                             </button>
@@ -493,14 +493,14 @@ export default function StudentPromotionPage() {
                                                     if (next.has(cls)) next.delete(cls); else next.add(cls);
                                                     setSelectedBulkClasses(next);
                                                 }}
-                                                className={`p-4 rounded-xl border-2 transition-all cursor-pointer relative group ${
+                                                className={`p-4 rounded-none border-2 transition-all cursor-pointer relative group ${
                                                     selectedBulkClasses.has(cls)
                                                         ? 'border-blue-500 bg-blue-50/30 dark:bg-blue-900/5'
                                                         : 'bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-neutral-200'
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-3 mb-4">
-                                                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                                                    <div className={`w-5 h-5 rounded-none border-2 flex items-center justify-center transition-all ${
                                                         selectedBulkClasses.has(cls) ? 'bg-blue-600 border-blue-600 text-white' : 'border-neutral-300'
                                                     }`}>
                                                         {selectedBulkClasses.has(cls) && <Check size={12} strokeWidth={4} />}
@@ -533,21 +533,21 @@ export default function StudentPromotionPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-6 flex flex-col h-full">
-                                    <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm flex flex-col lg:flex-row gap-4 items-center justify-between">
+                                    <div className="bg-white dark:bg-neutral-900 p-4 rounded-none border border-neutral-200 dark:border-neutral-800 shadow-sm flex flex-col lg:flex-row gap-4 items-center justify-between">
                                         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                                             <div className="relative flex-1 min-w-[240px]">
                                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                                                 <input
                                                     type="text"
                                                     placeholder="Search name, GR, or roll..."
-                                                    className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 transition-all text-neutral-900 dark:text-white"
+                                                    className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border-none rounded-none text-sm font-bold focus:ring-2 focus:ring-blue-500 transition-all text-neutral-900 dark:text-white"
                                                     value={searchQuery}
                                                     onChange={(e) => setSearchQuery(e.target.value)}
                                                 />
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <select
-                                                    className="px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border-none rounded-xl text-xs font-black uppercase tracking-wider focus:ring-2 focus:ring-blue-500 text-neutral-600 dark:text-neutral-400 cursor-pointer"
+                                                    className="px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border-none rounded-none text-xs font-black uppercase tracking-wider focus:ring-2 focus:ring-blue-500 text-neutral-600 dark:text-neutral-400 cursor-pointer"
                                                     value={filterClass}
                                                     onChange={(e) => setFilterClass(e.target.value)}
                                                 >
@@ -555,7 +555,7 @@ export default function StudentPromotionPage() {
                                                     {CLASS_ORDER.map(cls => <option key={cls} value={cls}>Class {cls}</option>)}
                                                 </select>
                                                 <select
-                                                    className="px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border-none rounded-xl text-xs font-black uppercase tracking-wider focus:ring-2 focus:ring-blue-500 text-neutral-600 dark:text-neutral-400 cursor-pointer"
+                                                    className="px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border-none rounded-none text-xs font-black uppercase tracking-wider focus:ring-2 focus:ring-blue-500 text-neutral-600 dark:text-neutral-400 cursor-pointer"
                                                     value={filterGender}
                                                     onChange={(e) => setFilterGender(e.target.value)}
                                                 >
@@ -570,26 +570,26 @@ export default function StudentPromotionPage() {
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={() => setSelectedStudentIds(new Set(filteredStudents.map(s => s._id)))}
-                                                    className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-600 hover:text-white transition-all"
+                                                    className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-none hover:bg-blue-600 hover:text-white transition-all"
                                                 >
                                                     Select All
                                                 </button>
                                                 <button
                                                     onClick={() => setSelectedStudentIds(new Set())}
-                                                    className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-neutral-500 bg-neutral-100 dark:bg-neutral-800 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
+                                                    className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-neutral-500 bg-neutral-100 dark:bg-neutral-800 rounded-none hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
                                                 >
                                                     Deselect
                                                 </button>
                                             </div>
                                             <div className="h-8 w-[1px] bg-neutral-200 dark:bg-neutral-800 hidden lg:block" />
-                                            <span className="text-[11px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg border border-blue-100 dark:border-blue-800/50 uppercase tracking-widest">
+                                            <span className="text-[11px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-none border border-blue-100 dark:border-blue-800/50 uppercase tracking-widest">
                                                 {selectedStudentIds.size} Selected
                                             </span>
                                         </div>
                                     </div>
 
                                     {/* Selection Table */}
-                                    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden shadow-sm flex-1">
+                                    <div className="bg-white dark:bg-neutral-900 rounded-none border border-neutral-200 dark:border-neutral-800 overflow-hidden shadow-sm flex-1">
                                         <div className="max-h-[500px] overflow-y-auto relative">
                                             <table className="w-full text-left border-collapse">
                                                 <thead className="sticky top-0 z-20 bg-neutral-50/90 dark:bg-neutral-800/90 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800">
@@ -605,7 +605,7 @@ export default function StudentPromotionPage() {
                                                                         setSelectedStudentIds(new Set());
                                                                     }
                                                                 }}
-                                                                className="w-3.5 h-3.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                                className="w-3.5 h-3.5 rounded-none border-neutral-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                                             />
                                                         </th>
                                                         <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-neutral-400">Student Details</th>
@@ -637,12 +637,12 @@ export default function StudentPromotionPage() {
                                                                             if (next.has(s._id)) next.delete(s._id); else next.add(s._id);
                                                                             setSelectedStudentIds(next);
                                                                         }}
-                                                                        className="w-3.5 h-3.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                                                                        className="w-3.5 h-3.5 rounded-none border-neutral-300 text-blue-600 focus:ring-blue-500"
                                                                     />
                                                                 </td>
                                                                 <td className="px-4 py-3">
                                                                     <div className="flex items-center gap-2.5">
-                                                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[10px] ${isSelected ? 'bg-blue-600 text-white' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500'}`}>
+                                                                        <div className={`w-7 h-7 rounded-none flex items-center justify-center font-bold text-[10px] ${isSelected ? 'bg-blue-600 text-white' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500'}`}>
                                                                             {s.fullName[0]}
                                                                         </div>
                                                                         <p className="text-xs font-bold text-neutral-900 dark:text-white">{s.fullName}</p>
@@ -652,7 +652,7 @@ export default function StudentPromotionPage() {
                                                                     <span className="text-[11px] font-bold text-neutral-500">{s.grNumber}</span>
                                                                 </td>
                                                                 <td className="px-4 py-3">
-                                                                    <span className="px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 rounded text-[9px] font-bold text-neutral-500 uppercase tracking-wider">
+                                                                    <span className="px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-none text-[9px] font-bold text-neutral-500 uppercase tracking-wider">
                                                                         {s.admissionFor}
                                                                     </span>
                                                                 </td>
@@ -687,7 +687,7 @@ export default function StudentPromotionPage() {
                                     <button
                                         onClick={mode === 'bulk' ? () => setStep(4) : handlePrepareRefinement}
                                         disabled={(mode === 'manual' && selectedStudentIds.size === 0) || (mode === 'bulk' && selectedBulkClasses.size === 0)}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95"
+                                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-none font-bold text-xs transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95"
                                     >
                                         {mode === 'bulk' ? `Review ${selectedBulkClasses.size} Classes` : `Refine ${selectedStudentIds.size} Students`}
                                         <ChevronRight size={16} />
@@ -705,26 +705,26 @@ export default function StudentPromotionPage() {
                             exit={{ opacity: 0, x: -20 }}
                             className="space-y-6"
                         >
-                             <div className="bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+                             <div className="bg-white dark:bg-neutral-900 p-6 rounded-none border border-neutral-200 dark:border-neutral-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
                                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
                                 <div>
                                     <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Individual Refinement</h3>
                                     <p className="text-xs text-neutral-500 font-medium mt-0.5">Verify roll numbers and target class assignments.</p>
                                 </div>
-                                <div className="flex items-center gap-2 p-1.5 bg-neutral-50 dark:bg-neutral-950 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-inner w-full md:w-auto">
+                                <div className="flex items-center gap-2 p-1.5 bg-neutral-50 dark:bg-neutral-950 rounded-none border border-neutral-100 dark:border-neutral-800 shadow-inner w-full md:w-auto">
                                     <div className="relative flex-1 md:w-48">
                                         <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={14} />
                                         <input
                                             type="text"
                                             placeholder="Roll start (e.g. 101)"
-                                            className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-neutral-900 border-none rounded-xl text-xs font-black uppercase tracking-widest focus:ring-2 focus:ring-blue-500 shadow-sm"
+                                            className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-neutral-900 border-none rounded-none text-xs font-black uppercase tracking-widest focus:ring-2 focus:ring-blue-500 shadow-sm"
                                             value={bulkRollPrefix}
                                             onChange={(e) => setBulkRollPrefix(e.target.value)}
                                         />
                                     </div>
                                     <button
                                         onClick={applyBulkRollNumbers}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/30 text-[10px] font-black uppercase tracking-widest active:scale-95"
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/30 text-[10px] font-black uppercase tracking-widest active:scale-95"
                                     >
                                         <RefreshCcw size={14} />
                                         Auto-Assign
@@ -732,7 +732,7 @@ export default function StudentPromotionPage() {
                                 </div>
                             </div>
 
-                            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
+                            <div className="bg-white dark:bg-neutral-900 rounded-none border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left">
                                         <thead>
@@ -748,7 +748,7 @@ export default function StudentPromotionPage() {
                                                 <tr key={s._id} className="group hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center font-bold text-xs text-neutral-500">
+                                                            <div className="w-8 h-8 rounded-none bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center font-bold text-xs text-neutral-500">
                                                                 {s.fullName[0]}
                                                             </div>
                                                             <div>
@@ -770,7 +770,7 @@ export default function StudentPromotionPage() {
                                                                 next[idx].nextRollNumber = suggestNextRoll(s.rollNumber, s.admissionFor, e.target.value);
                                                                 setRefinedStudents(next);
                                                             }}
-                                                            className="bg-neutral-50 dark:bg-neutral-800 border-none rounded-lg px-3 py-1.5 text-xs font-bold text-blue-600 focus:ring-1 focus:ring-blue-500"
+                                                            className="bg-neutral-50 dark:bg-neutral-800 border-none rounded-none px-3 py-1.5 text-xs font-bold text-blue-600 focus:ring-1 focus:ring-blue-500"
                                                         >
                                                             {CLASS_ORDER.map(cls => <option key={cls} value={cls}>Class {cls}</option>)}
                                                         </select>
@@ -784,7 +784,7 @@ export default function StudentPromotionPage() {
                                                                 next[idx].nextRollNumber = e.target.value;
                                                                 setRefinedStudents(next);
                                                             }}
-                                                            className="w-24 bg-neutral-50 dark:bg-neutral-800 border-none rounded-lg px-3 py-1.5 text-xs font-bold focus:ring-1 focus:ring-blue-500"
+                                                            className="w-24 bg-neutral-50 dark:bg-neutral-800 border-none rounded-none px-3 py-1.5 text-xs font-bold focus:ring-1 focus:ring-blue-500"
                                                             placeholder="Roll No"
                                                         />
                                                     </td>
@@ -807,7 +807,7 @@ export default function StudentPromotionPage() {
                                     </button>
                                     <button
                                         onClick={() => setStep(4)}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 active:scale-95"
+                                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-none font-bold text-xs transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 active:scale-95"
                                     >
                                         Review Authorization
                                         <ChevronRight size={16} />
@@ -825,7 +825,7 @@ export default function StudentPromotionPage() {
                             className="max-w-2xl mx-auto space-y-8 py-6"
                         >
                             <div className="text-center space-y-4">
-                                <div className="w-24 h-24 bg-blue-600 text-white rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl shadow-blue-600/30 rotate-3 hover:rotate-0 transition-transform duration-500">
+                                <div className="w-24 h-24 bg-blue-600 text-white rounded flex items-center justify-center mx-auto shadow-2xl shadow-blue-600/30 rotate-3 hover:rotate-0 transition-transform duration-500">
                                     <Zap size={44} className={isExecuting ? "animate-pulse" : ""} />
                                 </div>
                                 <div>
@@ -835,7 +835,7 @@ export default function StudentPromotionPage() {
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm relative overflow-hidden group">
+                                <div className="bg-white dark:bg-neutral-900 p-5 rounded-none border border-neutral-200 dark:border-neutral-800 shadow-sm relative overflow-hidden group">
                                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                                         <ArrowUp className="w-10 h-10 rotate-45" />
                                     </div>
@@ -843,7 +843,7 @@ export default function StudentPromotionPage() {
                                     <p className="text-xl font-bold text-neutral-900 dark:text-white tracking-tight">{sourceSession}</p>
                                     <p className="text-[10px] font-medium text-neutral-400 mt-0.5">Source Session</p>
                                 </div>
-                                <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl border-2 border-blue-50 dark:border-blue-900 shadow-sm relative overflow-hidden group">
+                                <div className="bg-white dark:bg-neutral-900 p-5 rounded-none border-2 border-blue-50 dark:border-blue-900 shadow-sm relative overflow-hidden group">
                                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity text-blue-600">
                                         <ArrowDown className="w-10 h-10 -rotate-45" />
                                     </div>
@@ -852,10 +852,10 @@ export default function StudentPromotionPage() {
                                     <p className="text-[10px] font-medium text-blue-400 mt-0.5">Target Session</p>
                                 </div>
                                 
-                                <div className="sm:col-span-2 bg-neutral-900 dark:bg-neutral-800 p-6 rounded-3xl shadow-2xl relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-3xl rounded-full -mr-32 -mt-32" />
+                                <div className="sm:col-span-2 bg-neutral-900 dark:bg-neutral-800 p-6 rounded-none shadow-2xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-3xl rounded -mr-32 -mt-32" />
                                     <div className="relative flex items-start gap-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-blue-600/20 flex items-center justify-center shrink-0">
+                                        <div className="w-12 h-12 rounded-none bg-blue-600/20 flex items-center justify-center shrink-0">
                                             <AlertCircle className="text-blue-500" size={24} />
                                         </div>
                                         <div>
@@ -879,7 +879,7 @@ export default function StudentPromotionPage() {
                                  <button
                                      disabled={isExecuting}
                                      onClick={handleExecute}
-                                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold uppercase tracking-wider transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 group text-xs"
+                                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-none font-bold uppercase tracking-wider transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 group text-xs"
                                  >
                                      {isExecuting ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} className="group-hover:scale-110 transition-transform" />}
                                      {isExecuting ? 'Updating Records...' : 'Authorize & Commit'}
@@ -901,7 +901,7 @@ export default function StudentPromotionPage() {
                             animate={{ opacity: 1, scale: 1 }}
                             className="max-w-md mx-auto text-center space-y-6 py-12"
                         >
-                            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 text-green-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 text-green-600 rounded flex items-center justify-center mx-auto shadow-sm">
                                 <CheckCircle2 size={32} />
                             </div>
                             <div className="space-y-1">
@@ -910,7 +910,7 @@ export default function StudentPromotionPage() {
                             </div>
                             <button
                                 onClick={() => router.push(`/admin/${encodeURIComponent(selectedSession || "")}`)}
-                                className="bg-neutral-900 dark:bg-white text-white dark:text-black px-10 py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all shadow-md"
+                                className="bg-neutral-900 dark:bg-white text-white dark:text-black px-10 py-3 rounded-none font-bold text-sm hover:opacity-90 transition-all shadow-md"
                             >
                                 Return to Dashboard
                             </button>

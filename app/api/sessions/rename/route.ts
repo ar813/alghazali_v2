@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ ok: false, error: 'Master session "2025-2026" cannot be renamed.' }, { status: 403 });
         }
 
-        console.log(`[Session Rename] Renaming from "${oldSession}" to "${newSession}"`);
+
 
         // 1. Update related records
         const dataTypes = ['student', 'fee', 'notice', 'examResultSet', 'schedule', 'attendance', 'quizResult'];
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
         const metaQuery = `*[_type == "sessionMeta" && sessionName == $oldSession]._id`;
         const metaIds = await serverClient.fetch(metaQuery, { oldSession });
 
-        console.log(`[Session Rename] Found ${dataIds.length} data records and ${metaIds.length} metadata docs to rename.`);
+
 
         const allDataBatch = [...dataIds];
         const allMetaBatch = [...metaIds];

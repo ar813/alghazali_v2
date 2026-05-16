@@ -28,10 +28,10 @@ const HeaderStats = ({ stats }: HeaderStatsProps) => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl p-5 shadow-sm"
+                    className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-none p-5 shadow-sm"
                 >
                     <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-xl ${card.bg} dark:bg-neutral-800 ${card.color} dark:text-white`}>
+                        <div className={`p-3 rounded-none ${card.bg} dark:bg-neutral-800 ${card.color} dark:text-white`}>
                             <card.icon size={24} />
                         </div>
                         <div>

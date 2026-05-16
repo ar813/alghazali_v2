@@ -679,11 +679,11 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
       <HeaderStats stats={stats} />
 
-      <div className="bg-white dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-900 p-2 rounded-2xl shadow-sm mb-6 flex flex-row flex-wrap lg:flex-nowrap gap-2 items-center justify-between transition-all sticky top-2 z-30">
+      <div className="bg-white dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-900 p-2 rounded-none shadow-sm mb-6 flex flex-row flex-wrap lg:flex-nowrap gap-2 items-center justify-between transition-all sticky top-2 z-30">
 
         {/* Left Section: Search & Essential Filters */}
-        <div className="flex flex-row items-center gap-2 flex-1 min-w-[300px]">
-          <div className="relative group/search flex-1 max-w-[280px]">
+        <div className="flex flex-row items-center gap-2 flex-1 min-w-0 w-full lg:w-auto">
+          <div className="relative group/search flex-1 min-w-0 max-w-[280px]">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
               <Search size={16} />
             </div>
@@ -691,7 +691,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search students..."
-              className="w-full pl-10 pr-4 py-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl focus:outline-none focus:border-blue-500 transition-all text-[13px] font-bold text-neutral-900 dark:text-white"
+              className="w-full pl-10 pr-4 py-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-none focus:outline-none focus:border-blue-500 transition-all text-[13px] font-bold text-neutral-900 dark:text-white"
             />
           </div>
 
@@ -700,7 +700,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
               <select
                 value={klass}
                 onChange={(e) => setKlass(e.target.value)}
-                className="w-full px-4 py-2 pr-8 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl focus:outline-none focus:border-blue-500 text-[12px] font-bold text-neutral-600 dark:text-neutral-400 appearance-none cursor-pointer transition-all uppercase tracking-wider"
+                className="w-full px-4 py-2 pr-8 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-none focus:outline-none focus:border-blue-500 text-[12px] font-bold text-neutral-600 dark:text-neutral-400 appearance-none cursor-pointer transition-all uppercase tracking-wider"
               >
                 <option value="All">All Classes</option>
                 {fetchedClasses.map(c => <option key={c} value={c}>Class {c}</option>)}
@@ -709,11 +709,11 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
             </div>
 
             <Menu>
-              <MenuButton className="p-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all text-neutral-500 hover:text-blue-600 flex items-center justify-center shadow-sm" title="Sort Options">
+              <MenuButton className="p-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-none hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all text-neutral-500 hover:text-blue-600 flex items-center justify-center shadow-sm" title="Sort Options">
                 <ArrowUpDown size={16} />
               </MenuButton>
               <Portal>
-                <MenuList className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-xl rounded-xl p-2 z-[100]">
+                <MenuList className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-xl rounded-none p-2 z-[100]">
                   {[
                     { key: 'fullName', label: 'Full Name' },
                     { key: 'grNumber', label: 'GR Number' },
@@ -723,16 +723,16 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
                     <MenuItem
                       key={option.key}
                       onClick={() => setSortKey(option.key as any)}
-                      className="rounded-lg px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center justify-between"
+                      className="rounded-none px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center justify-between"
                     >
                       {option.label}
                       {sortKey === option.key && <Check size={12} className="text-blue-600" />}
                     </MenuItem>
                   ))}
                   <div className="my-1 h-px bg-neutral-50 dark:border-neutral-800" />
-                  <div className="flex p-1 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg">
-                    <button onClick={(e) => { e.stopPropagation(); setSortDir('asc'); }} className={`flex-1 py-1 text-[10px] font-black rounded-md ${sortDir === 'asc' ? 'bg-white dark:bg-neutral-700 text-blue-600 shadow-sm' : 'text-neutral-400'}`}>ASC</button>
-                    <button onClick={(e) => { e.stopPropagation(); setSortDir('desc'); }} className={`flex-1 py-1 text-[10px] font-black rounded-md ${sortDir === 'desc' ? 'bg-white dark:bg-neutral-700 text-blue-600 shadow-sm' : 'text-neutral-400'}`}>DESC</button>
+                  <div className="flex p-1 bg-neutral-50 dark:bg-neutral-800/50 rounded-none">
+                    <button onClick={(e) => { e.stopPropagation(); setSortDir('asc'); }} className={`flex-1 py-1 text-[10px] font-black rounded-none ${sortDir === 'asc' ? 'bg-white dark:bg-neutral-700 text-blue-600 shadow-sm' : 'text-neutral-400'}`}>ASC</button>
+                    <button onClick={(e) => { e.stopPropagation(); setSortDir('desc'); }} className={`flex-1 py-1 text-[10px] font-black rounded-none ${sortDir === 'desc' ? 'bg-white dark:bg-neutral-700 text-blue-600 shadow-sm' : 'text-neutral-400'}`}>DESC</button>
                   </div>
                 </MenuList>
               </Portal>
@@ -743,10 +743,10 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
         {/* Right Section: Toolbox & Primary Actions */}
         <div className="flex flex-row items-center gap-2">
 
-          <div className="flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900/50 p-1 rounded-xl border border-neutral-100 dark:border-neutral-800">
+          <div className="flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900/50 p-1 rounded-none border border-neutral-100 dark:border-neutral-800">
             <button
               onClick={refreshStudents}
-              className={`p-2 rounded-lg hover:bg-white dark:hover:bg-neutral-800 text-neutral-400 hover:text-blue-600 ${loading ? 'opacity-50 pointer-events-none' : ''}`}
+              className={`p-2 rounded-none hover:bg-white dark:hover:bg-neutral-800 text-neutral-400 hover:text-blue-600 ${loading ? 'opacity-50 pointer-events-none' : ''}`}
               title="Refresh"
             >
               <RotateCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -755,27 +755,27 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
             <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
 
             <Menu>
-              <MenuButton className="p-2 rounded-lg hover:bg-white dark:hover:bg-neutral-800 text-neutral-500 hover:text-blue-600 transition-all" title="Toolbox">
+              <MenuButton className="p-2 rounded-none hover:bg-white dark:hover:bg-neutral-800 text-neutral-500 hover:text-blue-600 transition-all" title="Toolbox">
                 <Settings size={18} />
               </MenuButton>
               <Portal>
-                <MenuList className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-xl rounded-xl p-2 z-[100]">
-                  <MenuItem onClick={handleExportExcel} className="rounded-lg px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center gap-3">
+                <MenuList className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-xl rounded-none p-2 z-[100]">
+                  <MenuItem onClick={handleExportExcel} className="rounded-none px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center gap-3">
                     <Download size={14} /> Export to Excel
                   </MenuItem>
-                  <MenuItem onClick={handleImportExcelClick} className="rounded-lg px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center gap-3">
+                  <MenuItem onClick={handleImportExcelClick} className="rounded-none px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center gap-3">
                     <Upload size={14} /> Import from Excel
                   </MenuItem>
                   <div className="my-1 h-px bg-neutral-50 dark:border-neutral-800" />
                   <MenuItem
                     onClick={() => { if (!isSuperAdmin) { setShowAccessDenied(true); return; } setDeleteClassSelected('1'); setShowDeleteByClassConfirm(true) }}
-                    className="rounded-lg px-4 py-2 text-[12px] font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 flex items-center gap-3"
+                    className="rounded-none px-4 py-2 text-[12px] font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 flex items-center gap-3"
                   >
                     <AlertCircle size={14} /> Clear Class Data
                   </MenuItem>
                   <MenuItem
                     onClick={() => { if (!isSuperAdmin) { setShowAccessDenied(true); return; } setShowDeleteAllConfirm(true) }}
-                    className="rounded-lg px-4 py-2 text-[12px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-3"
+                    className="rounded-none px-4 py-2 text-[12px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-3"
                   >
                     <Trash2 size={14} /> Wipe Directory
                   </MenuItem>
@@ -791,7 +791,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
                 if (!isSuperAdmin) { setShowAccessDenied(true); return; }
                 router.push('/admin/students/promote')
               }}
-              className="px-3 md:px-4 py-2 rounded-xl bg-white dark:bg-neutral-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-neutral-900 dark:text-white flex items-center gap-2 transition-all border border-neutral-200 dark:border-neutral-800 text-[11px] font-black uppercase tracking-wider group whitespace-nowrap"
+              className="px-3 md:px-4 py-2 rounded-none bg-white dark:bg-neutral-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-neutral-900 dark:text-white flex items-center gap-2 transition-all border border-neutral-200 dark:border-neutral-800 text-[11px] font-black uppercase tracking-wider group whitespace-nowrap"
             >
               <GraduationCap size={16} className="text-blue-600" />
               <span className="hidden sm:inline">Promote</span>
@@ -803,7 +803,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
                 if (!isSuperAdmin) { setShowAccessDenied(true); return; }
                 setShowAddModal(true)
               }}
-              className="px-3 md:px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 shadow-sm transition-all text-[11px] font-black uppercase tracking-wider whitespace-nowrap"
+              className="px-3 md:px-4 py-2 rounded-none bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 shadow-sm transition-all text-[11px] font-black uppercase tracking-wider whitespace-nowrap"
             >
               <Plus size={16} />
               <span className="hidden sm:inline">Add Student</span>
@@ -849,7 +849,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
         />
       </div>
 
-      <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-6 px-6 py-4 bg-white dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-900 rounded-2xl shadow-sm transition-all">
+      <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-6 px-6 py-4 bg-white dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-900 rounded-none shadow-sm transition-all">
         <div className="flex flex-col gap-1">
           <p className="text-[11px] text-neutral-400 font-black uppercase tracking-widest">Directory Status</p>
           <p className="text-[13px] text-neutral-500 font-bold">
@@ -861,11 +861,11 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
           {/* Enhanced Multi-Page Pagination */}
-          <div className="flex items-center gap-1.5 p-1 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+          <div className="flex items-center gap-1.5 p-1 bg-neutral-50 dark:bg-neutral-900/50 rounded-none border border-neutral-100 dark:border-neutral-800">
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1 || loading}
-              className="p-2 rounded-lg text-neutral-400 hover:text-blue-600 disabled:opacity-30 transition-all hover:bg-white dark:hover:bg-neutral-800"
+              className="p-2 rounded-none text-neutral-400 hover:text-blue-600 disabled:opacity-30 transition-all hover:bg-white dark:hover:bg-neutral-800"
             >
               <ChevronRight size={16} className="rotate-180" />
             </button>
@@ -885,7 +885,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
                 if (startPage > 1) {
                   pages.push(
-                    <button key={1} onClick={() => setCurrentPage(1)} className="w-8 h-8 flex items-center justify-center rounded-lg text-[12px] font-bold text-neutral-400 hover:text-neutral-900 dark:hover:text-white">1</button>
+                    <button key={1} onClick={() => setCurrentPage(1)} className="w-8 h-8 flex items-center justify-center rounded-none text-[12px] font-bold text-neutral-400 hover:text-neutral-900 dark:hover:text-white">1</button>
                   );
                   if (startPage > 2) pages.push(<span key="dots-1" className="text-neutral-300 px-1">...</span>);
                 }
@@ -895,7 +895,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
                     <button
                       key={i}
                       onClick={() => setCurrentPage(i)}
-                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-[12px] font-black transition-all ${currentPage === i
+                      className={`w-8 h-8 flex items-center justify-center rounded-none text-[12px] font-black transition-all ${currentPage === i
                           ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-110'
                           : 'text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-800'
                         }`}
@@ -908,7 +908,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
                 if (endPage < totalPages) {
                   if (endPage < totalPages - 1) pages.push(<span key="dots-2" className="text-neutral-300 px-1">...</span>);
                   pages.push(
-                    <button key={totalPages} onClick={() => setCurrentPage(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-lg text-[12px] font-bold text-neutral-400 hover:text-neutral-900 dark:hover:text-white">{totalPages}</button>
+                    <button key={totalPages} onClick={() => setCurrentPage(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-none text-[12px] font-bold text-neutral-400 hover:text-neutral-900 dark:hover:text-white">{totalPages}</button>
                   );
                 }
 
@@ -919,7 +919,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
             <button
               onClick={() => setCurrentPage(p => p + 1)}
               disabled={currentPage >= Math.ceil(totalCount / pageSize) || loading}
-              className="p-2 rounded-lg text-neutral-400 hover:text-blue-600 disabled:opacity-30 transition-all hover:bg-white dark:hover:bg-neutral-800"
+              className="p-2 rounded-none text-neutral-400 hover:text-blue-600 disabled:opacity-30 transition-all hover:bg-white dark:hover:bg-neutral-800"
             >
               <ChevronRight size={16} />
             </button>
@@ -928,7 +928,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
           <select
             value={pageSize}
             onChange={(e) => setPageSize(Number(e.target.value))}
-            className="px-3 py-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl text-[11px] font-black text-neutral-600 focus:outline-none cursor-pointer"
+            className="px-3 py-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-none text-[11px] font-black text-neutral-600 focus:outline-none cursor-pointer"
           >
             {[10, 20, 50, 100].map(size => (
               <option key={size} value={size}>Show {size}</option>
@@ -944,7 +944,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
         size="full"
       >
         <DrawerOverlay className="backdrop-blur-md bg-black/40" />
-        <DrawerContent className="bg-white dark:bg-neutral-950 p-0 m-0">
+        <DrawerContent className="bg-white dark:bg-neutral-950 p-0 m-0 w-full max-w-full overflow-x-hidden">
           <StudentFormContent
             initialData={editingStudent}
             loading={editingStudent ? editLoading : createLoading}
@@ -960,7 +960,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
         size="full"
       >
         <DrawerOverlay className="backdrop-blur-md bg-black/40" />
-        <DrawerContent className="bg-white dark:bg-neutral-950 p-0 m-0">
+        <DrawerContent className="bg-white dark:bg-neutral-950 p-0 m-0 w-full max-w-full overflow-x-hidden">
           <StudentDetailModal
             student={clickedStudent}
             onClose={() => setClickedStudent(null)}
@@ -970,13 +970,13 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
       {confirmDeleteId && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] backdrop-blur-sm p-4" onClick={() => setConfirmDeleteId(null)}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-none p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <h4 className="text-lg font-bold mb-2">Delete Student?</h4>
             <p className="text-gray-600 mb-6 text-sm">Are you sure you want to delete this student? This action cannot be undone.</p>
             <div className="flex justify-end gap-3">
-              <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
+              <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-none" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
               <button
-                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-md"
+                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-none hover:bg-red-700 shadow-md"
                 onClick={() => handleDeleteStudent(confirmDeleteId)}
               >
                 {deleteLoadingId === confirmDeleteId ? 'Deleting...' : 'Delete'}
@@ -994,7 +994,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
         description={
           <div className="space-y-2">
             <p>You are about to delete <strong>ALL {students.length} students</strong> from the database.</p>
-            <p className="font-semibold text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">
+            <p className="font-semibold text-red-600 bg-red-50 p-3 rounded-none border border-red-100">
               Warning: This action is permanent and CANNOT be undone. All student records, photos, and associated data will be erased.
             </p>
           </div>
@@ -1011,12 +1011,12 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
         title={`Delete Class ${deleteClassSelected}?`}
         description={
           <div className="space-y-4">
-            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+            <div className="bg-amber-50 p-4 rounded-none border border-amber-100">
               <label className="block text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">Select Class to Delete</label>
               <select
                 value={deleteClassSelected}
                 onChange={e => setDeleteClassSelected(e.target.value)}
-                className="w-full border-amber-200 focus:ring-amber-500/20 focus:border-amber-500 rounded-lg py-2.5"
+                className="w-full border-amber-200 focus:ring-amber-500/20 focus:border-amber-500 rounded-none py-2.5"
               >
                 {fetchedClasses.map(c => <option key={c} value={c}>Class {c}</option>)}
               </select>

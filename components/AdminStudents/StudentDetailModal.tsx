@@ -21,7 +21,7 @@ const DetailItem = ({ label, value, icon: Icon, copyable }: { label: string; val
     };
 
     return (
-        <div className="flex flex-col p-4 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 rounded-xl transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800/50 group">
+        <div className="flex flex-col p-4 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 rounded-none transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800/50 group">
             <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-1.5">
                     {Icon && <Icon size={12} />}
@@ -42,7 +42,7 @@ const DetailItem = ({ label, value, icon: Icon, copyable }: { label: string; val
 
 const SectionHeader = ({ title, icon: Icon, color }: { title: string; icon: any; color: string }) => (
     <div className="flex items-center gap-3 mb-6 mt-10 first:mt-0">
-        <div className={`p-2 rounded-lg ${color} bg-opacity-10 dark:bg-opacity-20`}>
+        <div className={`p-2 rounded-none ${color} bg-opacity-10 dark:bg-opacity-20`}>
             <Icon size={18} className={color.replace('bg-', 'text-')} />
         </div>
         <h3 className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-widest">{title}</h3>
@@ -58,7 +58,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, onClos
             {/* 1. Header - No longer fixed */}
             <header className="flex items-center justify-between px-6 py-5 border-b border-neutral-100 dark:border-neutral-900 bg-white dark:bg-neutral-950">
                 <div className="flex items-center gap-4">
-                    <div className="p-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white rounded-xl border border-neutral-200 dark:border-neutral-800">
+                    <div className="p-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white rounded-none border border-neutral-200 dark:border-neutral-800">
                         <User size={20} />
                     </div>
                     <div>
@@ -70,7 +70,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, onClos
                 </div>
                 <button
                     onClick={onClose}
-                    className="p-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-900 rounded-xl transition-all text-neutral-400"
+                    className="p-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-900 rounded-none transition-all text-neutral-400"
                 >
                     <X size={20} />
                 </button>
@@ -87,8 +87,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, onClos
                 {/* Identity Header */}
                 <div className="flex flex-col items-center sm:items-end sm:flex-row gap-6 mb-12">
                     <div className="relative group">
-                        <div className="absolute -inset-1.5 bg-white dark:bg-neutral-950 rounded-[2.5rem] shadow-xl" />
-                        <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-[2rem] bg-neutral-100 dark:bg-neutral-900 border-4 border-white dark:border-neutral-950 overflow-hidden shadow-sm">
+                        <div className="absolute -inset-1.5 bg-white dark:bg-neutral-950 rounded.5rem] shadow-xl" />
+                        <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded bg-neutral-100 dark:bg-neutral-900 border-4 border-white dark:border-neutral-950 overflow-hidden shadow-sm">
                             {student.photoUrl ? (
                                 <Image src={student.photoUrl} alt={student.fullName} fill className="object-cover" unoptimized />
                             ) : (
@@ -104,10 +104,10 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, onClos
                             {student.fullName}
                         </h2>
                         <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                            <div className="px-4 py-1.5 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-widest shadow-sm">
+                            <div className="px-4 py-1.5 rounded-none bg-neutral-900 dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-widest shadow-sm">
                                 Class {student.admissionFor}
                             </div>
-                            <div className="px-4 py-1.5 rounded-xl bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 text-[10px] font-black uppercase tracking-widest border border-neutral-200 dark:border-neutral-800 shadow-sm">
+                            <div className="px-4 py-1.5 rounded-none bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 text-[10px] font-black uppercase tracking-widest border border-neutral-200 dark:border-neutral-800 shadow-sm">
                                 Roll: {student.rollNumber || 'N/A'}
                             </div>
                         </div>
@@ -159,13 +159,13 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, onClos
                     <div className="text-center sm:text-left">
                         <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest leading-none mb-1">Status Verification</p>
                         <p className="text-[12px] font-bold text-emerald-600 dark:text-emerald-500 flex items-center justify-center sm:justify-start gap-1.5 uppercase">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <div className="w-1.5 h-1.5 rounded bg-emerald-500 animate-pulse" />
                             Verified Record Entry
                         </p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-full sm:w-auto px-8 py-3 bg-neutral-900 dark:bg-white text-white dark:text-black rounded-xl text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all shadow-sm active:scale-95"
+                        className="w-full sm:w-auto px-8 py-3 bg-neutral-900 dark:bg-white text-white dark:text-black rounded-none text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all shadow-sm active:scale-95"
                     >
                         Close Record
                     </button>

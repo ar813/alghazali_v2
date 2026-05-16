@@ -16,7 +16,6 @@ export default defineType({
       name: 'session',
       title: 'Academic Session',
       type: 'string',
-      initialValue: '2025-2026',
     }),
     defineField({
       name: 'className',

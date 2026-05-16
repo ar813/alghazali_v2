@@ -17,14 +17,14 @@ export async function POST(req: NextRequest) {
 
         const trimmedName = sessionName.trim();
 
-        console.log(`[Session Create] Creating session: ${trimmedName}`);
+
 
         // Check if session already exists (by checking if any document uses this session name)
         const existingQuery = `count(*[session == $sessionName])`;
         const existingCount = await serverClient.fetch(existingQuery, { sessionName: trimmedName });
 
         if (existingCount > 0) {
-            console.log(`[Session Create] Session "${trimmedName}" already has documents.`);
+
         }
 
         // Create a session metadata document to track sessions even when empty
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
         const result = await serverClient.createOrReplace(sessionDoc);
 
-        console.log(`[Session Create] Session metadata created:`, result._id);
+
 
         return NextResponse.json({
             ok: true,

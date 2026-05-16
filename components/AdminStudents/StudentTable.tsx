@@ -35,8 +35,8 @@ const StudentTable: React.FC<StudentTableProps> = ({
 
     if (loading) {
         return (
-            <div className="hidden md:flex flex-col items-center justify-center py-20 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl shadow-sm">
-                <div className="w-10 h-10 border-4 border-neutral-200 dark:border-neutral-800 border-t-neutral-900 dark:border-t-white rounded-full animate-spin" />
+            <div className="hidden md:flex flex-col items-center justify-center py-20 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-none shadow-sm">
+                <div className="w-10 h-10 border-4 border-neutral-200 dark:border-neutral-800 border-t-neutral-900 dark:border-t-white rounded animate-spin" />
                 <p className="mt-4 text-sm font-medium text-neutral-500">Loading directory...</p>
             </div>
         )
@@ -44,7 +44,7 @@ const StudentTable: React.FC<StudentTableProps> = ({
 
     if (students.length === 0) {
         return (
-            <div className="hidden md:flex flex-col items-center justify-center py-20 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl shadow-sm text-center">
+            <div className="hidden md:flex flex-col items-center justify-center py-20 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-none shadow-sm text-center">
                 <p className="text-lg font-bold text-neutral-900 dark:text-white mb-1">No Students Found</p>
                 <p className="text-sm text-neutral-500">Try adjusting your filters or search query.</p>
             </div>
@@ -52,7 +52,7 @@ const StudentTable: React.FC<StudentTableProps> = ({
     }
 
     return (
-        <div className="hidden md:block bg-white dark:bg-neutral-950 rounded-2xl border border-neutral-100 dark:border-neutral-900 shadow-sm overflow-hidden">
+        <div className="hidden md:block bg-white dark:bg-neutral-950 rounded-none border border-neutral-100 dark:border-neutral-900 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
                 <table className="w-full text-left">
                     <thead>
@@ -96,7 +96,7 @@ const StudentTable: React.FC<StudentTableProps> = ({
                             >
                                 <td className="px-6 py-3 whitespace-nowrap">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-xl flex-shrink-0 overflow-hidden bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 relative">
+                                        <div className="h-10 w-10 rounded-none flex-shrink-0 overflow-hidden bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 relative">
                                             {student.photoUrl ? (
                                                 <Image src={student.photoUrl} alt="" fill className="object-cover" unoptimized />
                                             ) : (
@@ -112,7 +112,7 @@ const StudentTable: React.FC<StudentTableProps> = ({
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-[10px] font-bold uppercase border border-neutral-200 dark:border-neutral-700">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-[10px] font-bold uppercase border border-neutral-200 dark:border-neutral-700">
                                         Class {student.admissionFor}
                                     </span>
                                 </td>
@@ -129,18 +129,18 @@ const StudentTable: React.FC<StudentTableProps> = ({
                                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
                                         <button
                                             onClick={(e) => { e.stopPropagation(); onEdit(student); }}
-                                            className="p-2 text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-all relative group/btn"
+                                            className="p-2 text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-none transition-all relative group/btn"
                                             title="Edit"
                                         >
                                             {isSuperAdmin ? <Edit size={16} /> : <Lock size={16} />}
                                         </button>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); if (student._id) onDelete(student._id); }}
-                                            className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-lg transition-all"
+                                            className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-none transition-all"
                                             title="Delete"
                                         >
                                             {deleteLoadingId === student._id ? (
-                                                <div className="w-4 h-4 rounded-full border-2 border-rose-200 border-t-rose-600 animate-spin" />
+                                                <div className="w-4 h-4 rounded border-2 border-rose-200 border-t-rose-600 animate-spin" />
                                             ) : (
                                                 isSuperAdmin ? <Trash2 size={16} /> : <Lock size={16} />
                                             )}

@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import LogoutConfirmationDialog from "../Auth/LogoutConfirmationDialog";
 import ProfileUpdateDialog from "../Auth/ProfileUpdateDialog";
+import { useAuth } from "@/context/AuthContext";
 
 interface AdminDropdownProps {
     user: FirebaseUser;
@@ -24,6 +25,7 @@ interface AdminDropdownProps {
 
 export function AdminDropdown({ user, role, logout }: AdminDropdownProps) {
     const router = useRouter();
+    const { photoURL } = useAuth(); // Real-time Firestore-synced photo
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [showProfileUpdate, setShowProfileUpdate] = useState(false);
 
@@ -48,13 +50,14 @@ export function AdminDropdown({ user, role, logout }: AdminDropdownProps) {
                             "bg-white border border-gray-100 group-hover:border-emerald-800/30",
                             "shadow-sm group-hover:shadow-md"
                         )}>
-                            {user.photoURL ? (
+                            {photoURL ? (
                                 <Image
-                                    src={user.photoURL}
+                                    src={photoURL}
                                     alt="Profile"
                                     width={40}
                                     height={40}
-                                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                    className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-110"
+                                    unoptimized
                                 />
                             ) : (
                                 <span className="text-[10px] font-black text-emerald-800 label-mono">
@@ -77,9 +80,9 @@ export function AdminDropdown({ user, role, logout }: AdminDropdownProps) {
                     {/* Premium Header */}
                     <div className="p-5 bg-gray-50/50 border-b border-gray-100">
                         <div className="flex items-center gap-4 mb-4">
-                            <div className="h-12 w-12 shrink-0 bg-white flex items-center justify-center text-emerald-800 font-black text-xs border border-gray-100 shadow-sm label-mono">
-                                {user.photoURL ? (
-                                    <Image src={user.photoURL} alt="" width={48} height={48} className="object-cover" />
+                            <div className="h-12 w-12 shrink-0 bg-white flex items-center justify-center text-emerald-800 font-black text-xs border border-gray-100 shadow-sm label-mono overflow-hidden">
+                                {photoURL ? (
+                                    <Image src={photoURL} alt="" width={48} height={48} className="object-cover w-full h-full" unoptimized />
                                 ) : initials}
                             </div>
                             <div className="flex flex-col min-w-0">

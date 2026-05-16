@@ -19,7 +19,7 @@ const TextInput = ({ ...props }: React.InputHTMLAttributes<HTMLInputElement> & {
     <div className="relative">
         <input
             {...props}
-            className="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 text-[13px] font-medium text-neutral-900 dark:text-white transition-all"
+            className="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-none focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 text-[13px] font-medium text-neutral-900 dark:text-white transition-all"
         />
     </div>
 );
@@ -28,7 +28,7 @@ const SelectInput = ({ children, ...props }: React.SelectHTMLAttributes<HTMLSele
     <div className="relative">
         <select
             {...props}
-            className="w-full px-4 py-2.5 pr-10 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 text-[13px] font-medium text-neutral-900 dark:text-white appearance-none cursor-pointer transition-all"
+            className="w-full px-4 py-2.5 pr-10 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-none focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 text-[13px] font-medium text-neutral-900 dark:text-white appearance-none cursor-pointer transition-all"
         >
             {children}
         </select>
@@ -107,7 +107,7 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
             {/* Simple Header */}
             <header className="flex-shrink-0 flex items-center justify-between px-4 sm:px-8 py-3.5 border-b border-neutral-100 dark:border-neutral-900 bg-white dark:bg-neutral-950 z-30">
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-neutral-900 dark:bg-white flex items-center justify-center text-white dark:text-black">
+                    <div className="w-9 h-9 rounded-none bg-neutral-900 dark:bg-white flex items-center justify-center text-white dark:text-black">
                         <User size={18} />
                     </div>
                     <div>
@@ -117,7 +117,7 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={onCancel} className="px-3 py-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-white rounded-md">Discard</button>
+                    <button onClick={onCancel} className="px-3 py-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-white rounded-none">Discard</button>
                     <button
                         onClick={() => {
                             if (!formData.fullName || !formData.fatherName || !formData.grNumber) {
@@ -129,9 +129,9 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
                             onSave(formData, photoFile);
                         }}
                         disabled={loading}
-                        className="px-4 py-1.5 rounded-lg bg-neutral-900 dark:bg-white text-white dark:text-black text-xs font-bold disabled:opacity-50 flex items-center gap-2 shadow-sm"
+                        className="px-4 py-1.5 rounded-none bg-neutral-900 dark:bg-white text-white dark:text-black text-xs font-bold disabled:opacity-50 flex items-center gap-2 shadow-sm"
                     >
-                        {loading ? <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" /> : <Check size={14} />}
+                        {loading ? <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded animate-spin" /> : <Check size={14} />}
                         <span>Save</span>
                     </button>
                 </div>
@@ -147,7 +147,7 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
                                 key={idx}
                                 onClick={() => setActiveTabIndex(idx)}
                                 className={`
-                                    flex items-center gap-2 px-4 py-2 rounded-md text-[12px] font-bold transition-all whitespace-nowrap
+                                    flex items-center gap-2 px-4 py-2 rounded-none text-[12px] font-bold transition-all whitespace-nowrap
                                     ${isActive ? 'bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white' : 'text-neutral-400 hover:text-neutral-600'}
                                 `.trim()}
                             >
@@ -175,7 +175,7 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
                                 <div className="space-y-8">
                                     <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6 border-b border-neutral-50 dark:border-neutral-900 pb-8">
                                         <div
-                                            className="relative cursor-pointer w-24 h-24 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 overflow-hidden flex items-center justify-center shrink-0"
+                                            className="relative cursor-pointer w-24 h-24 rounded-none border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 overflow-hidden flex items-center justify-center shrink-0"
                                             onClick={() => {
                                                 if (photoPreview) {
                                                     setCropSource(photoPreview)
@@ -243,7 +243,7 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
                                         <FieldLabel icon={MapPin}>Residential Address</FieldLabel>
                                         <textarea
                                             rows={4}
-                                            className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 text-[13px] font-medium text-neutral-900 dark:text-white transition-all resize-none"
+                                            className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-none focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 text-[13px] font-medium text-neutral-900 dark:text-white transition-all resize-none"
                                             value={formData.address} onChange={(e) => handleChange('address', e.target.value)}
                                             placeholder="Enter complete address..."
                                         />
@@ -268,7 +268,7 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
             {/* Simple Footer */}
             <footer className="flex-shrink-0 px-4 sm:px-8 py-3 bg-neutral-50 dark:bg-neutral-900/40 border-t border-neutral-100 dark:border-neutral-900 flex items-center justify-between z-30">
                 <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <div className="w-1.5 h-1.5 rounded bg-emerald-500" />
                     <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">System Ready</span>
                 </div>
                 <div className="flex items-center gap-4">
@@ -293,7 +293,7 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="bg-white dark:bg-neutral-900 rounded-xl w-full max-w-lg overflow-hidden shadow-2xl relative z-10"
+                            className="bg-white dark:bg-neutral-900 rounded-none w-full max-w-lg overflow-hidden shadow-2xl relative z-10"
                         >
                             <ImageCropper src={cropSource} onCropped={handleCropComplete} onCancel={() => setShowCropper(false)} />
                         </motion.div>

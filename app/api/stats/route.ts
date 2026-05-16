@@ -8,12 +8,12 @@ export async function GET(req: Request) {
 
     // Session logic: Check session match OR if searching for default session (2025-2026), include docs with no session.
     // For queries where we pass $session
-    const sessionFilter = `($session == null || session == $session || (!defined(session) && $session == "2025-2026"))`
+    const sessionFilter = `(session == $session || (!defined(session) && $session == "2025-2026"))`
 
     // For joining quiz logic: session could be on quiz or result? Ideally on quiz.
     // Quiz Result query: quiz->session == $session
     // But backward compat: (!defined(quiz->session) && $session == "2025-2026")
-    const quizSessionFilter = `($session == null || quiz->session == $session || (!defined(quiz->session) && $session == "2025-2026"))`
+    const quizSessionFilter = `(quiz->session == $session || (!defined(quiz->session) && $session == "2025-2026"))`
 
     const params = { session }
 

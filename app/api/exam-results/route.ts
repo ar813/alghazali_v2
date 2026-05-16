@@ -23,35 +23,48 @@ export async function GET(req: NextRequest) {
     const className = searchParams.get('className') || undefined
     const examTitle = searchParams.get('examTitle') || undefined
     const list = searchParams.get('list') || undefined // 'titles'
+    const session = searchParams.get('session') || undefined
+    const gender = searchParams.get('gender') || undefined
 
-    // List past exam titles for a class
+    // Session filter: match exact session, or legacy docs with no session field
+    const sessionFilter = session ? `(session == $session || (!defined(session) && $session == "2025-2026"))` : 'true'
+    const sessionParam = session || null
+
+    // List past exam titles for a class (session-aware)
     if (list === 'titles') {
       if (!className) return NextResponse.json({ ok: true, titles: [] })
       const titles: string[] = await serverClient.fetch(
-        `*[_type=="examResultSet" && className==$className]{examTitle} | order(examTitle asc)`,
-        { className }
+        `*[_type=="examResultSet" && className==$className && ${sessionFilter}]{examTitle} | order(examTitle asc)`,
+        { className, session: sessionParam }
       )
       const unique = Array.from(new Set((titles || []).map((t: any) => t?.examTitle).filter(Boolean)))
       return NextResponse.json({ ok: true, titles: unique })
     }
 
-    // Fetch a single exam set for class + examTitle
+    // Fetch a single exam set for class + examTitle (session-aware)
     if (className && examTitle) {
       const doc = await serverClient.fetch(
-        `*[_type=="examResultSet" && className==$className && examTitle==$examTitle][0]{
-          _id, examTitle, className, subjects, maxMarksPerSubject, minPassPercentage, minMarksPerSubject, createdAt,
+        `*[_type=="examResultSet" && className==$className && examTitle==$examTitle && ${sessionFilter}][0]{
+          _id, examTitle, className, subjects, maxMarksPerSubject, minPassPercentage, minMarksPerSubject, createdAt, session,
           students[]{
-            student->{ _id, fullName, fatherName, rollNumber, grNumber, admissionFor },
+            student->{ _id, fullName, fatherName, rollNumber, grNumber, admissionFor, gender },
             studentName, fatherName, rollNumber, grNumber, marks, percentage, grade, remarks, createdAt
           }
         }`,
-        { className, examTitle }
+        { className, examTitle, session: sessionParam }
       )
+      // Apply gender filter on returned students if requested
+      if (doc && gender) {
+        doc.students = (doc.students || []).filter((sr: any) => sr?.student?.gender === gender)
+      }
       return NextResponse.json({ ok: true, data: doc || null })
     }
 
-    // Fallback: list all exams (lightweight)
-    const data = await serverClient.fetch(`*[_type=="examResultSet"]{ _id, examTitle, className, subjects, maxMarksPerSubject, minPassPercentage, minMarksPerSubject, createdAt } | order(createdAt desc)[0...100]`)
+    // Fallback: list all exams for the session (lightweight)
+    const data = await serverClient.fetch(
+      `*[_type=="examResultSet" && ${sessionFilter}]{ _id, examTitle, className, subjects, maxMarksPerSubject, minPassPercentage, minMarksPerSubject, createdAt, session } | order(createdAt desc)[0...100]`,
+      { session: sessionParam }
+    )
     return NextResponse.json({ ok: true, data })
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err?.message || 'Failed to fetch results' }, { status: 500 })
@@ -64,7 +77,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Server is missing SANITY_API_WRITE_TOKEN' }, { status: 500 })
     }
     const body = await req.json()
-    const { studentId, className, examTitle, subjects, marks, maxMarksPerSubject, minPassPercentage, minMarksPerSubject, studentName, fatherName, rollNumber, grNumber } = body || {}
+    const { studentId, className, examTitle, subjects, marks, maxMarksPerSubject, minPassPercentage, minMarksPerSubject, studentName, fatherName, rollNumber, grNumber, session } = body || {}
+
+    // STRICT SESSION ENFORCEMENT
+    if (!session) {
+      console.error('[API/ExamResults/POST] CRITICAL: Session missing in request body!', body);
+      return NextResponse.json({ ok: false, error: 'Session context is required for all exam result entries.' }, { status: 400 })
+    }
+
+    const targetSession = session
+
 
     if (!studentId || !className || !examTitle || !Array.isArray(subjects) || subjects.length === 0 || !Array.isArray(marks) || marks.length !== subjects.length) {
       return NextResponse.json({ ok: false, error: 'studentId, className, examTitle, subjects[] and marks[] (same length) are required' }, { status: 400 })
@@ -83,8 +105,11 @@ export async function POST(req: NextRequest) {
     const passPct = Number(minPassPercentage) || 40
     const agg = computeStudentAggregates(numericMarks, subjects.length, maxPer, passPct)
 
-    // Find or create the exam set document
-    let doc = await serverClient.fetch(`*[_type=="examResultSet" && className==$className && examTitle==$examTitle][0]`, { className, examTitle })
+    // Find or create the exam set document — MUST match session too
+    let doc = await serverClient.fetch(
+      `*[_type=="examResultSet" && className==$className && examTitle==$examTitle && session==$session][0]`,
+      { className, examTitle, session: targetSession }
+    )
     if (!doc) {
       doc = await serverClient.create({
         _type: 'examResultSet',
@@ -95,6 +120,7 @@ export async function POST(req: NextRequest) {
         minPassPercentage: passPct,
         minMarksPerSubject: Number(minMarksPerSubject) || undefined,
         students: [],
+        session: targetSession, // ✅ Session field saved
         createdAt: new Date().toISOString(),
       })
     }

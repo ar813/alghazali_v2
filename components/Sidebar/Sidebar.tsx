@@ -27,7 +27,7 @@ interface SidebarProps {
 const Sidebar = ({ items, activeTab, onTabChange, loading, isStudent }: SidebarProps) => {
   const [open, setOpen] = useState(false);
   // const [user, setUser] = useState<{ email: string | null; displayName: string | null; photoURL: string | null } | null>(null);
-  const { user, logout } = useAuth();
+  const { user, logout, photoURL } = useAuth();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // useEffect removed as we use global auth context
@@ -74,8 +74,12 @@ const Sidebar = ({ items, activeTab, onTabChange, loading, isStudent }: SidebarP
                 animate={{ opacity: 1 }}
                 className="flex items-center gap-3"
               >
-                <div className="w-8 h-8 bg-neutral-900 dark:bg-white rounded-lg flex items-center justify-center shadow-sm">
-                  <span className="text-white dark:text-neutral-900 font-bold text-sm">AG</span>
+                <div className="w-8 h-8 bg-neutral-900 dark:bg-white rounded-lg flex items-center justify-center shadow-sm overflow-hidden">
+                  {photoURL ? (
+                    <Image src={photoURL} alt="" width={32} height={32} className="w-full h-full object-contain" unoptimized />
+                  ) : (
+                    <span className="text-white dark:text-neutral-900 font-bold text-sm">AG</span>
+                  )}
                 </div>
                 <div className="flex flex-col">
                   <span className="font-semibold text-neutral-900 dark:text-white text-sm leading-tight">Al Ghazali</span>
@@ -149,13 +153,14 @@ const Sidebar = ({ items, activeTab, onTabChange, loading, isStudent }: SidebarP
           {!isStudent && user && (
             <div className="flex items-center gap-3 mb-2 group/user cursor-pointer p-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
               <div className="relative">
-                {user.photoURL ? (
+                {photoURL ? (
                   <Image
-                    src={user.photoURL}
+                    src={photoURL}
                     width={32}
                     height={32}
-                    className="h-8 w-8 shrink-0 rounded-full object-cover shadow-sm border border-neutral-200 dark:border-neutral-700"
+                    className="h-8 w-8 shrink-0 rounded-xl object-contain shadow-sm border border-neutral-200 dark:border-neutral-700 bg-white"
                     alt="Avatar"
+                    unoptimized
                   />
                 ) : (
                   <div className="h-8 w-8 shrink-0 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-300 font-bold text-xs border border-neutral-200 dark:border-neutral-700">

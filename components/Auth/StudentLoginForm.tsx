@@ -112,13 +112,13 @@ const StudentLoginForm = ({ onLoginSuccess }: StudentLoginFormProps) => {
     return (
         <form onSubmit={handleVerify} className="space-y-7 relative">
             {/* Subtle ambient glow */}
-            <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none -z-10" />
+            <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded pointer-events-none -z-10" />
 
             {/* Error Alert */}
             {error && (
-                <div className="p-4 rounded-2xl bg-red-500/5 dark:bg-red-500/10 border border-red-200/50 dark:border-red-500/20 backdrop-blur-sm animate-in fade-in slide-in-from-top-3 duration-300">
+                <div className="p-4 rounded-none bg-red-500/5 dark:bg-red-500/10 border border-red-200/50 dark:border-red-500/20 backdrop-blur-sm animate-in fade-in slide-in-from-top-3 duration-300">
                     <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-xl bg-red-100 dark:bg-red-500/20 shrink-0">
+                        <div className="p-2 rounded-none bg-red-100 dark:bg-red-500/20 shrink-0">
                             <AlertCircle size={16} className="text-red-600 dark:text-red-400" />
                         </div>
                         <div className="flex-1 pt-0.5">
@@ -135,7 +135,7 @@ const StudentLoginForm = ({ onLoginSuccess }: StudentLoginFormProps) => {
                     Student Identity
                 </label>
                 <div className={cn(
-                    "relative group rounded-2xl transition-all duration-300",
+                    "relative group rounded-none transition-all duration-300",
                     focusedField === 'bForm' && "ring-2 ring-emerald-500/20"
                 )}>
                     <div className={cn(
@@ -150,7 +150,7 @@ const StudentLoginForm = ({ onLoginSuccess }: StudentLoginFormProps) => {
                         onChange={(e) => setBForm(formatCnic(e.target.value))}
                         onFocus={() => setFocusedField('bForm')}
                         onBlur={() => setFocusedField(null)}
-                        className="w-full pl-12 pr-4 py-4 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 rounded-2xl focus:outline-none focus:border-emerald-500/50 dark:focus:border-emerald-500/50 transition-all duration-300 font-semibold text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-600 text-[15px]"
+                        className="w-full pl-12 pr-4 py-4 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 rounded-none focus:outline-none focus:border-emerald-500/50 dark:focus:border-emerald-500/50 transition-all duration-300 font-semibold text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-600 text-[15px]"
                         placeholder="42101-XXXXXXX-X"
                         maxLength={15}
                         required
@@ -168,7 +168,7 @@ const StudentLoginForm = ({ onLoginSuccess }: StudentLoginFormProps) => {
                     Academic Registration
                 </label>
                 <div className={cn(
-                    "relative group rounded-2xl transition-all duration-300",
+                    "relative group rounded-none transition-all duration-300",
                     focusedField === 'grNumber' && "ring-2 ring-emerald-500/20"
                 )}>
                     <div className={cn(
@@ -183,7 +183,7 @@ const StudentLoginForm = ({ onLoginSuccess }: StudentLoginFormProps) => {
                         onChange={(e) => setGrNumber(e.target.value)}
                         onFocus={() => setFocusedField('grNumber')}
                         onBlur={() => setFocusedField(null)}
-                        className="w-full pl-12 pr-4 py-4 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 rounded-2xl focus:outline-none focus:border-emerald-500/50 dark:focus:border-emerald-500/50 transition-all duration-300 font-semibold text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-600 text-[15px]"
+                        className="w-full pl-12 pr-4 py-4 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 rounded-none focus:outline-none focus:border-emerald-500/50 dark:focus:border-emerald-500/50 transition-all duration-300 font-semibold text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-600 text-[15px]"
                         placeholder="e.g. 10245"
                         required
                     />
@@ -199,7 +199,7 @@ const StudentLoginForm = ({ onLoginSuccess }: StudentLoginFormProps) => {
                     type="submit"
                     disabled={isLoading}
                     className={cn(
-                        "w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all duration-300 group flex items-center justify-center gap-3",
+                        "w-full py-4 rounded-none font-bold text-sm uppercase tracking-widest transition-all duration-300 group flex items-center justify-center gap-3",
                         "bg-neutral-950 dark:bg-gradient-to-r dark:from-emerald-600 dark:to-emerald-500",
                         "hover:bg-neutral-900 dark:hover:from-emerald-500 dark:hover:to-emerald-400",
                         "text-white shadow-2xl shadow-neutral-950/20 dark:shadow-emerald-500/25",
@@ -226,7 +226,7 @@ const StudentLoginForm = ({ onLoginSuccess }: StudentLoginFormProps) => {
             <div className="flex flex-col items-center gap-3 pt-4">
                 <div className="flex items-center gap-2">
                     <div className="w-6 h-[1px] bg-gradient-to-r from-transparent to-neutral-300 dark:to-neutral-700" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
+                    <div className="w-1.5 h-1.5 rounded bg-emerald-500/50" />
                     <div className="w-6 h-[1px] bg-gradient-to-l from-transparent to-neutral-300 dark:to-neutral-700" />
                 </div>
                 <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-600 uppercase tracking-[0.2em] text-center">
