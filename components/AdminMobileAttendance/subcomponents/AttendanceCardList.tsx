@@ -12,6 +12,11 @@ interface AttendanceRecord {
     timestamp: number;
     status: 'present' | 'leave';
     reason?: string;
+    manualTotalDays?: number;
+    manualPresent?: number;
+    manualAbsent?: number;
+    manualLeave?: number;
+    hasManualRecord?: boolean;
 }
 
 interface AttendanceCardListProps {
@@ -58,6 +63,14 @@ const AttendanceCardList = ({ records, formatTime }: AttendanceCardListProps) =>
                                 <p className="text-[11px] text-gray-500 truncate">
                                     {record.class} • R:{record.rollNumber}
                                 </p>
+                                {record.hasManualRecord ? (
+                                    <div className="mt-1 flex flex-wrap items-center gap-1 text-[9px]">
+                                        <span className="bg-amber-500/10 text-amber-700 font-extrabold px-1 py-0.5 uppercase border border-amber-500/20">Manual Approved:</span>
+                                        <span className="text-neutral-500 font-bold">P:{record.manualPresent} A:{record.manualAbsent} L:{record.manualLeave}</span>
+                                    </div>
+                                ) : (
+                                    <div className="mt-1 text-[9px] text-neutral-400 font-medium uppercase">No Manual Override</div>
+                                )}
                             </div>
                             <div className="text-right shrink-0">
                                 <span className="text-[10px] font-mono text-gray-400 block">{formatTime(record.timestamp)}</span>

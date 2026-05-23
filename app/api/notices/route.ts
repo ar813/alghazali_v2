@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
       const EMAIL_PASSWORD = process.env.EMAIL_PASSWORD
       const EMAIL_SERVICE = process.env.EMAIL_SERVICE || 'gmail'
       // Force sender as requested
-      const EMAIL_FROM = 'ar3584158@gmail.com'
+      const EMAIL_FROM = 'alghazali75160@gmail.com'
 
       try {
         if (recipients.length > 0 && EMAIL_USER && EMAIL_PASSWORD) {

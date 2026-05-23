@@ -23,51 +23,76 @@ export default function IslamicDate({ className = "", variant = 'nav' }: Islamic
     useEffect(() => {
         const fetchDate = async () => {
             try {
+                // 1. Get current time in Pakistan
                 const now = new Date();
-                const hours = now.getHours();
-                const minutes = now.getMinutes();
+                const pkTimeStr = now.toLocaleString("en-US", { timeZone: "Asia/Karachi" });
+                const pkDate = new Date(pkTimeStr);
 
-                // Islamic day starts at sunset. Approximating sunset at 18:15.
-                const isAfterSunset = (hours > 18) || (hours === 18 && minutes >= 15);
+                const dd = String(pkDate.getDate()).padStart(2, '0');
+                const mm = String(pkDate.getMonth() + 1).padStart(2, '0');
+                const yyyy = pkDate.getFullYear();
 
-                const calculationDate = new Date(now);
-                if (isAfterSunset) {
-                    calculationDate.setDate(now.getDate() + 1);
+                // 2. Fetch or retrieve today's Maghrib time in Karachi
+                const timingsCacheKey = `pk_timings_${dd}_${mm}_${yyyy}`;
+                let maghribTimeStr = localStorage.getItem(timingsCacheKey) || "";
+
+                if (!maghribTimeStr) {
+                    const res = await fetch(`https://api.aladhan.com/v1/timingsByCity/${dd}-${mm}-${yyyy}?city=Karachi&country=Pakistan&method=1`);
+                    const json = await res.json();
+                    if (json.status === "OK" && json.data.timings.Maghrib) {
+                        maghribTimeStr = json.data.timings.Maghrib;
+                        localStorage.setItem(timingsCacheKey, maghribTimeStr);
+                    } else {
+                        maghribTimeStr = "18:30"; // Safe fallback
+                    }
                 }
 
-                const day = calculationDate.getDate();
-                const month = calculationDate.getMonth() + 1;
-                const year = calculationDate.getFullYear();
+                // 3. Check if current time is after Maghrib
+                const [mHour, mMin] = maghribTimeStr.split(':').map(Number);
+                const currentHour = pkDate.getHours();
+                const currentMin = pkDate.getMinutes();
+                const isAfterMaghrib = currentHour > mHour || (currentHour === mHour && currentMin >= mMin);
 
+                // 4. Calculate target Gregorian date for Hijri conversion
+                // Islamic day starts at Maghrib. 
+                // Before Maghrib: Use current day's daytime Hijri date (offset 0)
+                // After Maghrib: Use next day's daytime Hijri date (offset +1)
+                const moonSightingOffset = 0; // Adjust this if Pakistan is behind Saudi Arabia
+                const targetDate = new Date(pkDate);
+                if (isAfterMaghrib) {
+                    targetDate.setDate(targetDate.getDate() + 1 + moonSightingOffset);
+                } else {
+                    targetDate.setDate(targetDate.getDate() + moonSightingOffset);
+                }
 
-                // Cache key includes the -1 adjustment for Pakistan sighting
-                const cacheKey = `hijri_date_${day}_${month}_${year}_pk`;
-                const cached = localStorage.getItem(cacheKey);
+                const tDd = String(targetDate.getDate()).padStart(2, '0');
+                const tMm = String(targetDate.getMonth() + 1).padStart(2, '0');
+                const tYyyy = targetDate.getFullYear();
 
-                if (cached) {
-                    setHijri(JSON.parse(cached));
+                // 5. Fetch or retrieve Hijri date for the target Gregorian date
+                const hijriCacheKey = `hijri_data_${tDd}_${tMm}_${tYyyy}`;
+                const cachedHijri = localStorage.getItem(hijriCacheKey);
+
+                if (cachedHijri) {
+                    setHijri(JSON.parse(cachedHijri));
                     setLoading(false);
                     return;
                 }
 
-                const res = await fetch(`https://api.aladhan.com/v1/gToH?date=${day}-${month}-${year}`);
-                const json = await res.json();
+                const hRes = await fetch(`https://api.aladhan.com/v1/gToH?date=${tDd}-${tMm}-${tYyyy}`);
+                const hJson = await hRes.json();
 
-                if (json.status === "OK" && json.data.hijri) {
-                    // Manual adjustment: API returns 1 day ahead of Pakistan sighting
-                    const apiDay = parseInt(json.data.hijri.day, 10);
-                    const adjustedDay = apiDay - 1;
-
+                if (hJson.status === "OK" && hJson.data.hijri) {
                     const data: HijriDate = {
-                        day: adjustedDay.toString(),
+                        day: parseInt(hJson.data.hijri.day, 10).toString(),
                         month: {
-                            en: json.data.hijri.month.en,
-                            ar: json.data.hijri.month.ar
+                            en: hJson.data.hijri.month.en,
+                            ar: hJson.data.hijri.month.ar
                         },
-                        year: json.data.hijri.year
+                        year: hJson.data.hijri.year
                     };
                     setHijri(data);
-                    localStorage.setItem(cacheKey, JSON.stringify(data));
+                    localStorage.setItem(hijriCacheKey, JSON.stringify(data));
                 }
             } catch (error) {
                 console.error('Islamic date error:', error);

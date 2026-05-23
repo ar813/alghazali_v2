@@ -121,7 +121,7 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
             }}
             className={cn(
                 "relative z-[60] mx-auto hidden w-full max-w-none flex-row items-center justify-between px-8 py-2 lg:flex border-b border-transparent transition-all duration-500 ease-in-out",
-                visible && "bg-white/90 backdrop-blur-xl border-neutral-200/50",
+                visible && "bg-white/90 dark:bg-neutral-950/90 backdrop-blur-xl border-neutral-200/50 dark:border-neutral-800/50",
                 className,
             )}
         >
@@ -183,7 +183,7 @@ export const MobileNav = ({ children, className, visible }: MobileNavProps) => {
             }}
             className={cn(
                 "relative z-[100] mx-auto flex w-full flex-col items-center justify-between px-4 py-2 lg:hidden border-b border-transparent transition-all duration-300",
-                visible && "bg-white/90 backdrop-blur-xl border-neutral-200/50",
+                visible && "bg-white/90 dark:bg-neutral-950/90 backdrop-blur-xl border-neutral-200/50 dark:border-neutral-800/50",
                 className,
             )}
         >
@@ -261,18 +261,18 @@ export const MobileNavMenu = ({
                             damping: 30,
                         }}
                         className={cn(
-                            "fixed right-0 top-0 z-[9999] flex h-full w-[320px] max-w-[85vw] flex-col bg-white shadow-2xl lg:hidden",
+                            "fixed right-0 top-0 z-[9999] flex h-full w-[320px] max-w-[85vw] flex-col bg-white dark:bg-neutral-950 shadow-2xl lg:hidden border-l border-neutral-100 dark:border-neutral-900",
                             className,
                         )}
                     >
                         {/* Drawer Header */}
-                        <div className="flex h-16 items-center justify-between border-b border-neutral-100 px-4 xs:px-6">
+                        <div className="flex h-16 items-center justify-between border-b border-neutral-100 dark:border-neutral-800 px-4 xs:px-6">
                             <div className="flex-1 min-w-0 mr-2">
                                 <NavbarLogo />
                             </div>
                             <button
                                 onClick={onClose}
-                                className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-none border border-neutral-200 bg-neutral-100 text-neutral-600 hover:bg-neutral-200 transition-colors"
+                                className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-none border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors"
                                 aria-label="Close menu"
                             >
                                 <IconX size={18} strokeWidth={2} />
@@ -419,7 +419,7 @@ export const MobileNavToggle = ({
     return (
         <button
             onClick={onClick}
-            className="flex h-10 w-10 items-center justify-center rounded-none bg-neutral-100 text-neutral-600 border border-neutral-200 hover:bg-neutral-200 transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-none bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors"
             aria-label={isOpen ? "Close menu" : "Open menu"}
         >
             {isOpen ? (

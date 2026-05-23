@@ -11,14 +11,13 @@ import {
   MobileNavMenu,
   MobileNavLink,
 } from "@/components/ui/resizable-navbar";
-import { useState, createElement, useMemo } from "react";
-import { Home, ReceiptText, GraduationCap, KeyRound, Smartphone, FileDown, Library } from "lucide-react";
+import { useState, createElement, useMemo, useEffect } from "react";
+import { Home, ReceiptText, GraduationCap, KeyRound, Smartphone, FileDown, Library, Sun, Moon, Monitor } from "lucide-react";
 import { useMobileNav, PortalNavConfig } from "@/contexts/MobileNavContext";
 import { useAuth } from "@/context/AuthContext";
 import IslamicDate from "./IslamicDate";
 import { AdminDropdown } from "./AdminDropdown";
 import ProfileUpdateDialog from "../Auth/ProfileUpdateDialog";
-
 export default function NavBar() {
   const { user, role, logout, loading } = useAuth();
   const [showProfileUpdate, setShowProfileUpdate] = useState(false);

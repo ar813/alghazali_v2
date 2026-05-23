@@ -169,7 +169,7 @@ const Contact = () => {
                                     <div>
                                         <h4 className="text-xl font-bold text-[#0f172a]">Email</h4>
                                         <p className="text-[#64748b] leading-relaxed">
-                                            {settings?.email || 'ar3584158@gmail.com'}
+                                            {settings?.email || 'alghazali75160@gmail.com'}
                                         </p>
                                     </div>
                                 </div>

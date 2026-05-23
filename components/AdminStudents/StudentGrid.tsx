@@ -33,7 +33,7 @@ const StudentGrid: React.FC<StudentGridProps> = ({ students, loading, onView, on
     }
 
     return (
-        <div className="grid grid-cols-1 gap-4 md:hidden pb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden pb-10">
             {students.map((student, idx) => (
                 <motion.div
                     key={student._id || student.grNumber}

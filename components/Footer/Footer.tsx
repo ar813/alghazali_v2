@@ -1,3 +1,5 @@
+"use client";
+
 import { ArrowRight, Download, Facebook, Instagram, Mail, MapPin, Phone, Smartphone, Twitter } from 'lucide-react'
 import React from 'react'
 import Link from 'next/link'

@@ -1,6 +1,7 @@
-import { Upload, Users, PieChart, BarChart2, Loader2, X, Search, FileDown, Image as ImageIcon, Database, Receipt, FolderArchive, LayoutGrid, Eye, Filter, User } from 'lucide-react'
+import { Upload, Users, PieChart, BarChart2, Loader2, X, Search, FileDown, Image as ImageIcon, Database, Receipt, FolderArchive, LayoutGrid, Eye, Filter, User, Award } from 'lucide-react'
 import NextImage from 'next/image'
 import StudentDetailModal from '../AdminStudents/StudentDetailModal'
+import AdminCertificates from '../AdminCertificates/AdminCertificates'
 import React, { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { toast } from "sonner";
@@ -34,7 +35,7 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
   useEffect(() => {
     setMounted(true)
   }, [])
-  type ExportTabType = 'data' | 'fees' | 'forms' | 'pictures'
+  type ExportTabType = 'data' | 'fees' | 'forms' | 'pictures' | 'certificates'
   const [activeExportTab, setActiveExportTab] = useState<ExportTabType>('data')
 
   type TargetType = 'all' | 'class' | 'student'
@@ -987,8 +988,8 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Export Hub - Takes up 2 columns on large screens */}
-        <div className="lg:col-span-2 bg-white dark:bg-neutral-950 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-800 overflow-hidden flex flex-col">
+        {/* Export Hub - Takes up 2 or 3 columns on large screens depending on active tab */}
+        <div className={`${activeExportTab === 'certificates' ? 'lg:col-span-3' : 'lg:col-span-2'} bg-white dark:bg-neutral-950 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-800 overflow-hidden flex flex-col transition-all duration-300`}>
           <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50">
             <h3 className="text-lg font-bold text-neutral-900 dark:text-white flex items-center gap-2">
               <FileDown size={18} className="text-neutral-400" /> Export Hub
@@ -1004,6 +1005,7 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
                 { id: 'fees', icon: Receipt, label: 'Fee Records' },
                 { id: 'forms', icon: FolderArchive, label: 'Student Forms' },
                 { id: 'pictures', icon: ImageIcon, label: 'Pictures (ZIP)' },
+                { id: 'certificates', icon: Award, label: 'Certificates Hub' },
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeExportTab === tab.id;
@@ -1263,54 +1265,61 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
                 </div>
               </div>
             )}
+
+            {/* Tab Contents - Certificates */}
+            {activeExportTab === 'certificates' && (
+              <AdminCertificates genderFilter={genderFilter} onLoadingChange={onLoadingChange} />
+            )}
           </div>
         </div>
 
-        {/* Class-wise Distribution Visualizer */}
-        <div className="bg-white dark:bg-neutral-950 rounded-2xl shadow-sm p-6 border border-neutral-200 dark:border-neutral-800">
-          <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-6 flex items-center gap-2">
-            <BarChart2 size={18} className="text-blue-500" /> Class Distribution
-          </h3>
-          {loading ? (
-            <div className="space-y-4 animate-pulse">
-              {[...Array(6)].map((_, i) => (
-                <div key={i}>
-                  <div className="flex items-center justify-between py-1">
-                    <div className="h-3 w-16 bg-neutral-200 dark:bg-neutral-800 rounded" />
-                    <div className="h-3 w-8 bg-neutral-200 dark:bg-neutral-800 rounded" />
+        {/* Class-wise Distribution Visualizer - Only show if not on Certificates tab */}
+        {activeExportTab !== 'certificates' && (
+          <div className="bg-white dark:bg-neutral-950 rounded-2xl shadow-sm p-6 border border-neutral-200 dark:border-neutral-800 transition-all duration-300">
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-6 flex items-center gap-2">
+              <BarChart2 size={18} className="text-blue-500" /> Class Distribution
+            </h3>
+            {loading ? (
+              <div className="space-y-4 animate-pulse">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i}>
+                    <div className="flex items-center justify-between py-1">
+                      <div className="h-3 w-16 bg-neutral-200 dark:bg-neutral-800 rounded" />
+                      <div className="h-3 w-8 bg-neutral-200 dark:bg-neutral-800 rounded" />
+                    </div>
+                    <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-900 rounded-full mt-1" />
                   </div>
-                  <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-900 rounded-full mt-1" />
-                </div>
-              ))}
-            </div>
-          ) : classWise.length === 0 ? (
-            <div className="text-sm text-neutral-500">No data available</div>
-          ) : (
-            <div className="space-y-4 max-h-[360px] overflow-y-auto pr-2 custom-scrollbar">
-              {classWise.map(([cls, count]) => {
-                const percentage = totals.total > 0 ? (count / totals.total) * 100 : 0;
-                return (
-                  <div key={cls} className="group">
-                    <div className="flex items-center justify-between py-1 text-sm">
-                      <span className="font-semibold text-neutral-700 dark:text-neutral-300">Class {cls}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-neutral-400 text-xs">{percentage.toFixed(1)}%</span>
-                        <span className="font-black text-neutral-900 dark:text-white">{count}</span>
+                ))}
+              </div>
+            ) : classWise.length === 0 ? (
+              <div className="text-sm text-neutral-500">No data available</div>
+            ) : (
+              <div className="space-y-4 max-h-[360px] overflow-y-auto pr-2 custom-scrollbar">
+                {classWise.map(([cls, count]) => {
+                  const percentage = totals.total > 0 ? (count / totals.total) * 100 : 0;
+                  return (
+                    <div key={cls} className="group">
+                      <div className="flex items-center justify-between py-1 text-sm">
+                        <span className="font-semibold text-neutral-700 dark:text-neutral-300">Class {cls}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-neutral-400 text-xs">{percentage.toFixed(1)}%</span>
+                          <span className="font-black text-neutral-900 dark:text-white">{count}</span>
+                        </div>
+                      </div>
+                      {/* Visual Progress Bar */}
+                      <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-900 rounded-full overflow-hidden mt-1">
+                        <div
+                          className="h-full bg-blue-500 rounded-full transition-all group-hover:bg-blue-400"
+                          style={{ width: `${percentage}%` }}
+                        />
                       </div>
                     </div>
-                    {/* Visual Progress Bar */}
-                    <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-900 rounded-full overflow-hidden mt-1">
-                      <div
-                        className="h-full bg-blue-500 rounded-full transition-all group-hover:bg-blue-400"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Premium Insight List Modal / Data Table */}

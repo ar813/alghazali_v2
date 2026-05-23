@@ -36,6 +36,25 @@ export default defineType({
             },
         }),
         defineField({
+            name: 'designation',
+            title: 'Designation',
+            type: 'string',
+            options: {
+                list: [
+                    { title: 'Admin', value: 'Admin' },
+                    { title: 'Principal', value: 'Principal' },
+                    { title: 'Teacher', value: 'Teacher' },
+                    { title: 'Staff', value: 'Staff' },
+                ],
+            },
+        }),
+        defineField({
+            name: 'assignedClass',
+            title: 'Assigned Class (Class Teacher)',
+            type: 'string',
+            description: 'Optional: If this user is a class teacher, specify the class.',
+        }),
+        defineField({
             name: 'lastSyncedAt',
             title: 'Last Synced At',
             type: 'datetime',

@@ -12,6 +12,11 @@ interface AttendanceRecord {
     timestamp: number;
     status: 'present' | 'leave';
     reason?: string;
+    manualTotalDays?: number;
+    manualPresent?: number;
+    manualAbsent?: number;
+    manualLeave?: number;
+    hasManualRecord?: boolean;
 }
 
 interface AttendanceTableProps {
@@ -55,7 +60,21 @@ const AttendanceTable = ({ records, formatTime }: AttendanceTableProps) => {
                                         </div>
                                         <div>
                                             <div className="font-semibold text-gray-900 text-sm tracking-tight">{record.studentName}</div>
-                                            <div className="text-[11px] text-gray-500 mt-0.5">ID: {record.id.slice(0, 6)}</div>
+                                            <div className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-2">
+                                                <span>ID: {record.id.slice(0, 6)}</span>
+                                                {record.hasManualRecord ? (
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
+                                                        <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded border border-amber-200">
+                                                            Manual Approved: P:{record.manualPresent} A:{record.manualAbsent} L:{record.manualLeave}
+                                                        </span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[9px] font-medium text-neutral-400 bg-neutral-50 px-1 py-0.5 rounded border border-neutral-200">
+                                                        No Manual Override
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </td>

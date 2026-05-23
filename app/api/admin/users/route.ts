@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Access Denied: Super Admin privileges required." }, { status: 403 });
         }
 
-        const { email, password, displayName, role, gender, photoURL } = await req.json();
+        const { email, password, displayName, role, gender, photoURL, designation, assignedClass } = await req.json();
 
         if (!email || !password) {
             return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
             role: role || "admin",
             gender: gender || null,
             photoURL: photoURL || null,
+            designation: designation || null,
+            assignedClass: assignedClass || null,
             createdAt: new Date().toISOString(),
         });
 
@@ -55,6 +57,8 @@ export async function POST(req: NextRequest) {
             role: role || "admin",
             gender: gender || null,
             photoURL: photoURL || null,
+            designation: designation || null,
+            assignedClass: assignedClass || null,
         });
 
         return NextResponse.json({
@@ -113,7 +117,7 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: "Access Denied: Super Admin privileges required." }, { status: 403 });
         }
 
-        const { uid, email, password, displayName, role, gender, photoURL } = await req.json();
+        const { uid, email, password, displayName, role, gender, photoURL, designation, assignedClass } = await req.json();
 
         if (!uid) {
             return NextResponse.json({ error: "User UID is required." }, { status: 400 });
@@ -146,6 +150,8 @@ export async function PUT(req: NextRequest) {
         if (role) firestoreUpdate.role = role;
         if (gender !== undefined) firestoreUpdate.gender = gender;
         if (photoURL !== undefined) firestoreUpdate.photoURL = photoURL;
+        if (designation !== undefined) firestoreUpdate.designation = designation;
+        if (assignedClass !== undefined) firestoreUpdate.assignedClass = assignedClass;
 
         if (Object.keys(firestoreUpdate).length > 0) {
             await dbAdmin.collection("users").doc(uid).update(firestoreUpdate);
@@ -158,6 +164,8 @@ export async function PUT(req: NextRequest) {
         if (role) sanityUpdates.role = role;
         if (gender !== undefined) sanityUpdates.gender = gender;
         if (photoURL !== undefined) sanityUpdates.photoURL = photoURL;
+        if (designation !== undefined) sanityUpdates.designation = designation;
+        if (assignedClass !== undefined) sanityUpdates.assignedClass = assignedClass;
 
         if (Object.keys(sanityUpdates).length > 0) {
             await patchAdminInSanity(uid, sanityUpdates);

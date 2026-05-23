@@ -24,7 +24,7 @@ const SchemaOrg = () => {
             "longitude": 67.17068637515153
         },
         "telephone": "+92 321 9230035",
-        "email": "ar3584158@gmail.com",
+        "email": "alghazali75160@gmail.com",
         "openingHours": "Mo,Tu,We,Th,Sa 08:00-14:10",
         "sameAs": [
             "https://www.facebook.com/p/Al-Ghazali-High-School-36B-Landhi-Karachi-100071529611065/"

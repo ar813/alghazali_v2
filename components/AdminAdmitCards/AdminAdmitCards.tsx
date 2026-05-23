@@ -4,7 +4,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { client } from "@/sanity/lib/client";
 import { getAllStudentsQuery } from "@/sanity/lib/queries";
 import type { Student } from "@/types/student";
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { collection, query, where, getDocs, documentId } from 'firebase/firestore';
 import { toast } from "sonner";
 import { useSession } from '@/context/SessionContext';
 import { Search, Printer, FileDown, Layers, User, Users, CheckCircle2 } from "lucide-react";
@@ -58,6 +59,191 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
   useEffect(() => {
     loadStudents();
   }, [loadStudents]);
+
+  // Attendance Map
+  const [attendanceMap, setAttendanceMap] = useState<Record<string, { present: number; absent: number; leave: number; total: number }>>({});
+
+  useEffect(() => {
+    const fetchAttendance = async () => {
+      if (!selectedSession || students.length === 0) return;
+      
+      try {
+        const parts = selectedSession.split('-');
+        const startYear = parseInt(parts[0], 10);
+        const endYear = parseInt(parts[1], 10);
+        if (isNaN(startYear) || isNaN(endYear)) return;
+
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        const startStr = `${startYear}-06-01`;
+        const sessionEndStr = `${endYear}-05-31`;
+        const endStr = todayStr < sessionEndStr ? todayStr : sessionEndStr;
+
+        const aggMap: Record<string, { present: number; absent: number; leave: number; total: number }> = {};
+        
+        // Initialize aggMap for all loaded students to avoid 0 defaults
+        students.forEach(s => {
+          if (s.grNumber) {
+            aggMap[s.grNumber] = { present: 0, absent: 0, leave: 0, total: 0 };
+          }
+        });
+
+        // 1. Fetch Manual monthly attendance records for the session
+        let manualDocs: any[] = [];
+        
+        // Primary: use documentId() for proper prefix-based document ID query
+        const prefixStart = `manual_monthly__${selectedSession}__`;
+        const prefixEnd = `manual_monthly__${selectedSession}__\uf8ff`;
+        
+        const manualQuery = query(
+          collection(db, 'attendance'),
+          where(documentId(), ">=", prefixStart),
+          where(documentId(), "<=", prefixEnd)
+        );
+        const manualSnap = await getDocs(manualQuery);
+        manualDocs = manualSnap.docs;
+
+        // Fallback: query by session field if documentId() query returns empty
+        if (manualDocs.length === 0) {
+          const fallbackQuery = query(
+            collection(db, 'attendance'),
+            where("session", "==", selectedSession)
+          );
+          const fallbackSnap = await getDocs(fallbackQuery);
+          manualDocs = fallbackSnap.docs;
+        }
+
+        const hasManualFor = new Set<string>();
+
+        manualDocs.forEach(docSnap => {
+          const data = docSnap.data();
+          
+          // Extract month and class from document ID or fields
+          const docIdParts = docSnap.id.split('__');
+          const month = docIdParts.length >= 3 ? docIdParts[2] : (data.month || '');
+          const cls = (docIdParts.length >= 4 ? docIdParts[3] : (data.class || '')).toString().replace(/^Class\s+/i, '').trim();
+          
+          if (month && cls) {
+            hasManualFor.add(`${month}__${cls}`);
+          }
+
+          const records = data.records || {};
+          Object.keys(records).forEach(gr => {
+            const row = records[gr];
+            if (gr) {
+              if (!aggMap[gr]) {
+                aggMap[gr] = { present: 0, absent: 0, leave: 0, total: 0 };
+              }
+              aggMap[gr].present += (row.present || 0);
+              aggMap[gr].absent += (row.absent || 0);
+              aggMap[gr].leave += (row.leave || 0);
+              aggMap[gr].total += (row.totalDays || 0);
+            }
+          });
+        });
+
+        // 2. Fetch Mobile daily scans for the session range
+        const mobileQuery = query(
+          collection(db, 'daily_attendance'),
+          where("date", ">=", startStr),
+          where("date", "<=", endStr)
+        );
+        const mobileSnap = await getDocs(mobileQuery);
+
+        // Keep track of unique scan dates per month and clean class:
+        // monthClassDatesMap["YYYY-MM__class"] = Set of dates
+        const monthClassDatesMap: Record<string, Set<string>> = {};
+        
+        // Keep track of mobile scans per student, per month:
+        // studentMonthScans[gr][month] = { present: 0, leave: 0 }
+        const studentMonthScans: Record<string, Record<string, { present: number; leave: number }>> = {};
+
+        mobileSnap.docs.forEach(docSnap => {
+          const record = docSnap.data();
+          const gr = record.grNumber;
+          const dateStr = record.date; // e.g. "2025-06-15"
+          const status = (record.status || 'present').toLowerCase().trim();
+          const rawClass = record.class || '';
+          const cleanClass = rawClass.replace(/^Class\s+/i, '').trim();
+
+          if (gr && dateStr) {
+            const monthStr = dateStr.substring(0, 7); // e.g. "2025-06"
+            
+            // If this month + class already has manual records, skip completely!
+            if (hasManualFor.has(`${monthStr}__${cleanClass}`)) {
+              return;
+            }
+
+            // Track active scan dates for this class in this month
+            const key = `${monthStr}__${cleanClass}`;
+            if (!monthClassDatesMap[key]) {
+              monthClassDatesMap[key] = new Set<string>();
+            }
+            monthClassDatesMap[key].add(dateStr);
+
+            // Track student scans
+            if (!studentMonthScans[gr]) {
+              studentMonthScans[gr] = {};
+            }
+            if (!studentMonthScans[gr][monthStr]) {
+              studentMonthScans[gr][monthStr] = { present: 0, leave: 0 };
+            }
+            if (status === 'present') {
+              studentMonthScans[gr][monthStr].present += 1;
+            } else if (status === 'leave') {
+              studentMonthScans[gr][monthStr].leave += 1;
+            }
+          }
+        });
+
+        // 3. Compute and add mobile scans to aggMap for each student
+        students.forEach(s => {
+          const gr = s.grNumber;
+          if (!gr) return;
+          
+          const cleanClass = (s.admissionFor || '').toString().replace(/^Class\s+/i, '').trim();
+          const studentScans = studentMonthScans[gr] || {};
+
+          // Loop through all months that have active scanner dates for this student's class
+          Object.keys(monthClassDatesMap).forEach(monthClassKey => {
+            const [monthStr, keyClass] = monthClassKey.split('__');
+            if (keyClass !== cleanClass) return;
+
+            const totalWorkingDays = monthClassDatesMap[monthClassKey].size;
+            if (totalWorkingDays === 0) return;
+
+            const scans = studentScans[monthStr] || { present: 0, leave: 0 };
+            const present = scans.present;
+            const leave = scans.leave;
+            const absent = Math.max(0, totalWorkingDays - present - leave);
+
+            if (!aggMap[gr]) {
+              aggMap[gr] = { present: 0, absent: 0, leave: 0, total: 0 };
+            }
+            aggMap[gr].present += present;
+            aggMap[gr].leave += leave;
+            aggMap[gr].absent += absent;
+            aggMap[gr].total += totalWorkingDays;
+          });
+        });
+
+        // DEBUG: Show counts on screen 
+        const nonZeroEntries = Object.entries(aggMap).filter(([_, v]) => v.total > 0);
+        toast.info(`📊 Attendance: ${manualDocs.length} manual docs, ${mobileSnap.size} mobile scans, ${nonZeroEntries.length} students with data`);
+
+        setAttendanceMap(aggMap);
+      } catch (error) {
+        console.error("Failed to load attendance for admit cards:", error);
+        toast.error(`Attendance fetch error: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    };
+
+    fetchAttendance();
+  }, [selectedSession, students]);
 
   // Derived State
   const classes = useMemo(() => {
@@ -327,6 +513,15 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
         doc.text("T.A", attTableX + (attCellW * 2) + (attCellW / 2), attTableY + (attCellH * 0.7), { align: 'center' });
         doc.text("T.L", attTableX + (attCellW * 3) + (attCellW / 2), attTableY + (attCellH * 0.7), { align: 'center' });
 
+        // Table Values (Real-time computed session attendance)
+        const studentAtt = attendanceMap[s.grNumber || ''] || { present: 0, absent: 0, leave: 0, total: 0 };
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(studentAtt.total), attTableX + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
+        doc.text(String(studentAtt.present), attTableX + attCellW + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
+        doc.text(String(studentAtt.absent), attTableX + (attCellW * 2) + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
+        doc.text(String(studentAtt.leave), attTableX + (attCellW * 3) + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
+        doc.setFont('helvetica', 'bold');
+
         // Fees Status
         const feesX = col1 + (attCellW * 4) + (cardsPerPage === 4 ? 8 : 12);
         doc.setFontSize(cardsPerPage === 4 ? 7 : 8);
@@ -530,12 +725,17 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
                             </tr>
                           </thead>
                           <tbody>
-                            <tr>
-                              <td className="border border-black p-2"></td>
-                              <td className="border border-black p-2"></td>
-                              <td className="border border-black p-2"></td>
-                              <td className="border border-black p-2"></td>
-                            </tr>
+                            {(() => {
+                              const att = attendanceMap[s.grNumber || ''] || { present: 0, absent: 0, leave: 0, total: 0 };
+                              return (
+                                <tr>
+                                  <td className="border border-black p-1 text-center font-bold text-[9px]">{att.total}</td>
+                                  <td className="border border-black p-1 text-center font-bold text-[9px] text-green-700">{att.present}</td>
+                                  <td className="border border-black p-1 text-center font-bold text-[9px] text-red-700">{att.absent}</td>
+                                  <td className="border border-black p-1 text-center font-bold text-[9px] text-amber-700">{att.leave}</td>
+                                </tr>
+                              );
+                            })()}
                           </tbody>
                         </table>
                       </div>

@@ -6,6 +6,7 @@ import OurCampus from '@/components/OurCampus/OurCampus';
 import ReadyToPioneer from '@/components/ReadyToPioneer/ReadyToPioneer';
 import AppDownload from '@/components/AppDownload/AppDownload';
 import StatsSection from '@/components/StatsSection/StatsSection';
+import LegendaryStudents from '@/components/LegendaryStudents/LegendaryStudents';
 import About from '@/components/About/About';
 import CoreValues from '@/components/CoreValues/CoreValues';
 import AcademicPrograms from '@/components/AcademicPrograms/AcademicPrograms';
@@ -30,6 +31,10 @@ export default function HomePage() {
 
       <SectionReveal>
         <SchoolEvents />
+      </SectionReveal>
+
+      <SectionReveal>
+        <LegendaryStudents />
       </SectionReveal>
 
       <SectionReveal>
