@@ -1,239 +1,162 @@
-"use client"
+import React from 'react';
+import Navbar from '@/components/NavBar/NavBar';
+import Footer from '@/components/Footer/Footer';
+import { client } from '@/sanity/lib/client';
+import { CalendarDays, Star, GraduationCap, PartyPopper, BookOpen, Clock } from 'lucide-react';
 
-import React, { useEffect, useState, useMemo } from "react"
-import { client } from "@/sanity/lib/client"
-import { getAllSchedulesQuery } from "@/sanity/lib/queries"
-import { GraduationCap, Clock, Calendar, ChevronRight, Search, Coffee, Zap } from "lucide-react"
-import NavBar from "@/components/NavBar/NavBar"
-import Footer from "@/components/Footer/Footer"
-import { cn } from "@/lib/utils"
-import { motion, AnimatePresence } from "framer-motion"
+export const revalidate = 60;
 
-type Period = { subject: string; time: string }
-type Day = { day: string; periods: Period[] }
-type ScheduleDoc = { className: string; days: Day[] }
-
-async function fetchSchedules(): Promise<ScheduleDoc[]> {
-  return await client.fetch(getAllSchedulesQuery)
+interface SchoolEvent {
+    _id: string;
+    title: string;
+    content: string;
+    eventDate: string;
+    eventType?: string;
 }
 
-const SchedulePage = () => {
-  const [schedules, setSchedules] = useState<ScheduleDoc[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeClass, setActiveClass] = useState<string | null>(null)
+const eventTypeConfig: Record<string, { label: string; color: string; bg: string; border: string }> = {
+    holiday: { label: 'Holiday', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
+    exam: { label: 'Examination', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
+    activity: { label: 'Activity', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
+    ceremony: { label: 'Ceremony', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-200' },
+    ptm: { label: 'PTM', color: 'text-teal-700', bg: 'bg-teal-50', border: 'border-teal-200' },
+};
 
-  const today = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date())
-
-  useEffect(() => {
-    let mounted = true
-    setLoading(true)
-    fetchSchedules()
-      .then((res) => {
-        if (!mounted) return
-        const sorted = (res || []).sort((a, b) => a.className.localeCompare(b.className, undefined, { numeric: true }))
-        setSchedules(sorted)
-        if (sorted.length > 0) setActiveClass(sorted[0].className)
-        setLoading(false)
-      })
-      .catch((err) => {
-        if (!mounted) return
-        setError(err.message || "Failed to load schedules")
-        setLoading(false)
-      })
-    return () => {
-      mounted = false
+const getEventIcon = (type?: string) => {
+    switch (type) {
+        case 'holiday': return <Star size={18} />;
+        case 'exam': return <BookOpen size={18} />;
+        case 'activity': return <PartyPopper size={18} />;
+        case 'ceremony': return <GraduationCap size={18} />;
+        default: return <CalendarDays size={18} />;
     }
-  }, [])
+};
 
-  const currentSchedule = useMemo(() => {
-    return schedules?.find(s => s.className === activeClass)
-  }, [schedules, activeClass])
+const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-  const isBreak = (subject: string) => {
-    const s = subject.toLowerCase()
-    return s.includes("break") || s.includes("lunch") || s.includes("recess") || s.includes("waqfa")
-  }
+export default async function SchedulePage() {
+    const events: SchoolEvent[] = await client.fetch(
+        `*[_type == "notice" && isEvent == true && defined(eventDate)] | order(eventDate asc) {
+            _id,
+            title,
+            content,
+            eventDate,
+            eventType
+        }`
+    );
 
-  return (
-    <div className="bg-[#fcfcfc] min-h-screen font-outfit selection:bg-neutral-200 selection:text-black">
-      <NavBar />
+    // Group events by month
+    const groupedByMonth: Record<string, SchoolEvent[]> = {};
+    for (const event of events) {
+        const date = new Date(event.eventDate);
+        const key = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`;
+        if (!groupedByMonth[key]) groupedByMonth[key] = [];
+        groupedByMonth[key].push(event);
+    }
 
-      <main className="pt-32 pb-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          {/* Header Section */}
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-12"
-          >
-            <div className="flex items-center gap-2 text-neutral-400 text-xs mb-3">
-              <span className="hover:text-black cursor-pointer transition-colors">Home</span>
-              <ChevronRight size={12} />
-              <span className="text-neutral-900 font-medium">Academic Schedule</span>
-            </div>
-            
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div>
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-neutral-900 mb-3">
-                  Class Timetable
-                </h1>
-                <p className="text-neutral-500 max-w-lg text-base leading-relaxed font-normal">
-                  Real-time academic schedules for the 2025-26 session.
-                </p>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="bg-neutral-900 text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-2">
-                  <Calendar size={12} />
-                  Session 2025-26
-                </div>
-              </div>
-            </div>
-          </motion.div>
+    const sortedMonthKeys = Object.keys(groupedByMonth).sort();
 
-          {/* Class Selector Tabs */}
-          {!loading && schedules && schedules.length > 0 && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="flex flex-wrap gap-2 mb-10 border-b border-neutral-100 pb-6"
-            >
-              {schedules.map((s) => (
-                <button
-                  key={s.className}
-                  onClick={() => setActiveClass(s.className)}
-                  className={cn(
-                    "px-5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border",
-                    activeClass === s.className
-                      ? "bg-neutral-900 text-white border-neutral-900 shadow-sm"
-                      : "bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400 hover:text-neutral-800"
-                  )}
-                >
-                  {s.className !== "SSCI" && s.className !== "SSCII" ? "Class " : ""}
-                  {s.className}
-                </button>
-              ))}
-            </motion.div>
-          )}
+    return (
+        <main className="min-h-screen bg-[#f9fafb]">
+            <Navbar />
 
-          {/* Content Area */}
-          <div className="relative min-h-[400px]">
-            <AnimatePresence mode="wait">
-              {loading ? (
-                <motion.div 
-                  key="loading"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                >
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="h-48 bg-neutral-50 animate-pulse rounded-2xl border border-neutral-100" />
-                  ))}
-                </motion.div>
-              ) : error ? (
-                <motion.div 
-                  key="error"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="bg-neutral-50 border border-neutral-100 text-neutral-600 p-10 rounded-3xl text-center"
-                >
-                  <p className="font-semibold mb-1 text-sm">Error Loading Schedule</p>
-                  <p className="text-xs opacity-70">{error}</p>
-                </motion.div>
-              ) : currentSchedule ? (
-                <motion.div 
-                  key={activeClass}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="grid grid-cols-1 gap-10"
-                >
-                  {currentSchedule.days.map((day, dIdx) => (
-                    <div key={dIdx}>
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className={cn(
-                          "px-3 py-1.5 rounded-lg text-xs font-bold tracking-tight",
-                          day.day === today 
-                            ? "bg-neutral-900 text-white shadow-sm" 
-                            : "bg-neutral-100 text-neutral-600"
-                        )}>
-                          {day.day}
-                          {day.day === today && <span className="ml-2 text-[8px] opacity-70 uppercase tracking-tighter">Today</span>}
-                        </div>
-                        <div className="flex-1 h-[1px] bg-neutral-100" />
-                      </div>
+            {/* Hero Section */}
+            <section className="relative pt-32 pb-16 overflow-hidden bg-white" style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <div className="absolute inset-0 bg-islamic-pattern pointer-events-none opacity-50" />
+                <div className="absolute inset-0 bg-grid-enterprise pointer-events-none" />
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {day.periods.map((period, pIdx) => {
-                          const isBreakPeriod = isBreak(period.subject)
-                          
-                          return (
-                            <motion.div
-                              whileHover={{ y: -2 }}
-                              key={pIdx}
-                              className={cn(
-                                "p-5 rounded-2xl transition-all duration-300 border relative",
-                                isBreakPeriod 
-                                  ? "bg-amber-50/50 border-amber-200/40" 
-                                  : "bg-white border-neutral-100 hover:border-neutral-300"
-                              )}
-                            >
-                              <div className="flex flex-col h-full">
-                                <div className="flex items-center justify-between mb-3">
-                                  <span className={cn(
-                                    "text-[9px] font-bold uppercase tracking-wider",
-                                    isBreakPeriod ? "text-amber-600" : "text-neutral-400"
-                                  )}>
-                                    Period {pIdx + 1}
-                                  </span>
-                                  {isBreakPeriod && <Coffee size={12} className="text-amber-500" />}
-                                </div>
-
-                                <h3 className={cn(
-                                  "text-base font-semibold mb-3 tracking-tight",
-                                  isBreakPeriod ? "text-amber-900" : "text-neutral-900"
-                                )}>
-                                  {period.subject}
-                                </h3>
-
-                                <div className={cn(
-                                  "mt-auto flex items-center gap-2 px-2.5 py-1 rounded-lg w-fit",
-                                  isBreakPeriod ? "bg-amber-100/50 text-amber-700" : "bg-neutral-50 text-neutral-500"
-                                )}>
-                                  <Clock size={12} className={isBreakPeriod ? "text-amber-500" : "text-neutral-400"} />
-                                  <span className="text-[11px] font-medium tracking-tight">{period.time}</span>
-                                </div>
-                              </div>
-                            </motion.div>
-                          )
-                        })}
-                      </div>
+                <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6">
+                    <div className="max-w-3xl">
+                        <p className="label-mono mb-4 text-[#065f46]">{"// School Calendar"}</p>
+                        <h1 className="text-4xl sm:text-6xl font-black tracking-tight mb-6 text-[#111827] uppercase">
+                            Events & <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#065f46] to-emerald-600">Calendar</span>
+                        </h1>
+                        <p className="text-lg sm:text-xl text-[#6b7280] leading-relaxed">
+                            Stay up-to-date with all school events, examination schedules, holidays, and important dates throughout the academic year.
+                        </p>
                     </div>
-                  ))}
-                </motion.div>
-              ) : (
-                <motion.div 
-                  key="empty"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center py-20 bg-neutral-50 border border-dashed border-neutral-200 rounded-3xl"
-                >
-                  <Search className="mx-auto text-neutral-300 mb-4" size={40} strokeWidth={1} />
-                  <p className="text-neutral-400 font-medium text-sm">No schedule for this class.</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      </main>
+                </div>
+            </section>
 
-      <Footer />
-    </div>
-  )
+            {/* Calendar Content */}
+            <section className="py-16 sm:py-24">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6">
+                    {events.length === 0 ? (
+                        <div className="text-center py-20 bg-white border border-[#e5e7eb] rounded-xl">
+                            <CalendarDays className="mx-auto mb-4 text-neutral-300" size={48} />
+                            <p className="text-neutral-500 font-medium">No events have been scheduled yet.</p>
+                            <p className="text-sm text-neutral-400 mt-1">Check back later for upcoming school events and holidays.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-16">
+                            {sortedMonthKeys.map((monthKey) => {
+                                const eventsInMonth = groupedByMonth[monthKey];
+                                const sampleDate = new Date(eventsInMonth[0].eventDate);
+                                const monthName = months[sampleDate.getMonth()];
+                                const year = sampleDate.getFullYear();
+
+                                return (
+                                    <div key={monthKey}>
+                                        {/* Month Header */}
+                                        <div className="flex items-center gap-4 mb-8">
+                                            <div className="p-3 bg-[#065f46] text-white rounded-xl">
+                                                <CalendarDays size={24} />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-2xl sm:text-3xl font-black text-[#111827] uppercase tracking-tight">{monthName}</h2>
+                                                <p className="text-sm text-neutral-500 font-medium">{year} &mdash; {eventsInMonth.length} Event{eventsInMonth.length > 1 ? 's' : ''}</p>
+                                            </div>
+                                            <div className="flex-1 h-px bg-neutral-200 ml-4" />
+                                        </div>
+
+                                        {/* Events List */}
+                                        <div className="space-y-4">
+                                            {eventsInMonth.map((event) => {
+                                                const date = new Date(event.eventDate);
+                                                const config = eventTypeConfig[event.eventType || ''] || { label: 'General', color: 'text-neutral-700', bg: 'bg-neutral-50', border: 'border-neutral-200' };
+
+                                                return (
+                                                    <div
+                                                        key={event._id}
+                                                        className={`group flex flex-col sm:flex-row gap-4 sm:gap-6 p-5 sm:p-6 bg-white border ${config.border} rounded-xl hover:shadow-lg hover:border-[#065f46] transition-all`}
+                                                    >
+                                                        {/* Date Badge */}
+                                                        <div className="flex sm:flex-col items-center sm:items-center justify-start gap-3 sm:gap-1 sm:min-w-[72px] shrink-0">
+                                                            <span className="text-3xl sm:text-4xl font-black text-[#065f46] leading-none">{String(date.getDate()).padStart(2, '0')}</span>
+                                                            <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest">{months[date.getMonth()].slice(0, 3)}</span>
+                                                        </div>
+
+                                                        {/* Divider */}
+                                                        <div className="hidden sm:block w-px bg-neutral-200 self-stretch" />
+
+                                                        {/* Event Details */}
+                                                        <div className="flex-1">
+                                                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${config.color} ${config.bg} border ${config.border}`}>
+                                                                    {getEventIcon(event.eventType)}
+                                                                    {config.label}
+                                                                </span>
+                                                                <span className="inline-flex items-center gap-1 text-[10px] text-neutral-400 font-medium">
+                                                                    <Clock size={10} />
+                                                                    {date.toLocaleDateString('en-PK', { weekday: 'long' })}
+                                                                </span>
+                                                            </div>
+                                                            <h3 className="text-lg font-bold text-[#111827] mb-1 group-hover:text-[#065f46] transition-colors">{event.title}</h3>
+                                                            <p className="text-sm text-[#6b7280] leading-relaxed line-clamp-2">{event.content}</p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            <Footer />
+        </main>
+    );
 }
-
-export default SchedulePage

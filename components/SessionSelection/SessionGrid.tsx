@@ -26,7 +26,10 @@ import {
     UserCog,
     Users as UsersIcon,
     User,
-    Lock as LockIcon
+    Lock as LockIcon,
+    GraduationCap,
+    MessageSquare,
+    Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -626,6 +629,52 @@ export default function SessionGrid() {
                         })}
                     </div>
                 )}
+
+                {/* Global Administration Section */}
+                <div className="mt-16 pt-8 border-t border-neutral-200 dark:border-neutral-800">
+                    <div className="flex items-center gap-2 mb-6 text-neutral-800 dark:text-neutral-200">
+                        <Globe size={18} className="text-blue-500" />
+                        <h2 className="text-lg font-bold tracking-tight">Global Administration</h2>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Admissions Card */}
+                        <Link href="/admin/admissions" className="group bg-white dark:bg-black border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:shadow-lg hover:border-blue-500/50 transition-all duration-300 relative overflow-hidden flex items-start gap-5">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/20 transition-all duration-500" />
+                            
+                            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-800/50">
+                                <GraduationCap size={24} strokeWidth={1.5} />
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Admission Requests</h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">Review and manage incoming student applications from the website.</p>
+                            </div>
+                            
+                            <div className="shrink-0 self-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                                <ChevronRight className="w-5 h-5 text-blue-500" />
+                            </div>
+                        </Link>
+
+                        {/* Inquiries Card */}
+                        <Link href="/admin/inquiries" className="group bg-white dark:bg-black border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:shadow-lg hover:border-emerald-500/50 transition-all duration-300 relative overflow-hidden flex items-start gap-5">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-emerald-500/10 dark:group-hover:bg-emerald-500/20 transition-all duration-500" />
+                            
+                            <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-800/50">
+                                <MessageSquare size={24} strokeWidth={1.5} />
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Contact Inquiries</h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">Respond to messages and questions submitted through the Help & Support page.</p>
+                            </div>
+                            
+                            <div className="shrink-0 self-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                                <ChevronRight className="w-5 h-5 text-emerald-500" />
+                            </div>
+                        </Link>
+                    </div>
+                </div>
             </main>
 
             {/* New Session Dialog */}

@@ -102,20 +102,20 @@ const VerseBox = () => {
             onMouseLeave={() => setIsPaused(false)}
         >
             {/* Main Sharp Fixed Box */}
-            <div className="relative overflow-hidden bg-white/95 border border-emerald-300/50 rounded-none shadow-lg h-[180px] flex flex-col justify-center px-4 py-6 transition-all duration-300">
+            <div className="relative overflow-hidden bg-white/95 dark:bg-neutral-900/95 border border-emerald-300/50 dark:border-emerald-800/50 rounded-none shadow-lg h-[180px] flex flex-col justify-center px-4 py-6 transition-all duration-300">
                 
                 {/* Navigation Buttons - Always Shown with Light Outlines */}
                 <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between pointer-events-none z-20 px-2">
                     <button 
                         onClick={handlePrev}
-                        className="p-2 bg-white/40 border border-emerald-300/60 text-emerald-900/60 pointer-events-auto transition-all hover:bg-emerald-800 hover:text-white hover:border-emerald-800 rounded-none shadow-sm"
+                        className="p-2 bg-white/40 dark:bg-neutral-800/40 border border-emerald-300/60 dark:border-emerald-700/60 text-emerald-900/60 dark:text-emerald-350 pointer-events-auto transition-all hover:bg-emerald-800 hover:text-white hover:border-emerald-800 rounded-none shadow-sm"
                         title="Previous"
                     >
                         <ChevronLeft className="w-4 h-4" />
                     </button>
                     <button 
                         onClick={handleNext}
-                        className="p-2 bg-white/40 border border-emerald-300/60 text-emerald-900/60 pointer-events-auto transition-all hover:bg-emerald-800 hover:text-white hover:border-emerald-800 rounded-none shadow-sm"
+                        className="p-2 bg-white/40 dark:bg-neutral-800/40 border border-emerald-300/60 dark:border-emerald-700/60 text-emerald-900/60 dark:text-emerald-350 pointer-events-auto transition-all hover:bg-emerald-800 hover:text-white hover:border-emerald-800 rounded-none shadow-sm"
                         title="Next"
                     >
                         <ChevronRight className="w-4 h-4" />
@@ -134,7 +134,7 @@ const VerseBox = () => {
                         >
                             {/* Arabic Text - Auto-adjusting feel with clamp and balance */}
                             <h2 
-                                className="text-lg sm:text-xl md:text-2xl text-emerald-950 leading-tight text-wrap-balance" 
+                                className="text-lg sm:text-xl md:text-2xl text-emerald-950 dark:text-emerald-200 leading-tight text-wrap-balance" 
                                 style={{ 
                                     fontFamily: 'var(--font-amiri), serif', 
                                     direction: 'rtl'
@@ -145,7 +145,7 @@ const VerseBox = () => {
 
                             {/* Urdu Translation - Compact & Clean */}
                             <p 
-                                className="text-[10px] sm:text-xs md:text-sm text-slate-600 leading-relaxed font-medium text-wrap-balance"
+                                className="text-[10px] sm:text-xs md:text-sm text-slate-600 dark:text-neutral-300 leading-relaxed font-medium text-wrap-balance"
                                 style={{ direction: 'rtl' }}
                             >
                                 {VERSES[currentIndex].urdu}
@@ -153,7 +153,7 @@ const VerseBox = () => {
 
                             {/* Reference - Minimalist Footer */}
                             <div className="pt-2">
-                                <span className="text-[8px] sm:text-[9px] font-bold text-emerald-900/40 tracking-widest uppercase border-t border-emerald-200/30 pt-1">
+                                <span className="text-[8px] sm:text-[9px] font-bold text-emerald-900/40 dark:text-emerald-400/40 tracking-widest uppercase border-t border-emerald-200/30 dark:border-emerald-800/30 pt-1">
                                     {VERSES[currentIndex].reference}
                                 </span>
                             </div>

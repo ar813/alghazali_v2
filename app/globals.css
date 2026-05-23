@@ -87,7 +87,6 @@
     @apply bg-background text-foreground tracking-tight scroll-smooth;
     font-family: var(--font-geist-sans), system-ui, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
-    background-color: #ffffff;
   }
 
   h1, h2, h3, h4, h5, h6 {

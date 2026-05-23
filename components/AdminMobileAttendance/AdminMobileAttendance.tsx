@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import PremiumLoader from '@/components/ui/PremiumLoader';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { Search } from 'lucide-react';
 import { toast } from "sonner";
 import { client } from '@/sanity/lib/client';
@@ -26,6 +26,12 @@ interface AttendanceRecord {
     timestamp: number;
     status: 'present' | 'leave';
     reason?: string;
+    // Manual details
+    manualTotalDays?: number;
+    manualPresent?: number;
+    manualAbsent?: number;
+    manualLeave?: number;
+    hasManualRecord?: boolean;
 }
 
 const AdminMobileAttendance = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
@@ -40,21 +46,6 @@ const AdminMobileAttendance = ({ onLoadingChange }: { onLoadingChange?: (loading
 
     // Dummy classes for filter - can be dynamic if needed
     const classOptions = ['All', 'KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'SSCI', 'SSCII'];
-
-    // Fetch all students from Sanity for absent calculation
-    useEffect(() => {
-        const fetchAllStudents = async () => {
-            try {
-                if (!selectedSession) return;
-                const students = await client.fetch<Student[]>(getAllStudentsQuery, { session: selectedSession });
-                setAllStudents(students);
-            } catch (_error) {
-                console.error("❌ Error fetching all students from Sanity:", _error);
-            }
-        };
-        fetchAllStudents();
-    }, [selectedSession]);
-
 
     const [viewMode, setViewMode] = useState<'daily' | 'monthly' | 'custom'>('daily');
     const [selectedMonth, setSelectedMonth] = useState<string>('');
@@ -74,7 +65,7 @@ const AdminMobileAttendance = ({ onLoadingChange }: { onLoadingChange?: (loading
         });
     }, []);
 
-    useEffect(() => {
+    const loadData = async () => {
         if ((viewMode === 'daily' && !selectedDate) ||
             (viewMode === 'monthly' && !selectedMonth) ||
             (viewMode === 'custom' && (!dateRange.start || !dateRange.end))) {
@@ -84,45 +75,132 @@ const AdminMobileAttendance = ({ onLoadingChange }: { onLoadingChange?: (loading
         if (onLoadingChange) onLoadingChange(true);
         setLoading(true);
 
-        let q;
-        if (viewMode === 'daily') {
-            q = query(collection(db, 'daily_attendance'), where("date", "==", selectedDate));
-        } else if (viewMode === 'monthly') {
-            const startStr = `${selectedMonth}-01`;
-            const endStr = `${selectedMonth}-31`;
-            q = query(collection(db, 'daily_attendance'), where("date", ">=", startStr), where("date", "<=", endStr));
-        } else {
-            q = query(collection(db, 'daily_attendance'), where("date", ">=", dateRange.start), where("date", "<=", dateRange.end));
-        }
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data: AttendanceRecord[] = [];
-            const attendedDates = new Set<string>();
-
-            snapshot.forEach((doc) => {
-                const docData = doc.data();
-                const status = docData.status || 'present';
-                if (docData.date) attendedDates.add(docData.date);
-                data.push({
-                    id: doc.id,
-                    ...docData,
-                    status: status,
-                    studentName: docData.studentName || 'Unknown Student',
-                    class: docData.class || '-',
-                    rollNumber: docData.rollNumber || '-',
-                    grNumber: docData.grNumber || '-',
-                    timestamp: docData.timestamp || 0
-                } as AttendanceRecord);
+        try {
+            // 1. Fetch Students from Sanity - Filter by Session and Class
+            const classFilterStr = filterClass !== 'All' ? '&& admissionFor == $classFilter' : '';
+            const studentsQuery = `*[_type == "student" && (session == $session || (!defined(session) && $session == "2025-2026")) ${classFilterStr}]{
+                _id,
+                fullName,
+                rollNumber,
+                grNumber,
+                gender,
+                "photoUrl": photo.asset->url,
+                admissionFor
+            }`;
+            
+            const fetchStudentsPromise = client.fetch<Student[]>(studentsQuery, { 
+                session: selectedSession,
+                classFilter: filterClass === 'All' ? '' : filterClass
             });
 
-            // Calculate 'Absent' records for every student on every active day in the range
+            // 2. Fetch Mobile Scans from Firestore
+            let q;
+            if (viewMode === 'daily') {
+                q = query(collection(db, 'daily_attendance'), where("date", "==", selectedDate));
+            } else if (viewMode === 'monthly') {
+                const startStr = `${selectedMonth}-01`;
+                const endStr = `${selectedMonth}-31`;
+                q = query(collection(db, 'daily_attendance'), where("date", ">=", startStr), where("date", "<=", endStr));
+            } else {
+                q = query(collection(db, 'daily_attendance'), where("date", ">=", dateRange.start), where("date", "<=", dateRange.end));
+            }
+            const fetchMobilePromise = getDocs(q);
+
+            // 3. Determine target months list for manual fetch
+            const targetMonths: string[] = [];
+            if (viewMode === 'daily' && selectedDate) {
+                targetMonths.push(selectedDate.substring(0, 7));
+            } else if (viewMode === 'monthly' && selectedMonth) {
+                targetMonths.push(selectedMonth);
+            } else if (viewMode === 'custom' && dateRange.start && dateRange.end) {
+                const start = new Date(dateRange.start);
+                const end = new Date(dateRange.end);
+                const current = new Date(start.getFullYear(), start.getMonth(), 1);
+                while (current <= end) {
+                    const mStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+                    if (!targetMonths.includes(mStr)) targetMonths.push(mStr);
+                    current.setMonth(current.getMonth() + 1);
+                }
+            }
+
+            // 4. Fetch Manual monthly overrides from Firestore
+            let fetchManualPromise = Promise.resolve() as Promise<any>;
+            if (targetMonths.length > 0) {
+                // If filterClass is 'All', we query for the month list. If specific class, we query by month and class.
+                let manualQuery = query(
+                    collection(db, 'attendance'),
+                    where("session", "==", selectedSession),
+                    where("month", "in", targetMonths)
+                );
+                if (filterClass !== 'All') {
+                    manualQuery = query(manualQuery, where("class", "in", [filterClass, `Class ${filterClass}`]));
+                }
+                fetchManualPromise = getDocs(manualQuery);
+            }
+
+            // Concurrent execution
+            const [classStudents, mobileSnap, manualSnap] = await Promise.all([
+                fetchStudentsPromise,
+                fetchMobilePromise,
+                fetchManualPromise
+            ]);
+
+            setAllStudents(classStudents);
+
+            // Parse Mobile records with strict defaults
+            const rawMobileData: AttendanceRecord[] = [];
+            const attendedDates = new Set<string>();
+
+            mobileSnap.docs.forEach((doc) => {
+                const docData = doc.data();
+                const status = (docData.status || 'present').toLowerCase().trim();
+                const recordClass = docData.class || '';
+                
+                // Class filter matching logic
+                const matchesClass = filterClass === 'All' || recordClass === filterClass || recordClass === `Class ${filterClass}`;
+                
+                if (matchesClass) {
+                    if (docData.date) attendedDates.add(docData.date);
+                    rawMobileData.push({
+                        id: doc.id,
+                        ...docData,
+                        status: status,
+                        studentName: docData.studentName || 'Unknown Student',
+                        class: docData.class || '-',
+                        rollNumber: docData.rollNumber || '-',
+                        grNumber: docData.grNumber || '-',
+                        timestamp: docData.timestamp || 0
+                    } as AttendanceRecord);
+                }
+            });
+
+            // Parse Manual monthly aggregates per GR
+            const manualAggMap: Record<string, { present: number; absent: number; leave: number; totalDays: number }> = {};
+            if (manualSnap && !manualSnap.empty) {
+                manualSnap.docs.forEach((docSnap: any) => {
+                    const docData = docSnap.data();
+                    const records = docData.records || {};
+                    Object.keys(records).forEach(gr => {
+                        const row = records[gr];
+                        if (!manualAggMap[gr]) {
+                            manualAggMap[gr] = { present: 0, absent: 0, leave: 0, totalDays: 0 };
+                        }
+                        manualAggMap[gr].present += (row.present || 0);
+                        manualAggMap[gr].absent += (row.absent || 0);
+                        manualAggMap[gr].leave += (row.leave || 0);
+                        manualAggMap[gr].totalDays += (row.totalDays || 0);
+                    });
+                });
+            }
+
+            // Calculate 'Absent' records for students in class who did not scan
             const activeDays = Array.from(attendedDates);
-            const attendanceMap = new Set(data.map(r => `${r.grNumber}-${r.date}`));
+            const attendanceMap = new Set(rawMobileData.map(r => `${r.grNumber}-${r.date}`));
             const generatedAbsents: AttendanceRecord[] = [];
 
-            if (activeDays.length > 0 && allStudents.length > 0) {
+            if (activeDays.length > 0 && classStudents.length > 0) {
                 activeDays.forEach(day => {
-                    allStudents.forEach(student => {
+                    classStudents.forEach(student => {
                         const key = `${student.grNumber || 'none'}-${day}`;
                         if (!attendanceMap.has(key)) {
                             generatedAbsents.push({
@@ -134,7 +212,7 @@ const AdminMobileAttendance = ({ onLoadingChange }: { onLoadingChange?: (loading
                                 grNumber: student.grNumber || 'N/A',
                                 photoUrl: student.photoUrl || null,
                                 timestamp: 0,
-                                status: 'leave', // Dummy
+                                status: 'leave', // dummy default
                                 reason: 'Absent',
                                 isAbsent: true
                             } as any);
@@ -143,23 +221,41 @@ const AdminMobileAttendance = ({ onLoadingChange }: { onLoadingChange?: (loading
                 });
             }
 
-            const combinedData = [...data, ...generatedAbsents];
+            // Combine mobile logs, absents, and inject manual stats
+            const combinedData = [...rawMobileData, ...generatedAbsents].map(record => {
+                const gr = record.grNumber;
+                const man = manualAggMap[gr];
+                if (man) {
+                    return {
+                        ...record,
+                        hasManualRecord: true,
+                        manualTotalDays: man.totalDays,
+                        manualPresent: man.present,
+                        manualAbsent: man.absent,
+                        manualLeave: man.leave
+                    };
+                }
+                return record;
+            });
+
             combinedData.sort((a, b) => {
                 if (a.date !== b.date) return b.date.localeCompare(a.date);
                 return a.studentName.localeCompare(b.studentName);
             });
 
             setRecords(combinedData);
+        } catch (error) {
+            console.error("❌ Error loading optimized attendance records:", error);
+            toast.error("Failed to load attendance records.");
+        } finally {
             setLoading(false);
             if (onLoadingChange) onLoadingChange(false);
-        }, (error) => {
-            console.error(error);
-            setLoading(false);
-            if (onLoadingChange) onLoadingChange(false);
-        });
+        }
+    };
 
-        return () => unsubscribe();
-    }, [selectedDate, selectedMonth, dateRange, viewMode, onLoadingChange, allStudents]);
+    useEffect(() => {
+        loadData();
+    }, [selectedDate, selectedMonth, dateRange, viewMode, filterClass, selectedSession]);
 
     const formatTime = (epoch: number) => {
         if (!epoch) return '-';
@@ -487,10 +583,6 @@ const AdminMobileAttendance = ({ onLoadingChange }: { onLoadingChange?: (loading
     const leaveCount = records.filter(r => r.status === 'leave' && !(r as any).isAbsent).length;
     const absentCount = records.filter(r => (r as any).isAbsent).length;
 
-    if (loading) {
-        return <PremiumLoader text="Loading Attendance Register..." />;
-    }
-
     return (
         <div className="space-y-6">
             <AttendanceStats
@@ -524,14 +616,59 @@ const AdminMobileAttendance = ({ onLoadingChange }: { onLoadingChange?: (loading
                 filteredCount={filteredRecords.length}
             />
 
-            {filteredRecords.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center shadow-sm">
-                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-5 border border-gray-100">
-                        <Search size={32} className="text-gray-300" />
+            {loading ? (
+                /* Premium Squared Skeleton Table & Card loader */
+                <div className="space-y-4">
+                    {/* Desktop Skeleton */}
+                    <div className="hidden md:block bg-white dark:bg-neutral-950 rounded-none border border-neutral-100 dark:border-neutral-900 shadow-sm overflow-hidden animate-pulse">
+                        <div className="p-4 bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 flex justify-between">
+                            <div className="h-4 w-24 bg-neutral-200 dark:bg-neutral-800 rounded-none" />
+                            <div className="h-4 w-12 bg-neutral-200 dark:bg-neutral-800 rounded-none" />
+                            <div className="h-4 w-16 bg-neutral-200 dark:bg-neutral-800 rounded-none" />
+                            <div className="h-4 w-16 bg-neutral-200 dark:bg-neutral-800 rounded-none" />
+                            <div className="h-4 w-16 bg-neutral-200 dark:bg-neutral-800 rounded-none" />
+                        </div>
+                        <div className="divide-y divide-neutral-100 dark:divide-neutral-900">
+                            {Array.from({ length: 6 }).map((_, sIdx) => (
+                                <div key={sIdx} className="p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-neutral-200 dark:bg-neutral-800 rounded-none shrink-0" />
+                                        <div className="space-y-2">
+                                            <div className="h-4 w-32 bg-neutral-200 dark:bg-neutral-800 rounded-none" />
+                                            <div className="h-3 w-16 bg-neutral-200/60 dark:bg-neutral-800/60 rounded-none" />
+                                        </div>
+                                    </div>
+                                    <div className="h-6 w-16 bg-neutral-200 dark:bg-neutral-800 rounded-none" />
+                                    <div className="h-4 w-20 bg-neutral-200 dark:bg-neutral-800 rounded-none" />
+                                    <div className="h-4 w-12 bg-neutral-200 dark:bg-neutral-800 rounded-none" />
+                                    <div className="h-6 w-20 bg-neutral-200 dark:bg-neutral-800 rounded-none" />
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2 tracking-tight">No Records Found</h3>
-                    <p className="text-sm text-gray-500 max-w-xs mx-auto">
-                        We couldn't find any attendance records matching your current filters.
+
+                    {/* Mobile Card Skeleton */}
+                    <div className="grid grid-cols-1 gap-2 md:hidden">
+                        {Array.from({ length: 4 }).map((_, sIdx) => (
+                            <div key={sIdx} className="bg-white dark:bg-neutral-950 p-4 border border-neutral-100 dark:border-neutral-900 shadow-sm flex items-center gap-3 animate-pulse">
+                                <div className="w-10 h-10 bg-neutral-200 dark:bg-neutral-800 rounded-none shrink-0" />
+                                <div className="flex-1 space-y-2">
+                                    <div className="h-4 w-28 bg-neutral-200 dark:bg-neutral-800" />
+                                    <div className="h-3 w-20 bg-neutral-200/60 dark:bg-neutral-800/60" />
+                                </div>
+                                <div className="h-5 w-16 bg-neutral-200 dark:bg-neutral-800" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : filteredRecords.length === 0 ? (
+                <div className="bg-white dark:bg-neutral-950 rounded-none border border-neutral-150 dark:border-neutral-900 p-12 text-center shadow-sm">
+                    <div className="w-16 h-16 bg-neutral-50 dark:bg-neutral-900 border border-neutral-150 dark:border-neutral-800 flex items-center justify-center mx-auto mb-4">
+                        <Search size={28} className="text-neutral-300 dark:text-neutral-700" />
+                    </div>
+                    <h3 className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider mb-2">No Records Found</h3>
+                    <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest max-w-xs mx-auto leading-relaxed">
+                        We couldn't find any attendance logs matching your current filters.
                     </p>
                 </div>
             ) : (

@@ -679,11 +679,11 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
       <HeaderStats stats={stats} />
 
-      <div className="bg-white dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-900 p-2 rounded-none shadow-sm mb-6 flex flex-row flex-wrap lg:flex-nowrap gap-2 items-center justify-between transition-all sticky top-2 z-30">
+      <div className="bg-white dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-900 p-3 rounded-none shadow-sm mb-6 flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between transition-all sticky top-2 z-30">
 
         {/* Left Section: Search & Essential Filters */}
-        <div className="flex flex-row items-center gap-2 flex-1 min-w-0 w-full lg:w-auto">
-          <div className="relative group/search flex-1 min-w-0 max-w-[280px]">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 min-w-0 w-full lg:w-auto">
+          <div className="relative group/search flex-1 min-w-0 w-full lg:max-w-[280px]">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
               <Search size={16} />
             </div>
@@ -695,8 +695,8 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="relative group/select w-32 md:w-36">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative group/select flex-1 sm:w-36">
               <select
                 value={klass}
                 onChange={(e) => setKlass(e.target.value)}
@@ -709,7 +709,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
             </div>
 
             <Menu>
-              <MenuButton className="p-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-none hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all text-neutral-500 hover:text-blue-600 flex items-center justify-center shadow-sm" title="Sort Options">
+              <MenuButton className="p-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-none hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all text-neutral-500 hover:text-blue-600 flex items-center justify-center shadow-sm shrink-0" title="Sort Options">
                 <ArrowUpDown size={16} />
               </MenuButton>
               <Portal>
@@ -741,60 +741,63 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
         </div>
 
         {/* Right Section: Toolbox & Primary Actions */}
-        <div className="flex flex-row items-center gap-2">
+        <div className="flex flex-row flex-wrap sm:flex-nowrap items-center justify-between lg:justify-end gap-2 w-full lg:w-auto">
 
-          <div className="flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900/50 p-1 rounded-none border border-neutral-100 dark:border-neutral-800">
-            <button
-              onClick={refreshStudents}
-              className={`p-2 rounded-none hover:bg-white dark:hover:bg-neutral-800 text-neutral-400 hover:text-blue-600 ${loading ? 'opacity-50 pointer-events-none' : ''}`}
-              title="Refresh"
-            >
-              <RotateCw size={16} className={loading ? 'animate-spin' : ''} />
-            </button>
+          <div className="flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900/50 p-1 rounded-none border border-neutral-100 dark:border-neutral-800 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={refreshStudents}
+                className={`p-2 rounded-none hover:bg-white dark:hover:bg-neutral-800 text-neutral-400 hover:text-blue-600 ${loading ? 'opacity-50 pointer-events-none' : ''}`}
+                title="Refresh"
+              >
+                <RotateCw size={16} className={loading ? 'animate-spin' : ''} />
+              </button>
 
-            <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
+              <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
 
-            <Menu>
-              <MenuButton className="p-2 rounded-none hover:bg-white dark:hover:bg-neutral-800 text-neutral-500 hover:text-blue-600 transition-all" title="Toolbox">
-                <Settings size={18} />
-              </MenuButton>
-              <Portal>
-                <MenuList className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-xl rounded-none p-2 z-[100]">
-                  <MenuItem onClick={handleExportExcel} className="rounded-none px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center gap-3">
-                    <Download size={14} /> Export to Excel
-                  </MenuItem>
-                  <MenuItem onClick={handleImportExcelClick} className="rounded-none px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center gap-3">
-                    <Upload size={14} /> Import from Excel
-                  </MenuItem>
-                  <div className="my-1 h-px bg-neutral-50 dark:border-neutral-800" />
-                  <MenuItem
-                    onClick={() => { if (!isSuperAdmin) { setShowAccessDenied(true); return; } setDeleteClassSelected('1'); setShowDeleteByClassConfirm(true) }}
-                    className="rounded-none px-4 py-2 text-[12px] font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 flex items-center gap-3"
-                  >
-                    <AlertCircle size={14} /> Clear Class Data
-                  </MenuItem>
-                  <MenuItem
-                    onClick={() => { if (!isSuperAdmin) { setShowAccessDenied(true); return; } setShowDeleteAllConfirm(true) }}
-                    className="rounded-none px-4 py-2 text-[12px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-3"
-                  >
-                    <Trash2 size={14} /> Wipe Directory
-                  </MenuItem>
-                </MenuList>
-              </Portal>
-            </Menu>
+              <Menu>
+                <MenuButton className="p-2 rounded-none hover:bg-white dark:hover:bg-neutral-800 text-neutral-500 hover:text-blue-600 transition-all" title="Toolbox">
+                  <Settings size={18} />
+                </MenuButton>
+                <Portal>
+                  <MenuList className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-xl rounded-none p-2 z-[100]">
+                    <MenuItem onClick={handleExportExcel} className="rounded-none px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center gap-3">
+                      <Download size={14} /> Export to Excel
+                    </MenuItem>
+                    <MenuItem onClick={handleImportExcelClick} className="rounded-none px-4 py-2 text-[12px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all flex items-center gap-3">
+                      <Upload size={14} /> Import from Excel
+                    </MenuItem>
+                    <div className="my-1 h-px bg-neutral-50 dark:border-neutral-800" />
+                    <MenuItem
+                      onClick={() => { if (!isSuperAdmin) { setShowAccessDenied(true); return; } setDeleteClassSelected('1'); setShowDeleteByClassConfirm(true) }}
+                      className="rounded-none px-4 py-2 text-[12px] font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 flex items-center gap-3"
+                    >
+                      <AlertCircle size={14} /> Clear Class Data
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => { if (!isSuperAdmin) { setShowAccessDenied(true); return; } setShowDeleteAllConfirm(true) }}
+                      className="rounded-none px-4 py-2 text-[12px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-3"
+                    >
+                      <Trash2 size={14} /> Wipe Directory
+                    </MenuItem>
+                  </MenuList>
+                </Portal>
+              </Menu>
+            </div>
+            <span className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mr-2 sm:hidden">Student Controls</span>
             <input id={fileInputRefId} type="file" accept=".xlsx" className="hidden" onChange={handleImportExcelFile} />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => {
                 if (!isSuperAdmin) { setShowAccessDenied(true); return; }
                 router.push('/admin/students/promote')
               }}
-              className="px-3 md:px-4 py-2 rounded-none bg-white dark:bg-neutral-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-neutral-900 dark:text-white flex items-center gap-2 transition-all border border-neutral-200 dark:border-neutral-800 text-[11px] font-black uppercase tracking-wider group whitespace-nowrap"
+              className="px-3 md:px-4 py-2 rounded-none bg-white dark:bg-neutral-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-neutral-900 dark:text-white flex items-center justify-center gap-2 transition-all border border-neutral-200 dark:border-neutral-800 text-[11px] font-black uppercase tracking-wider group whitespace-nowrap flex-1 sm:flex-none"
             >
               <GraduationCap size={16} className="text-blue-600" />
-              <span className="hidden sm:inline">Promote</span>
+              <span className="inline sm:inline">Promote</span>
               {!isSuperAdmin && <Lock size={10} className="opacity-50" />}
             </button>
 
@@ -803,10 +806,10 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
                 if (!isSuperAdmin) { setShowAccessDenied(true); return; }
                 setShowAddModal(true)
               }}
-              className="px-3 md:px-4 py-2 rounded-none bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 shadow-sm transition-all text-[11px] font-black uppercase tracking-wider whitespace-nowrap"
+              className="px-3 md:px-4 py-2 rounded-none bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 shadow-sm transition-all text-[11px] font-black uppercase tracking-wider whitespace-nowrap flex-1 sm:flex-none"
             >
               <Plus size={16} />
-              <span className="hidden sm:inline">Add Student</span>
+              <span className="inline sm:inline">Add Student</span>
               {!isSuperAdmin && <Lock size={10} className="opacity-70" />}
             </button>
           </div>
@@ -861,7 +864,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
           {/* Enhanced Multi-Page Pagination */}
-          <div className="flex items-center gap-1.5 p-1 bg-neutral-50 dark:bg-neutral-900/50 rounded-none border border-neutral-100 dark:border-neutral-800">
+          <div className="flex items-center gap-1.5 p-1 bg-neutral-50 dark:bg-neutral-900/50 rounded-none border border-neutral-100 dark:border-neutral-800 max-w-full overflow-x-auto scrollbar-none">
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1 || loading}

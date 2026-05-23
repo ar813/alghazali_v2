@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { LayoutDashboard, Users as UsersIcon, BarChart3, Calendar, IdCard, Banknote, Megaphone, Smartphone, MessageSquare, FileQuestion, ClipboardList, Printer, GraduationCap, Award } from 'lucide-react';
+import { LayoutDashboard, Users as UsersIcon, BarChart3, Calendar, IdCard, Banknote, Megaphone, Smartphone, MessageSquare, FileQuestion, ClipboardList, Printer, GraduationCap, Award, FileSpreadsheet } from 'lucide-react';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import AccessDeniedDialog from '@/components/Auth/AccessDeniedDialog';
@@ -20,6 +20,8 @@ const AdminFees = dynamic(() => import('@/components/AdminFees/AdminFees'), { ss
 const AdminQuiz = dynamic(() => import('@/components/AdminQuiz/AdminQuiz'), { ssr: false });
 const AdminResults = dynamic(() => import('@/components/AdminResults/AdminResults'), { ssr: false });
 const AdminMobileAttendance = dynamic(() => import('@/components/AdminMobileAttendance/AdminMobileAttendance'), { ssr: false });
+const AdminManualAttendance = dynamic(() => import('@/components/AdminManualAttendance/AdminManualAttendance'), { ssr: false });
+const AdminAttendanceOverview = dynamic(() => import('@/components/AdminAttendanceOverview/AdminAttendanceOverview'), { ssr: false });
 const AdminChatBot = dynamic(() => import('@/components/AdminChatBot/AdminChatBot'), { ssr: false });
 const AdminUsers = dynamic(() => import('@/components/AdminUsers/AdminUsers'), { ssr: false });
 const AdminAdmitCards = dynamic(() => import('@/components/AdminAdmitCards/AdminAdmitCards'), { ssr: false });
@@ -38,7 +40,7 @@ const AdminPortal = ({
 }) => {
     // useAuth hook for global state
     const { loading: authLoading, isSuperAdmin, logout } = useAuth();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'schedule' | 'reports' | 'cards' | 'admit-cards' | 'fees' | 'notice' | 'quiz' | 'results' | 'exam-results' | 'mobile-attendance' | 'chatbot' | 'users'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'schedule' | 'reports' | 'cards' | 'admit-cards' | 'fees' | 'notice' | 'quiz' | 'results' | 'exam-results' | 'mobile-attendance' | 'manual-attendance' | 'attendance-overview' | 'chatbot' | 'users'>('dashboard');
     const [showAccessDenied, setShowAccessDenied] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -60,6 +62,8 @@ const AdminPortal = ({
             { id: 'results', label: 'Quiz Results', icon: ClipboardList },
             { id: 'exam-results', label: 'Exam Results', icon: GraduationCap },
             { id: 'mobile-attendance', label: 'Mobile Attendance', icon: Smartphone },
+            { id: 'manual-attendance', label: 'Manual Attendance', icon: ClipboardList },
+            { id: 'attendance-overview', label: 'Attendance Audit', icon: FileSpreadsheet },
             { id: 'chatbot', label: 'AI Assistant', icon: MessageSquare },
         ];
 
@@ -164,6 +168,8 @@ const AdminPortal = ({
                         {activeTab === 'results' && <AdminResults onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'exam-results' && <AdminResult onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'mobile-attendance' && <AdminMobileAttendance onLoadingChange={onLoadingChange} />}
+                        {activeTab === 'manual-attendance' && <AdminManualAttendance onLoadingChange={onLoadingChange} />}
+                        {activeTab === 'attendance-overview' && <AdminAttendanceOverview onLoadingChange={onLoadingChange} />}
                         {activeTab === 'chatbot' && <AdminChatBot />}
                         {activeTab === 'users' && isSuperAdmin && <AdminUsers onLoadingChange={onLoadingChange} />}
                     </div>

@@ -32,6 +32,17 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // Public Form Submissions
+    match /admission_applications/{document} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /contact_inquiries/{document} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
     // Default rule for other collections (Students, Results, etc.)
     // Admin: Read only
     // Super Admin: Read & Write

@@ -76,10 +76,32 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, onClos
                 </button>
             </header>
 
-            {/* 2. Banner - Part of scroll stream */}
-            <div className="h-32 sm:h-40 bg-neutral-800 dark:bg-neutral-900 relative">
-                <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
-                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white dark:from-neutral-950 to-transparent" />
+            {/* 2. Banner - Part of scroll stream with high-end campus imagery */}
+            <div className="h-36 sm:h-48 bg-neutral-900 relative overflow-hidden">
+                {/* Blurred Campus Image Background */}
+                <Image
+                    src="/campus.png"
+                    alt="Al Ghazali Campus"
+                    fill
+                    className="object-cover object-center scale-[1.03] filter blur-[0.5px] brightness-[0.75] contrast-[1.05]"
+                    unoptimized
+                />
+
+                {/* Branding Gradient Overlay (Islamic Emerald Theme) */}
+                <div className="absolute inset-0 bg-gradient-to-r from-[#064e3b]/85 via-[#022c22]/70 to-[#022c22]/30 mix-blend-multiply" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(5,150,105,0.15),transparent_50%)]" />
+
+                {/* Subtle Islamic Geometric Pattern Overlay */}
+                <div className="absolute inset-0 bg-islamic-pattern pointer-events-none opacity-[0.04]" />
+
+                {/* Premium Accent Lines (Stitch Theme) */}
+                <div className="absolute top-4 left-4 w-4 h-[1px] bg-white/20" />
+                <div className="absolute top-4 left-4 h-4 w-[1px] bg-white/20" />
+                <div className="absolute top-4 right-4 w-4 h-[1px] bg-white/20" />
+                <div className="absolute top-4 right-4 h-4 w-[1px] bg-white/20" />
+
+                {/* Bottom Fade to transition smoothly to white/dark background */}
+                <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-white dark:from-neutral-950 via-white/40 dark:via-neutral-950/40 to-transparent" />
             </div>
 
             {/* 3. Main Content Container */}

@@ -1,7 +1,6 @@
 "use client"
 
 import { ChakraProvider, extendTheme } from "@chakra-ui/react"
-import { ThemeProvider } from "next-themes"
 
 const theme = extendTheme({
     radii: {
@@ -33,9 +32,7 @@ const theme = extendTheme({
 export function Provider(props: { children: React.ReactNode }) {
     return (
         <ChakraProvider theme={theme}>
-            <ThemeProvider attribute="class" disableTransitionOnChange>
-                {props.children}
-            </ThemeProvider>
+            {props.children}
         </ChakraProvider>
     )
 }

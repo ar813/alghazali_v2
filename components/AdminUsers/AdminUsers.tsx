@@ -10,6 +10,9 @@ import { cn } from "@/lib/utils";
 import OTPVerificationModal from "@/components/Security/OTPVerificationModal";
 import DeletePhotoConfirmationDialog from "@/components/Auth/DeletePhotoConfirmationDialog";
 
+import { client } from "@/sanity/lib/client";
+import { getAllClassesQuery } from "@/sanity/lib/queries";
+
 interface UserData {
     uid: string;
     email: string;
@@ -19,6 +22,8 @@ interface UserData {
     photoURL?: string;
     lastLoginAt?: string;
     createdAt?: string;
+    designation?: string;
+    assignedClass?: string;
 }
 
 const compressImage = (file: File): Promise<string> => {
@@ -72,6 +77,8 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
     const [password, setPassword] = useState("");
     const [displayName, setDisplayName] = useState("");
     const [role, setRole] = useState<"admin" | "super_admin">("admin");
+    const [designation, setDesignation] = useState("Admin");
+    const [assignedClass, setAssignedClass] = useState("");
     const [gender, setGender] = useState<"male" | "female" | "">("");
     const [showPassword, setShowPassword] = useState(false);
 
@@ -82,6 +89,8 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
     const [editEmail, setEditEmail] = useState("");
     const [editPassword, setEditPassword] = useState("");
     const [editRole, setEditRole] = useState<"admin" | "super_admin">("admin");
+    const [editDesignation, setEditDesignation] = useState("Admin");
+    const [editAssignedClass, setEditAssignedClass] = useState("");
     const [editGender, setEditGender] = useState<"male" | "female" | "">("");
     const [editPhotoURL, setEditPhotoURL] = useState("");
     const [showEditPassword, setShowEditPassword] = useState(false);
@@ -94,6 +103,18 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
     const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
     const [showOTPModal, setShowOTPModal] = useState(false);
     const [showRemovePhotoConfirm, setShowRemovePhotoConfirm] = useState(false);
+
+    const [fetchedClasses, setFetchedClasses] = useState<string[]>([]);
+
+    useEffect(() => {
+        client.fetch(getAllClassesQuery).then((data: any[]) => {
+            const set = new Set<string>();
+            for (const s of data) {
+                if (s.admissionFor) set.add(s.admissionFor);
+            }
+            setFetchedClasses(Array.from(set).sort());
+        }).catch(console.error);
+    }, []);
 
     const fetchUsers = async (silent = false) => {
         if (!silent) {
@@ -140,7 +161,15 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${idToken}`,
                 },
-                body: JSON.stringify({ email, password, displayName, role, gender }),
+                body: JSON.stringify({ 
+                    email, 
+                    password, 
+                    displayName, 
+                    role, 
+                    gender,
+                    designation,
+                    assignedClass: role === "admin" ? assignedClass : null
+                }),
             });
 
             const data = await response.json();
@@ -198,6 +227,8 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                     role: editRole,
                     gender: editGender,
                     photoURL: editPhotoURL,
+                    designation: editDesignation,
+                    assignedClass: editRole === "admin" ? editAssignedClass : null,
                     ...(editPassword ? { password: editPassword } : {})
                 }),
             });
@@ -292,6 +323,8 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
         setPassword("");
         setDisplayName("");
         setRole("admin");
+        setDesignation("Admin");
+        setAssignedClass("");
         setGender("");
         setShowPassword(false);
     };
@@ -301,6 +334,8 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
         setEditDisplayName(user.displayName || "");
         setEditEmail(user.email || "");
         setEditRole(user.role || "admin");
+        setEditDesignation(user.designation || "Admin");
+        setEditAssignedClass(user.assignedClass || "");
         setEditGender(user.gender || "");
         setEditPhotoURL(user.photoURL || "");
         setEditPassword("");
@@ -422,14 +457,21 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                             </div>
                                         </td>
                                         <td className="px-6 py-5">
-                                            <span className={cn(
-                                                "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border",
-                                                user.role === "super_admin"
-                                                    ? "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]"
-                                                    : "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]"
-                                            )}>
-                                                {user.role === "super_admin" ? "Super Admin" : "Regular Admin"}
-                                            </span>
+                                            <div className="flex flex-col items-start gap-1">
+                                                <span className={cn(
+                                                    "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border",
+                                                    user.role === "super_admin"
+                                                        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                                        : "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]"
+                                                )}>
+                                                    {user.role === "super_admin" ? "Super Admin" : (user.designation || "Admin")}
+                                                </span>
+                                                {user.role === "admin" && user.assignedClass && (
+                                                    <span className="text-[10px] font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full border border-neutral-200 uppercase tracking-widest">
+                                                        Class {user.assignedClass}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-5">
                                             <span className={cn(
@@ -516,19 +558,28 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between py-1 px-1 border-t border-neutral-50 pt-3">
-                                    <span className={cn(
-                                        "px-2.5 py-1 rounded-lg text-xs font-semibold border",
-                                        user.role === "super_admin" ? "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]" : "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]"
-                                    )}>
-                                        {user.role === "super_admin" ? "Super Admin" : "Admin"}
-                                    </span>
-                                    <span className={cn(
-                                        "px-2 py-0.5 rounded text-[10px] font-bold border uppercase",
-                                        user.gender === "male" ? "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]" : user.gender === "female" ? "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]" : "bg-neutral-50 text-neutral-500 border-neutral-100"
-                                    )}>
-                                        {user.gender || "No Gender"}
-                                    </span>
+                                <div className="flex flex-col gap-2 py-1 px-1 border-t border-neutral-50 pt-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className={cn(
+                                                "px-2.5 py-1 rounded-lg text-xs font-semibold border",
+                                                user.role === "super_admin" ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]"
+                                            )}>
+                                                {user.role === "super_admin" ? "Super Admin" : (user.designation || "Admin")}
+                                            </span>
+                                            {user.role === "admin" && user.assignedClass && (
+                                                <span className="text-[10px] font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full border border-neutral-200 uppercase tracking-widest">
+                                                    Class {user.assignedClass}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className={cn(
+                                            "px-2 py-0.5 rounded text-[10px] font-bold border uppercase",
+                                            user.gender === "male" ? "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]" : user.gender === "female" ? "bg-neutral-100 dark:bg-white/5 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-[#1F1F1F]" : "bg-neutral-50 text-neutral-500 border-neutral-100"
+                                        )}>
+                                            {user.gender || "No Gender"}
+                                        </span>
+                                    </div>
                                     <div className="flex items-center gap-1.5 text-neutral-400 text-[10px]">
                                         <Clock size={10} />
                                         <span>{user.lastLoginAt ? `${new Date(user.lastLoginAt).toLocaleDateString()} ${new Date(user.lastLoginAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'New Account'}</span>
@@ -611,6 +662,38 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                             </select>
                                         </div>
                                     </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Designation</label>
+                                            <select
+                                                value={designation}
+                                                onChange={(e) => setDesignation(e.target.value)}
+                                                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm outline-none focus:border-indigo-500 cursor-pointer appearance-none"
+                                            >
+                                                <option value="Admin">Admin</option>
+                                                <option value="Teacher">Teacher</option>
+                                                <option value="Staff">Staff</option>
+                                                <option value="Principal">Principal</option>
+                                            </select>
+                                        </div>
+                                        {role === "admin" && (
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Class Teacher Of</label>
+                                                <select
+                                                    value={assignedClass}
+                                                    onChange={(e) => setAssignedClass(e.target.value)}
+                                                    className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm outline-none focus:border-indigo-500 cursor-pointer appearance-none"
+                                                >
+                                                    <option value="">None</option>
+                                                    {fetchedClasses.map((cls) => (
+                                                        <option key={cls} value={cls}>Class {cls}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Gender Assignment</label>
                                         <div className="grid grid-cols-2 gap-3">
@@ -817,6 +900,36 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                                             <option value="super_admin">Super Admin</option>
                                         </select>
                                         {editingUser.uid === currentUserUid && <p className="text-[10px] text-amber-600 font-medium ml-1">You cannot demote your own account for safety.</p>}
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Designation</label>
+                                            <select
+                                                value={editDesignation}
+                                                onChange={(e) => setEditDesignation(e.target.value)}
+                                                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm outline-none focus:border-indigo-500 appearance-none"
+                                            >
+                                                <option value="Admin">Admin</option>
+                                                <option value="Teacher">Teacher</option>
+                                                <option value="Staff">Staff</option>
+                                                <option value="Principal">Principal</option>
+                                            </select>
+                                        </div>
+                                        {editRole === "admin" && (
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Class Teacher Of</label>
+                                                <select
+                                                    value={editAssignedClass}
+                                                    onChange={(e) => setEditAssignedClass(e.target.value)}
+                                                    className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 dark:border-[#1F1F1F] rounded-xl text-sm outline-none focus:border-indigo-500 appearance-none"
+                                                >
+                                                    <option value="">None</option>
+                                                    {fetchedClasses.map((cls) => (
+                                                        <option key={cls} value={cls}>Class {cls}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Gender Assignment</label>
