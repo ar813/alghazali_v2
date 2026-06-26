@@ -8,12 +8,10 @@ import { toast } from "sonner";
 import NoticeForm from './NoticeForm';
 import NoticeList from './NoticeList';
 import EditNoticeModal from './EditNoticeModal';
-import { useSession } from '@/context/SessionContext';
 import { useAuth } from '@/hooks/use-auth';
 import OTPVerificationModal from '@/components/Security/OTPVerificationModal';
 
 const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
-  const { selectedSession } = useSession()
   const [students, setStudents] = useState<Student[]>([])
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState<boolean>(false)
@@ -29,28 +27,26 @@ const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
   // Initial Load - Students
   useEffect(() => {
     const loadStudents = async () => {
-      if (!selectedSession) return
       onLoadingChange?.(true)
       try {
-        const s: Student[] = await client.fetch(getAllStudentsQuery, { session: selectedSession })
+        const s: Student[] = await client.fetch(getAllStudentsQuery, {})
         setStudents(s)
       } finally { onLoadingChange?.(false) }
     }
     loadStudents()
-  }, [onLoadingChange, selectedSession])
+  }, [onLoadingChange])
 
   // Load Notices
   const loadNotices = useCallback(async () => {
-    if (!selectedSession) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/notices?limit=100&session=${selectedSession}`, { cache: 'no-store' })
+      const res = await fetch(`/api/notices?limit=100`, { cache: 'no-store' })
       const json = await res.json()
       if (json?.ok) setItems(json.data)
     } finally { setLoading(false) }
-  }, [selectedSession])
+  }, [])
 
-  useEffect(() => { loadNotices() }, [loadNotices, selectedSession])
+  useEffect(() => { loadNotices() }, [loadNotices])
 
   const classOptions = useMemo(() =>
     Array.from(new Set(students.map(s => s.admissionFor).filter(Boolean))).sort() as string[]
@@ -64,7 +60,6 @@ const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
         ...formData,
         eventDate: formData.isEvent && formData.eventDate ? new Date(formData.eventDate).toISOString() : undefined,
         eventType: formData.isEvent ? (formData.eventType || 'General') : undefined,
-        session: selectedSession,
       }
       const res = await fetch('/api/notices', {
         method: 'POST',
@@ -107,7 +102,7 @@ const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
 
     setLoading(true)
     try {
-      const res = await fetch(`/api/notices?all=true&session=${selectedSession || ''}`, { method: 'DELETE' })
+      const res = await fetch(`/api/notices?all=true`, { method: 'DELETE' })
       const json = await res.json()
       if (json?.ok) {
         setItems([])

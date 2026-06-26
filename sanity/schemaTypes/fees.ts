@@ -39,10 +39,40 @@ export default defineType({
       validation: (Rule) => Rule.required().min(2000).max(2100),
     }),
     defineField({
+      name: 'payableAmount',
+      title: 'Payable Amount (Total due)',
+      type: 'number',
+      validation: (Rule) => Rule.min(0),
+    }),
+    defineField({
       name: 'amountPaid',
       title: 'Amount Paid',
       type: 'number',
       validation: (Rule) => Rule.min(0),
+    }),
+    defineField({
+      name: 'concession',
+      title: 'Concession / Discount',
+      type: 'number',
+      initialValue: 0,
+    }),
+    defineField({
+      name: 'arrears',
+      title: 'Arrears (Previous Dues)',
+      type: 'number',
+      initialValue: 0,
+    }),
+    defineField({
+      name: 'lateFine',
+      title: 'Late Fine',
+      type: 'number',
+      initialValue: 0,
+    }),
+    defineField({
+      name: 'dueDate',
+      title: 'Due Date',
+      type: 'date',
+      options: { dateFormat: 'YYYY-MM-DD' },
     }),
     defineField({
       name: 'status',

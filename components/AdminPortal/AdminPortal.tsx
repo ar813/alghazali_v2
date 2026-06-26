@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { LayoutDashboard, Users as UsersIcon, BarChart3, Calendar, IdCard, Banknote, Megaphone, Smartphone, MessageSquare, FileQuestion, ClipboardList, Printer, GraduationCap, Award, FileSpreadsheet } from 'lucide-react';
+import { LayoutDashboard, Users as UsersIcon, BarChart3, IdCard, Printer, Wallet, FileQuestion, Award, Trophy, Smartphone, UserCheck, CalendarCheck, School } from 'lucide-react';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import AccessDeniedDialog from '@/components/Auth/AccessDeniedDialog';
@@ -13,17 +13,14 @@ import LogoutConfirmationDialog from '@/components/Auth/LogoutConfirmationDialog
 const AdminDashboard = dynamic(() => import('@/components/AdminDashboard/AdminDashboard'), { ssr: false });
 const AdminReports = dynamic(() => import('@/components/AdminReports/AdminReports'), { ssr: false });
 const AdminStudents = dynamic(() => import('@/components/AdminStudents/AdminStudents'), { ssr: false });
-const AdminSchedule = dynamic(() => import('@/components/AdminSchedule/AdminSchedule'), { ssr: false });
 const AdminCards = dynamic(() => import('@/components/AdminCards/AdminCards'), { ssr: false });
-const AdminNotice = dynamic(() => import('@/components/AdminNotice/AdminNotice'), { ssr: false });
 const AdminFees = dynamic(() => import('@/components/AdminFees/AdminFees'), { ssr: false });
+
 const AdminQuiz = dynamic(() => import('@/components/AdminQuiz/AdminQuiz'), { ssr: false });
 const AdminResults = dynamic(() => import('@/components/AdminResults/AdminResults'), { ssr: false });
 const AdminMobileAttendance = dynamic(() => import('@/components/AdminMobileAttendance/AdminMobileAttendance'), { ssr: false });
 const AdminManualAttendance = dynamic(() => import('@/components/AdminManualAttendance/AdminManualAttendance'), { ssr: false });
 const AdminAttendanceOverview = dynamic(() => import('@/components/AdminAttendanceOverview/AdminAttendanceOverview'), { ssr: false });
-const AdminChatBot = dynamic(() => import('@/components/AdminChatBot/AdminChatBot'), { ssr: false });
-const AdminUsers = dynamic(() => import('@/components/AdminUsers/AdminUsers'), { ssr: false });
 const AdminAdmitCards = dynamic(() => import('@/components/AdminAdmitCards/AdminAdmitCards'), { ssr: false });
 const AdminResult = dynamic(() => import('@/components/AdminResult/AdminResult'), { ssr: false });
 
@@ -40,7 +37,13 @@ const AdminPortal = ({
 }) => {
     // useAuth hook for global state
     const { loading: authLoading, isSuperAdmin, logout } = useAuth();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'schedule' | 'reports' | 'cards' | 'admit-cards' | 'fees' | 'notice' | 'quiz' | 'results' | 'exam-results' | 'mobile-attendance' | 'manual-attendance' | 'attendance-overview' | 'chatbot' | 'users'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'classes' | 'reports' | 'cards' | 'admit-cards' | 'fees' | 'quiz' | 'results' | 'exam-results' | 'mobile-attendance' | 'manual-attendance' | 'attendance-overview'>(() => {
+        if (typeof window !== 'undefined') {
+            const hash = window.location.hash.replace('#', '');
+            if (hash) return hash as any;
+        }
+        return 'dashboard';
+    });
     const [showAccessDenied, setShowAccessDenied] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -52,34 +55,24 @@ const AdminPortal = ({
         const baseItems = [
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { id: 'students', label: 'Students', icon: UsersIcon },
-            { id: 'schedule', label: 'Schedule', icon: Calendar },
             { id: 'reports', label: 'Reports', icon: BarChart3 },
             { id: 'cards', label: 'Cards', icon: IdCard },
             { id: 'admit-cards', label: 'Admit Cards', icon: Printer },
-            { id: 'fees', label: 'Fees', icon: Banknote },
-            { id: 'notice', label: 'Notice', icon: Megaphone },
+            { id: 'fees', label: 'Fees Collection', icon: Wallet },
             { id: 'quiz', label: 'Quiz', icon: FileQuestion },
-            { id: 'results', label: 'Quiz Results', icon: ClipboardList },
-            { id: 'exam-results', label: 'Exam Results', icon: GraduationCap },
+            { id: 'results', label: 'Quiz Results', icon: Award },
+            { id: 'exam-results', label: 'Exam Results', icon: Trophy },
             { id: 'mobile-attendance', label: 'Mobile Attendance', icon: Smartphone },
-            { id: 'manual-attendance', label: 'Manual Attendance', icon: ClipboardList },
-            { id: 'attendance-overview', label: 'Attendance Audit', icon: FileSpreadsheet },
-            { id: 'chatbot', label: 'AI Assistant', icon: MessageSquare },
+            { id: 'manual-attendance', label: 'Manual Attendance', icon: UserCheck },
+            { id: 'attendance-overview', label: 'Attendance Audit', icon: CalendarCheck },
         ];
 
-        const conditionalItems = isSuperAdmin
-            ? [{ id: 'users', label: 'User Management', icon: UsersIcon }]
-            : [];
+        return [...baseItems];
+    }, []);
 
-        return [...baseItems, ...conditionalItems];
-    }, [isSuperAdmin]);
-
-    // Effect to handle access denied for non-super admins
+    // Effect to handle access denied for non-super admins (not needed anymore for global tabs, but keeping skeleton)
     useEffect(() => {
-        if (activeTab === 'users' && !isSuperAdmin && !authLoading) {
-            setShowAccessDenied(true);
-            setActiveTab('dashboard');
-        }
+        // ... if any other super admin tabs exist ...
     }, [activeTab, isSuperAdmin, authLoading]);
 
     // Register sidebar items with mobile nav context
@@ -158,20 +151,16 @@ const AdminPortal = ({
 
                         {activeTab === 'dashboard' && <AdminDashboard onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'students' && <AdminStudents onLoadingChange={onLoadingChange} genderFilter={gender} />}
-                        {activeTab === 'schedule' && <AdminSchedule onLoadingChange={onLoadingChange} />}
                         {activeTab === 'reports' && <AdminReports onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'cards' && <AdminCards onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'admit-cards' && <AdminAdmitCards onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'fees' && <AdminFees onLoadingChange={onLoadingChange} genderFilter={gender} />}
-                        {activeTab === 'notice' && <AdminNotice onLoadingChange={onLoadingChange} />}
                         {activeTab === 'quiz' && <AdminQuiz onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'results' && <AdminResults onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'exam-results' && <AdminResult onLoadingChange={onLoadingChange} genderFilter={gender} />}
                         {activeTab === 'mobile-attendance' && <AdminMobileAttendance onLoadingChange={onLoadingChange} />}
                         {activeTab === 'manual-attendance' && <AdminManualAttendance onLoadingChange={onLoadingChange} />}
                         {activeTab === 'attendance-overview' && <AdminAttendanceOverview onLoadingChange={onLoadingChange} />}
-                        {activeTab === 'chatbot' && <AdminChatBot />}
-                        {activeTab === 'users' && isSuperAdmin && <AdminUsers onLoadingChange={onLoadingChange} />}
                     </div>
                 </main>
             </div>

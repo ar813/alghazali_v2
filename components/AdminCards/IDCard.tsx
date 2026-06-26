@@ -76,7 +76,8 @@ const IDCard = ({ student: s, side, issueDate, expiryDate }: IDCardProps) => {
 
     // Build QR Data
     const buildQrData = (s: Student) => {
-        return s.grNumber || '';
+        const gr = s.grNumber?.trim();
+        return (!gr || gr === '-') ? (s.rollNumber || '') : gr;
     };
 
     const getQrSrc = (s: Student, size = 80) => {

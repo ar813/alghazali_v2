@@ -25,8 +25,19 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ items, activeTab, onTabChange, loading, isStudent }: SidebarProps) => {
-  const [open, setOpen] = useState(false);
-  // const [user, setUser] = useState<{ email: string | null; displayName: string | null; photoURL: string | null } | null>(null);
+  const [open, setOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sidebarOpen') === 'true';
+    }
+    return false;
+  });
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebarOpen', String(open));
+    }
+  }, [open]);
+
   const { user, logout, photoURL } = useAuth();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -109,7 +120,6 @@ const Sidebar = ({ items, activeTab, onTabChange, loading, isStudent }: SidebarP
                   onClick={() => {
                     const id = link.href.replace('#', '');
                     onTabChange(id);
-                    setOpen(false);
                   }}
                   className={cn(
                     "cursor-pointer rounded-lg transition-all duration-200 group/item relative flex items-center",

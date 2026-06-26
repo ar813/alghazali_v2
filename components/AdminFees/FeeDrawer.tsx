@@ -3,9 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import {
     Save, Calendar, BookOpen, Hash,
-    GraduationCap, Coins
+    GraduationCap, Coins, Info
 } from 'lucide-react';
 import type { Student } from '@/types/student';
+
+/* Hide number input spinners */
+const noSpinnerStyle = `
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
+`;
 import {
     Drawer,
     DrawerBody,
@@ -35,6 +47,7 @@ interface FeeDrawerProps {
     onSubmit: (data: any) => Promise<void>;
     initialData?: any;
     students: Student[];
+    academicClasses?: any[];
     MONTHS: readonly string[];
     submitting: boolean;
 }
@@ -45,6 +58,7 @@ const FeeDrawer = ({
     onSubmit,
     initialData,
     students,
+    academicClasses = [],
     MONTHS,
     submitting
 }: FeeDrawerProps) => {
@@ -53,7 +67,12 @@ const FeeDrawer = ({
         className: '',
         month: MONTHS[new Date().getMonth() + 1],
         year: new Date().getFullYear(),
-        amountPaid: 0 as number | '',
+        amountPaid: '' as number | '',
+        payableAmount: '' as number | '',
+        arrears: '' as number | '',
+        lateFine: '' as number | '',
+        concession: '' as number | '',
+        dueDate: '',
         paidDate: new Date().toISOString().slice(0, 10),
         receiptNumber: '',
         bookNumber: '',
@@ -70,7 +89,12 @@ const FeeDrawer = ({
                     className: initialData.className || '',
                     month: initialData.month,
                     year: initialData.year,
-                    amountPaid: initialData.amountPaid ?? 0,
+                    amountPaid: initialData.amountPaid || '',
+                    payableAmount: initialData.payableAmount || '',
+                    arrears: initialData.arrears || '',
+                    lateFine: initialData.lateFine || '',
+                    concession: initialData.concession || '',
+                    dueDate: initialData.dueDate || '',
                     paidDate: initialData.paidDate || new Date().toISOString().slice(0, 10),
                     receiptNumber: initialData.receiptNumber || '',
                     bookNumber: initialData.bookNumber || '',
@@ -82,7 +106,12 @@ const FeeDrawer = ({
                     className: '',
                     month: MONTHS[new Date().getMonth() + 1],
                     year: new Date().getFullYear(),
-                    amountPaid: 0,
+                    amountPaid: '',
+                    payableAmount: '',
+                    arrears: '',
+                    lateFine: '',
+                    concession: '',
+                    dueDate: '',
                     paidDate: new Date().toISOString().slice(0, 10),
                     receiptNumber: '',
                     bookNumber: '',
@@ -106,7 +135,7 @@ const FeeDrawer = ({
             (s.fullName || '').toLowerCase().includes(q);
     }).slice(0, 50);
 
-    // Auto-select logic
+    // Auto-select logic for student Quick Filter
     useEffect(() => {
         const query = studentQuickFilter.trim().toLowerCase();
         if (query !== '' && filteredStudents.length === 1) {
@@ -120,6 +149,31 @@ const FeeDrawer = ({
             }
         }
     }, [studentQuickFilter, filteredStudents, form.studentId]);
+
+    // Auto-populate amount based on class and month
+    useEffect(() => {
+        if (!initialData && form.className && form.month && academicClasses.length > 0) {
+            const matchedClass = academicClasses.find(c => c.code === form.className || c.name === form.className);
+            if (matchedClass) {
+                const amount = form.month.toLowerCase() === 'admission' 
+                    ? (matchedClass.admissionFee || 0) 
+                    : (matchedClass.monthlyFee || 0);
+                
+                // Fetch student concession if available
+                const student = students.find(s => s._id === form.studentId);
+                const concession = (student as any)?.feeConcession || 0;
+                
+                const payable = Math.max(0, amount - concession);
+
+                setForm(prev => ({ 
+                    ...prev, 
+                    amountPaid: prev.amountPaid || payable,
+                    payableAmount: payable,
+                    concession: concession
+                }));
+            }
+        }
+    }, [form.className, form.month, academicClasses, initialData, form.studentId, students]);
 
     return (
         <Drawer
@@ -146,6 +200,7 @@ const FeeDrawer = ({
                 </DrawerHeader>
 
                 <DrawerBody py="5">
+                    <style>{noSpinnerStyle}</style>
                     <form id="fee-form" onSubmit={handleSubmit}>
                         <VStack spacing="5" align="stretch">
                             {/* Student Selection */}
@@ -161,10 +216,10 @@ const FeeDrawer = ({
                                         value={studentQuickFilter}
                                         onChange={e => setStudentQuickFilter(e.target.value)}
                                         placeholder="Search by Name, Roll, or GR..."
-                                        rounded-none="xl"
+                                        rounded="xl"
                                         fontSize="sm"
                                         bg="gray.50"
-                                        _dark={{ bg: "gray.900/50" }}
+                                        _dark={{ bg: "gray.800" }}
                                     />
                                 </InputGroup>
                                 <Select
@@ -177,10 +232,11 @@ const FeeDrawer = ({
                                             className: s?.admissionFor || prev.className
                                         }));
                                     }}
-                                    rounded-none="xl"
+                                    rounded="xl"
                                     fontSize="sm"
                                     placeholder="Select Student"
-                                    className="dark:bg-gray-900"
+                                    bg="gray.50"
+                                    _dark={{ bg: "gray.800" }}
                                     isRequired
                                 >
                                     {filteredStudents.map(s => (
@@ -203,10 +259,10 @@ const FeeDrawer = ({
                                     <Input
                                         value={form.className}
                                         onChange={e => setForm({ ...form, className: e.target.value })}
-                                        rounded-none="xl"
+                                        rounded="xl"
                                         fontSize="sm"
                                         bg="gray.50"
-                                        _dark={{ bg: "gray.900/50" }}
+                                        _dark={{ bg: "gray.800" }}
                                     />
                                 </InputGroup>
                             </FormControl>
@@ -220,7 +276,7 @@ const FeeDrawer = ({
                                     <Select
                                         value={form.month}
                                         onChange={e => setForm({ ...form, month: e.target.value })}
-                                        rounded-none="xl"
+                                        rounded="xl"
                                         fontSize="sm"
                                     >
                                         {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
@@ -229,13 +285,84 @@ const FeeDrawer = ({
                                         type="number"
                                         value={form.year}
                                         onChange={e => setForm({ ...form, year: Number(e.target.value) })}
-                                        rounded-none="xl"
+                                        rounded="xl"
                                         fontSize="sm"
                                     />
                                 </SimpleGrid>
                             </Box>
 
-                            {/* Amount */}
+                            {/* Fee Breakdown Section */}
+                            <Box pt={3} pb={1} borderTopWidth="1px" borderColor="gray.100" _dark={{ borderColor: "gray.800" }}>
+                                <Text fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="emerald.500" mb={3}>
+                                    Fee Breakdown
+                                </Text>
+                                <SimpleGrid columns={2} spacing="3" mb={3}>
+                                    <FormControl>
+                                        <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" color="gray.500">
+                                            <span className="flex items-center gap-1">
+                                                Total Fee
+                                                <span className="relative group/tip cursor-help">
+                                                    <Info size={12} className="text-gray-400" />
+                                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] rounded-lg whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">Total amount to be paid this month</span>
+                                                </span>
+                                            </span>
+                                        </FormLabel>
+                                        <InputGroup size="sm">
+                                            <InputLeftElement pointerEvents="none"><Coins size={14} className="text-emerald-500" /></InputLeftElement>
+                                            <Input type="number" value={form.payableAmount} placeholder="e.g. 1500" onChange={e => setForm({ ...form, payableAmount: e.target.value === '' ? '' : Number(e.target.value) })} rounded="xl" fontSize="sm" fontFamily="mono" />
+                                        </InputGroup>
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" color="gray.500">
+                                            <span className="flex items-center gap-1">
+                                                Previous Dues
+                                                <span className="relative group/tip cursor-help">
+                                                    <Info size={12} className="text-gray-400" />
+                                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] rounded-lg whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">Unpaid amount from previous months</span>
+                                                </span>
+                                            </span>
+                                        </FormLabel>
+                                        <InputGroup size="sm">
+                                            <InputLeftElement pointerEvents="none"><Coins size={14} className="text-orange-500" /></InputLeftElement>
+                                            <Input type="number" value={form.arrears} placeholder="e.g. 500" onChange={e => setForm({ ...form, arrears: e.target.value === '' ? '' : Number(e.target.value) })} rounded="xl" fontSize="sm" fontFamily="mono" />
+                                        </InputGroup>
+                                    </FormControl>
+                                </SimpleGrid>
+                                <SimpleGrid columns={2} spacing="3">
+                                    <FormControl>
+                                        <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" color="gray.500">
+                                            <span className="flex items-center gap-1">
+                                                Discount
+                                                <span className="relative group/tip cursor-help">
+                                                    <Info size={12} className="text-gray-400" />
+                                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] rounded-lg whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">Special discount or fee waiver given</span>
+                                                </span>
+                                            </span>
+                                        </FormLabel>
+                                        <InputGroup size="sm">
+                                            <InputLeftElement pointerEvents="none"><Coins size={14} className="text-blue-500" /></InputLeftElement>
+                                            <Input type="number" value={form.concession} placeholder="e.g. 200" onChange={e => setForm({ ...form, concession: e.target.value === '' ? '' : Number(e.target.value) })} rounded="xl" fontSize="sm" fontFamily="mono" />
+                                        </InputGroup>
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" color="gray.500">
+                                            <span className="flex items-center gap-1">
+                                                Late Charges
+                                                <span className="relative group/tip cursor-help">
+                                                    <Info size={12} className="text-gray-400" />
+                                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] rounded-lg whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">Extra charge for paying after due date</span>
+                                                </span>
+                                            </span>
+                                        </FormLabel>
+                                        <InputGroup size="sm">
+                                            <InputLeftElement pointerEvents="none"><Coins size={14} className="text-red-500" /></InputLeftElement>
+                                            <Input type="number" value={form.lateFine} placeholder="e.g. 100" onChange={e => setForm({ ...form, lateFine: e.target.value === '' ? '' : Number(e.target.value) })} rounded="xl" fontSize="sm" fontFamily="mono" />
+                                        </InputGroup>
+                                    </FormControl>
+                                </SimpleGrid>
+                            </Box>
+
+                            {/* Amount Paid */}
                             <FormControl isRequired>
                                 <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
                                     Amount Paid
@@ -247,13 +374,14 @@ const FeeDrawer = ({
                                     <Input
                                         type="number"
                                         value={form.amountPaid}
+                                        placeholder="Enter amount"
                                         onChange={e => setForm({ ...form, amountPaid: e.target.value === '' ? '' : Number(e.target.value) })}
-                                        rounded-none="xl"
+                                        rounded="xl"
                                         fontSize="md"
                                         fontWeight="bold"
                                         fontFamily="mono"
                                         bg="gray.50"
-                                        _dark={{ bg: "gray.900/50" }}
+                                        _dark={{ bg: "gray.800" }}
                                     />
                                     <InputRightElement width="4.5rem">
                                         <Text fontSize="xs" fontWeight="bold" color="gray.400">PKR</Text>
@@ -266,7 +394,7 @@ const FeeDrawer = ({
                                             size="xs"
                                             variant="outline"
                                             onClick={() => setForm(prev => ({ ...prev, amountPaid: amt }))}
-                                            rounded-none="md"
+                                            rounded="md"
                                             _hover={{ bg: "gray.50", _dark: { bg: "gray.800" } }}
                                         >
                                             {amt}
@@ -275,25 +403,46 @@ const FeeDrawer = ({
                                 </Box>
                             </FormControl>
 
-                            {/* Date */}
-                            <FormControl isRequired>
-                                <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
-                                    Payment Date
-                                </FormLabel>
-                                <InputGroup>
-                                    <InputLeftElement pointerEvents="none">
-                                        <Calendar size={16} className="text-gray-400" />
-                                    </InputLeftElement>
-                                    <Input
-                                        type="date"
-                                        value={form.paidDate}
-                                        onChange={e => setForm({ ...form, paidDate: e.target.value })}
-                                        rounded-none="xl"
-                                        fontSize="sm"
-                                        className="font-mono"
-                                    />
-                                </InputGroup>
-                            </FormControl>
+                            {/* Payment Date & Due Date */}
+                            <SimpleGrid columns={2} spacing="3">
+                                <FormControl isRequired>
+                                    <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
+                                        Payment Date
+                                    </FormLabel>
+                                    <InputGroup>
+                                        <InputLeftElement pointerEvents="none">
+                                            <Calendar size={16} className="text-gray-400" />
+                                        </InputLeftElement>
+                                        <Input
+                                            type="date"
+                                            value={form.paidDate}
+                                            onChange={e => setForm({ ...form, paidDate: e.target.value })}
+                                            rounded="xl"
+                                            fontSize="sm"
+                                            fontFamily="mono"
+                                        />
+                                    </InputGroup>
+                                </FormControl>
+
+                                <FormControl>
+                                    <FormLabel fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider" color="gray.500">
+                                        Due Date
+                                    </FormLabel>
+                                    <InputGroup>
+                                        <InputLeftElement pointerEvents="none">
+                                            <Calendar size={16} className="text-gray-400" />
+                                        </InputLeftElement>
+                                        <Input
+                                            type="date"
+                                            value={form.dueDate}
+                                            onChange={e => setForm({ ...form, dueDate: e.target.value })}
+                                            rounded="xl"
+                                            fontSize="sm"
+                                            fontFamily="mono"
+                                        />
+                                    </InputGroup>
+                                </FormControl>
+                            </SimpleGrid>
 
                             {/* Receipt & Book */}
                             <SimpleGrid columns={2} spacing="4">
@@ -308,9 +457,9 @@ const FeeDrawer = ({
                                         <Input
                                             value={form.receiptNumber}
                                             onChange={e => setForm({ ...form, receiptNumber: e.target.value })}
-                                            rounded-none="xl"
+                                            rounded="xl"
                                             fontSize="sm"
-                                            className="font-mono"
+                                            fontFamily="mono"
                                         />
                                     </InputGroup>
                                 </FormControl>
@@ -325,9 +474,9 @@ const FeeDrawer = ({
                                         <Input
                                             value={form.bookNumber}
                                             onChange={e => setForm({ ...form, bookNumber: e.target.value })}
-                                            rounded-none="xl"
+                                            rounded="xl"
                                             fontSize="sm"
-                                            className="font-mono"
+                                            fontFamily="mono"
                                         />
                                     </InputGroup>
                                 </FormControl>
@@ -341,7 +490,7 @@ const FeeDrawer = ({
                                 <Textarea
                                     value={form.notes}
                                     onChange={e => setForm({ ...form, notes: e.target.value })}
-                                    rounded-none="xl"
+                                    rounded="xl"
                                     fontSize="sm"
                                     rows={3}
                                     resize="none"
@@ -356,7 +505,7 @@ const FeeDrawer = ({
                         variant="ghost"
                         mr={2}
                         onClick={onClose}
-                        rounded-none="lg"
+                        rounded="lg"
                         fontSize="xs"
                         fontWeight="bold"
                         size="sm"
@@ -372,7 +521,7 @@ const FeeDrawer = ({
                         color="white"
                         _hover={{ bg: "gray.800" }}
                         _dark={{ bg: "white", color: "gray.900", _hover: { bg: "gray.100" } }}
-                        rounded-none="lg"
+                        rounded="lg"
                         px="6"
                         fontSize="xs"
                         fontWeight="bold"

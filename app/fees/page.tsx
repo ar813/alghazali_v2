@@ -5,25 +5,29 @@ import { client } from '@/sanity/lib/client';
 
 export const revalidate = 60;
 
-interface FeeStructure {
+interface AcademicClass {
   _id: string;
-  classGroup: string;
-  classesIncluded?: string;
-  admissionFee: number;
-  monthlyTuition: number;
-  annualCharges?: number;
+  name: string;
+  code: string;
+  group: string;
+  admissionFeeNew: number;
+  admissionFeeOld: number;
+  monthlyFee: number;
+  annualFee?: number;
 }
 
 export default async function FeesPage() {
-    // Fetch fee structures from Sanity
-    const fees: FeeStructure[] = await client.fetch(
-        `*[_type == "feeStructure"] | order(order asc) {
+    // Fetch academic classes from Sanity
+    const fees: AcademicClass[] = await client.fetch(
+        `*[_type == "academicClass"] | order(order asc) {
             _id,
-            classGroup,
-            classesIncluded,
-            admissionFee,
-            monthlyTuition,
-            annualCharges
+            name,
+            code,
+            group,
+            admissionFeeNew,
+            admissionFeeOld,
+            monthlyFee,
+            annualFee
         }`
     );
 
@@ -63,25 +67,29 @@ export default async function FeesPage() {
                                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
                                     
                                     <div className="p-8 border-b border-[#e5e7eb] bg-[#f9fafb] group-hover:bg-emerald-50/50 transition-colors relative z-10">
-                                        <h3 className="text-2xl font-black text-[#111827] uppercase tracking-tight mb-2">{fee.classGroup}</h3>
-                                        <p className="text-sm text-[#6b7280] font-medium min-h-[40px]">{fee.classesIncluded || 'All Classes in this group'}</p>
+                                        <h3 className="text-2xl font-black text-[#111827] uppercase tracking-tight mb-2">{fee.name}</h3>
+                                        <p className="text-sm text-[#6b7280] font-medium min-h-[40px]">{fee.group}</p>
                                     </div>
                                     
                                     <div className="p-8 space-y-6 flex-1 relative z-10">
                                         <div>
                                             <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">Monthly Tuition</p>
-                                            <p className="text-4xl font-black text-[#065f46]">Rs. {fee.monthlyTuition.toLocaleString()}</p>
+                                            <p className="text-4xl font-black text-[#065f46]">Rs. {(fee.monthlyFee || 0).toLocaleString()}</p>
                                         </div>
                                         
                                         <div className="space-y-4 pt-6 border-t border-neutral-100">
                                             <div className="flex justify-between items-center">
-                                                <span className="text-sm font-semibold text-neutral-600">Admission Fee</span>
-                                                <span className="text-sm font-bold text-neutral-900">Rs. {fee.admissionFee.toLocaleString()}</span>
+                                                <span className="text-sm font-semibold text-neutral-600">Admission (New Students)</span>
+                                                <span className="text-sm font-bold text-neutral-900">Rs. {(fee.admissionFeeNew || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-semibold text-neutral-600">Admission (Old Students)</span>
+                                                <span className="text-sm font-bold text-neutral-900">Rs. {(fee.admissionFeeOld || 0).toLocaleString()}</span>
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <span className="text-sm font-semibold text-neutral-600">Annual Charges</span>
                                                 <span className="text-sm font-bold text-neutral-900">
-                                                    {fee.annualCharges ? `Rs. ${fee.annualCharges.toLocaleString()}` : 'N/A'}
+                                                    {fee.annualFee ? `Rs. ${fee.annualFee.toLocaleString()}` : 'N/A'}
                                                 </span>
                                             </div>
                                         </div>

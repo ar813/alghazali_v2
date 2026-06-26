@@ -154,9 +154,9 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
         const params = { classFilter: klass, search: search, start, end, session: selectedSession, gender: genderFilter || null, sortKey, sortDir };
 
         const [data, count, statsData] = await Promise.all([
-          client.fetch(getPaginatedStudentsQuery, params),
-          client.fetch(getStudentsCountQuery, params),
-          client.fetch(getStudentStatsQuery, params)
+          client.fetch(getPaginatedStudentsQuery, params, { cache: 'no-store' }),
+          client.fetch(getStudentsCountQuery, params, { cache: 'no-store' }),
+          client.fetch(getStudentStatsQuery, params, { cache: 'no-store' })
         ]);
 
         setStudents(data.map(normalizeStudent));
@@ -187,12 +187,14 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
     const end = start + pageSize;
     const params = { classFilter: klass, search: search, start, end, session: selectedSession, gender: genderFilter || null, sortKey, sortDir };
 
-    const [data, count] = await Promise.all([
-      client.fetch(getPaginatedStudentsQuery, params),
-      client.fetch(getStudentsCountQuery, params)
+    const [data, count, statsData] = await Promise.all([
+      client.fetch(getPaginatedStudentsQuery, params, { cache: 'no-store' }),
+      client.fetch(getStudentsCountQuery, params, { cache: 'no-store' }),
+      client.fetch(getStudentStatsQuery, params, { cache: 'no-store' })
     ]);
     setStudents(data.map(normalizeStudent))
     setTotalCount(count)
+    setStats(statsData)
     setLoading(false)
     onLoadingChange?.(false)
   }

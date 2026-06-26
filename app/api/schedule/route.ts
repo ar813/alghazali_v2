@@ -16,12 +16,17 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const session = searchParams.get('session')
 
-    const sessionFilter = `(session == $session || (!defined(session) && $session == "2025-2026"))`
+    let sessionFilter = `1 == 1`
+    const params: Record<string, any> = {}
+    if (session) {
+      sessionFilter = `(session == $session || !defined(session))`
+      params.session = session
+    }
 
     // Fetch schedules for filtered session
     const data = await client.fetch(
       `*[_type == "schedule" && ${sessionFilter}]{ _id, className, days[]{ day, periods[]{ subject, time } } } | order(className asc)`,
-      { session }
+      params
     )
     return NextResponse.json({ ok: true, data })
   } catch (err: any) {
@@ -41,7 +46,12 @@ export async function POST(req: NextRequest) {
     // We'll treat null session as '2025-2026' for backward compat in logic if needed, but optimally we force it?
     // Let's use same filter logic for lookup
 
-    const sessionFilter = `(session == $session || (!defined(session) && $session == "2025-2026"))`
+    let sessionFilter = `1 == 1`
+    const params: Record<string, any> = {}
+    if (session) {
+      sessionFilter = `(session == $session || !defined(session))`
+      params.session = session
+    }
 
     // Handle delete action via POST (fallback)
     if (body.action === 'delete') {
@@ -51,10 +61,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: false, error: 'className and day are required for delete' }, { status: 400 })
       }
 
-      // Find existing schedule for class AND session
+      const fetchParams = { ...params, className }
       const existing = await client.fetch(
         `*[_type=="schedule" && className == $className && ${sessionFilter}][0]{ _id, days }`,
-        { className, session }
+        fetchParams
       ) as { _id: string; days?: { day: string; periods?: { subject: string; time: string }[] }[] } | null
 
       if (!existing) {
@@ -86,9 +96,10 @@ export async function POST(req: NextRequest) {
       const { className } = body as { action: string; className?: string, session?: string }
       if (!className) return NextResponse.json({ ok: false, error: 'className required' }, { status: 400 })
 
+      const fetchParams = { ...params, className }
       const existing = await client.fetch(
         `*[_type=="schedule" && className == $className && ${sessionFilter}][0]{ _id }`,
-        { className, session }
+        fetchParams
       )
       if (existing) {
         await client.delete(existing._id)
@@ -103,10 +114,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'className, day and at least one period are required' }, { status: 400 })
     }
 
-    // Find existing schedule for class AND session
+    const fetchParams = { ...params, className }
     const existing = await client.fetch(
       `*[_type=="schedule" && className == $className && ${sessionFilter}][0]{ _id, days }`,
-      { className, session }
+      fetchParams
     ) as { _id: string; days?: { day: string; periods?: { subject: string; time: string }[] }[] } | null
 
     if (!existing) {
@@ -114,7 +125,7 @@ export async function POST(req: NextRequest) {
       const doc = {
         _type: 'schedule',
         className,
-        session: session,
+        session: session || undefined,
         days: [
           {
             day,
@@ -163,12 +174,17 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'className and day are required' }, { status: 400 })
     }
 
-    const sessionFilter = `(session == $session || (!defined(session) && $session == "2025-2026"))`
+    let sessionFilter = `1 == 1`
+    const params: Record<string, any> = { className }
+    if (session) {
+      sessionFilter = `(session == $session || !defined(session))`
+      params.session = session
+    }
 
     // Find existing schedule for class AND session
     const existing = await client.fetch(
       `*[_type=="schedule" && className == $className && ${sessionFilter}][0]{ _id, days }`,
-      { className, session }
+      params
     ) as { _id: string; days?: { day: string; periods?: { subject: string; time: string }[] }[] } | null
 
     if (!existing) {

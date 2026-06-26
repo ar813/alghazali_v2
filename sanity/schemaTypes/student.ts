@@ -72,6 +72,13 @@ export default defineType({
       validation: Rule => Rule.required()
     }),
     defineField({
+      name: 'feeConcession',
+      title: 'Monthly Fee Concession (Discount)',
+      type: 'number',
+      description: 'Amount to be deducted from monthly fee (e.g. sibling discount)',
+      initialValue: 0
+    }),
+    defineField({
       name: 'nationality',
       title: 'Nationality',
       type: 'string',

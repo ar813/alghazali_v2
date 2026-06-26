@@ -63,6 +63,7 @@ export async function GET(req: NextRequest) {
       year,
       status,
       feeType,
+      payableAmount,
       amountPaid,
       paidDate,
       receiptNumber,
@@ -70,6 +71,10 @@ export async function GET(req: NextRequest) {
       notes,
       className,
       session,
+      concession,
+      arrears,
+      lateFine,
+      dueDate,
       student->{ _id, fullName, grNumber, rollNumber, admissionFor }
     }`
 
@@ -87,7 +92,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Server is missing SANITY_API_WRITE_TOKEN' }, { status: 500 })
     }
     const body = await req.json()
-    const { studentId, className, month, year, amountPaid = 0, paidDate, receiptNumber, bookNumber, feeType = 'monthly', notes, session } = body || {}
+    const { studentId, className, month, year, payableAmount = 0, amountPaid = 0, paidDate, receiptNumber, bookNumber, feeType = 'monthly', notes, session, concession = 0, arrears = 0, lateFine = 0, dueDate } = body || {}
     
     // STRICT SESSION ENFORCEMENT
     if (!session) {
@@ -125,6 +130,7 @@ export async function POST(req: NextRequest) {
       className,
       month,
       year,
+      payableAmount,
       amountPaid,
       status: 'paid' as const,
       paidDate: paidDate || new Date().toISOString().slice(0, 10),
@@ -132,7 +138,11 @@ export async function POST(req: NextRequest) {
       bookNumber,
       feeType: effectiveFeeType,
       notes,
-      session: targetSession
+      session: targetSession,
+      concession: Number(concession),
+      arrears: Number(arrears),
+      lateFine: Number(lateFine),
+      ...(dueDate && { dueDate }),
     }
 
     if (existing?._id) {

@@ -1,12 +1,42 @@
 "use client"
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Download, Check, Sparkles, GraduationCap, ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { SectionReveal } from '@/components/ScrollEffects/SectionReveal'
 import { generateFeePDF } from '@/lib/pdf-generator'
+import { client } from '@/sanity/lib/client'
+import { getAllAcademicClassesQuery } from '@/sanity/lib/queries'
 
 const TuitionFees = () => {
-    const mainFees = [
+    const [classes, setClasses] = useState<any[]>([])
+
+    useEffect(() => {
+        client.fetch(getAllAcademicClassesQuery).then(setClasses).catch(console.error)
+    }, [])
+
+    const groupedFees = classes.reduce((acc, cls) => {
+        const group = cls.group || "General"
+        if (!acc[group]) {
+            acc[group] = {
+                title: group,
+                price: cls.monthlyFee,
+                period: "/month",
+                grades: [cls.name],
+                popular: cls.isPopular
+            }
+        } else {
+            acc[group].grades.push(cls.name)
+            if (cls.isPopular) acc[group].popular = true
+        }
+        return acc
+    }, {} as Record<string, any>)
+
+    const dynamicMainFees = Object.values(groupedFees).map((g: any) => ({
+        ...g,
+        grades: g.grades.join(', ')
+    }))
+
+    const defaultMainFees = [
         {
             title: "Primary School",
             price: "900",
@@ -30,11 +60,26 @@ const TuitionFees = () => {
         }
     ]
 
-    const additionalFees = [
+    const mainFees = dynamicMainFees.length > 0 ? dynamicMainFees : defaultMainFees
+
+    const uniqueAdmissionFees = Array.from(new Set(classes.map(c => c.admissionFee).filter(Boolean)))
+    const uniqueAnnualFees = Array.from(new Set(classes.map(c => c.annualFee).filter(Boolean)))
+
+    let additionalFees = [
         { label: "New Student Admission", price: "Rs. 4,000" },
         { label: "Old Student Admission", price: "Rs. 2,500" },
         { label: "Annual Security Fee", price: "Rs. 500" },
     ]
+
+    if (classes.length > 0) {
+        additionalFees = []
+        if (uniqueAdmissionFees.length > 0) {
+            additionalFees.push({ label: "Admission Fee (Starts from)", price: `Rs. ${Math.min(...uniqueAdmissionFees as number[])}` })
+        }
+        if (uniqueAnnualFees.length > 0) {
+            additionalFees.push({ label: "Annual Charges (Starts from)", price: `Rs. ${Math.min(...uniqueAnnualFees as number[])}` })
+        }
+    }
 
     return (
         <section id="tuition" className="py-24 bg-[#fcfdff] relative overflow-hidden">

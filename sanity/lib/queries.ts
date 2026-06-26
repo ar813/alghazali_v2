@@ -93,3 +93,6 @@ export const getAllSchedulesQuery = `*[_type == "schedule"]{
 export const getStudentByIdentifiers = (cnicOrBform: string, grNumber: string) => `*[_type == "student" && cnicOrBform == "${cnicOrBform}" && grNumber == "${grNumber}"][0]{${studentFields}}`
 
 export const getStudentByCnicAndGr = `*[_type == "student" && (cnicOrBform == $identity || fatherCnic == $identity || guardianCnic == $identity) && grNumber == $grNumber][0]{${studentFields}}`
+
+export const getAllAcademicClassesQuery = `*[_type == "academicClass"] | order(order asc)`
+
