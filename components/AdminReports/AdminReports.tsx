@@ -1,4 +1,4 @@
-import { Upload, Users, PieChart, BarChart2, Loader2, X, Search, FileDown, Image as ImageIcon, Database, Receipt, FolderArchive, LayoutGrid, Eye, Filter, User, Award } from 'lucide-react'
+import { Upload, Users, PieChart, BarChart2, Loader2, X, Search, FileDown, Image as ImageIcon, Database, Receipt, FolderArchive, LayoutGrid, Eye, Filter, User, Award, AlertTriangle } from 'lucide-react'
 import NextImage from 'next/image'
 import StudentDetailModal from '../AdminStudents/StudentDetailModal'
 import AdminCertificates from '../AdminCertificates/AdminCertificates'
@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { client } from '@/sanity/lib/client'
 import { getAllStudentsQuery } from '@/sanity/lib/queries'
 import { useSession } from '@/context/SessionContext'
+import { db } from '@/lib/firebase'
+import { collection, query, where, getDocs } from 'firebase/firestore'
 
 type StudentType = {
   _id: string
@@ -31,6 +33,10 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
   const [insightSearch, setInsightSearch] = useState('')
   const [clickedStudent, setClickedStudent] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
+
+  // High Absences (>20) states
+  const [absentStudentsList, setAbsentStudentsList] = useState<any[]>([])
+  const [loadingAbsences, setLoadingAbsences] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -80,6 +86,53 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
     }
     fetchStudents()
   }, [onLoadingChange, selectedSession, genderFilter])
+
+  // Fetch attendance data from Firestore and compute high-absence students
+  useEffect(() => {
+    if (!selectedSession || students.length === 0) return;
+
+    const fetchAbsences = async () => {
+      setLoadingAbsences(true);
+      try {
+        const prefixStart = `manual_monthly__${selectedSession}__`;
+        const prefixEnd = `manual_monthly__${selectedSession}__\uf8ff`;
+        const manualQuery = query(
+          collection(db, 'attendance'),
+          where('__name__', '>=', prefixStart),
+          where('__name__', '<=', prefixEnd)
+        );
+        const snap = await getDocs(manualQuery);
+
+        // Aggregate absences per GR number
+        const absMap: Record<string, number> = {};
+        snap.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          const records = data.records || {};
+          Object.keys(records).forEach(gr => {
+            const row = records[gr];
+            absMap[gr] = (absMap[gr] || 0) + (row.absent || 0);
+          });
+        });
+
+        // Match with students and filter >20
+        const highAbsentStudents = (students as any[]).filter(s => {
+          const gr = s.grNumber || s._id || '';
+          return (absMap[gr] || 0) > 20;
+        }).map(s => {
+          const gr = s.grNumber || s._id || '';
+          return { ...s, totalAbsences: absMap[gr] || 0 };
+        }).sort((a, b) => b.totalAbsences - a.totalAbsences);
+
+        setAbsentStudentsList(highAbsentStudents);
+      } catch (err) {
+        console.error('Error fetching attendance for absences report:', err);
+      } finally {
+        setLoadingAbsences(false);
+      }
+    };
+
+    fetchAbsences();
+  }, [selectedSession, students])
 
   const handleDownloadFormsZip = async () => {
     try {
@@ -625,6 +678,8 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         const f = (s: any) => { const a = (s.dob ? Math.floor((Date.now() - new Date(s.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null); return a != null && a >= 14 }
         return list.filter(f)
       }
+      case 'High Absences (>20)':
+        return absentStudentsList;
       default:
         return []
     }
@@ -965,6 +1020,7 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
               { label: 'Age 8-10', value: insights.ageBuckets['8-10'] },
               { label: 'Age 11-13', value: insights.ageBuckets['11-13'] },
               { label: 'Age 14+', value: insights.ageBuckets['14+'] },
+              { label: 'High Absences (>20)', value: loadingAbsences ? '...' : absentStudentsList.length, alert: absentStudentsList.length > 0, danger: true },
             ].map((metric) => (
               <button
                 key={metric.label}
@@ -973,12 +1029,27 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
                   setInsightSearch('') // Reset search on open
                   setInsightModal({ open: true, title: metric.label, items })
                 }}
-                className={`p-4 border rounded-xl text-left transition-all group ${metric.alert ? 'bg-amber-50/50 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/10 dark:border-amber-900/50 dark:hover:bg-amber-900/30' : 'bg-neutral-50 border-neutral-200 hover:bg-white hover:border-neutral-300 dark:bg-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-800'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`p-4 border rounded-xl text-left transition-all group ${
+                  (metric as any).danger && metric.alert
+                    ? 'bg-red-50/50 border-red-200 hover:bg-red-100 dark:bg-red-900/10 dark:border-red-900/50 dark:hover:bg-red-900/30'
+                    : metric.alert
+                      ? 'bg-amber-50/50 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/10 dark:border-amber-900/50 dark:hover:bg-amber-900/30'
+                      : 'bg-neutral-50 border-neutral-200 hover:bg-white hover:border-neutral-300 dark:bg-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-800'
+                } focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
-                <div className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${metric.alert ? 'text-amber-700 dark:text-amber-500' : 'text-neutral-500 dark:text-neutral-400'}`}>
+                <div className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${
+                  (metric as any).danger && metric.alert
+                    ? 'text-red-700 dark:text-red-500'
+                    : metric.alert ? 'text-amber-700 dark:text-amber-500' : 'text-neutral-500 dark:text-neutral-400'
+                }`}>
+                  {(metric as any).danger && metric.alert && <AlertTriangle size={12} className="inline mr-1 -mt-0.5" />}
                   {metric.label}
                 </div>
-                <div className={`text-xl font-black ${metric.alert ? 'text-amber-900 dark:text-amber-400' : 'text-neutral-900 dark:text-white'}`}>
+                <div className={`text-xl font-black ${
+                  (metric as any).danger && metric.alert
+                    ? 'text-red-900 dark:text-red-400'
+                    : metric.alert ? 'text-amber-900 dark:text-amber-400' : 'text-neutral-900 dark:text-white'
+                }`}>
                   {metric.value}
                 </div>
               </button>
@@ -1366,33 +1437,48 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
                     const wb = new ExcelJS.Workbook();
                     const ws = wb.addWorksheet('Insight Data');
 
-                    // Minimal columns
-                    ws.columns = [
+                    // Determine if this is the absences list
+                    const isAbsencesList = insightModal.title === 'High Absences (>20)';
+
+                    // Columns (with optional Total Absences)
+                    const cols: any[] = [
                       { header: 'Full Name', key: 'fullName', width: 25 },
                       { header: 'GR Number', key: 'grNumber', width: 15 },
                       { header: 'Roll No', key: 'rollNumber', width: 12 },
                       { header: 'Class', key: 'admissionFor', width: 15 },
                       { header: 'Phone', key: 'phoneNumber', width: 18 },
                     ];
+                    if (isAbsencesList) {
+                      cols.push({ header: 'Total Absences', key: 'totalAbsences', width: 18 });
+                    }
+                    ws.columns = cols;
 
                     // Style header
                     const hr = ws.getRow(1);
                     hr.eachCell((c: any) => {
                       c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-                      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF171717' } };
+                      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isAbsencesList ? 'FFDC2626' : 'FF171717' } };
                       c.alignment = { horizontal: 'center' };
                     });
                     
                     insightModal.items.forEach((s: any) => {
-                      const r = ws.addRow({
+                      const rowData: any = {
                         fullName: (s.fullName || '').toUpperCase(),
                         grNumber: s.grNumber || '—',
                         rollNumber: s.rollNumber || '—',
                         admissionFor: (s.admissionFor || '—').toUpperCase(),
                         phoneNumber: s.phoneNumber || '—'
-                      });
-                      r.eachCell((c: any) => {
+                      };
+                      if (isAbsencesList) {
+                        rowData.totalAbsences = s.totalAbsences || 0;
+                      }
+                      const r = ws.addRow(rowData);
+                      r.eachCell((c: any, colNumber: number) => {
                          c.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                         // Highlight absences cell in red
+                         if (isAbsencesList && colNumber === cols.length) {
+                           c.font = { bold: true, color: { argb: 'FFDC2626' } };
+                         }
                       });
                     });
 
@@ -1446,6 +1532,9 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
                       <th className="px-6 py-4 font-black text-neutral-500 uppercase tracking-widest text-[10px]">GR No</th>
                       <th className="px-6 py-4 font-black text-neutral-500 uppercase tracking-widest text-[10px]">Roll No</th>
                       <th className="px-6 py-4 font-black text-neutral-500 uppercase tracking-widest text-[10px]">Class</th>
+                      {insightModal.title === 'High Absences (>20)' && (
+                        <th className="px-6 py-4 font-black text-red-500 uppercase tracking-widest text-[10px]">Total Absences</th>
+                      )}
                       <th className="px-6 py-4 font-black text-neutral-500 uppercase tracking-widest text-[10px] text-right">Actions</th>
                     </tr>
                   </thead>
@@ -1496,6 +1585,13 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
                                 {s.admissionFor || '—'}
                               </span>
                             </td>
+                            {insightModal.title === 'High Absences (>20)' && (
+                              <td className="px-6 py-4">
+                                <span className="px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-md text-xs font-black">
+                                  {s.totalAbsences || 0} days
+                                </span>
+                              </td>
+                            )}
                             <td className="px-6 py-4 text-right">
                               <button className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
                                 <Eye size={16} />

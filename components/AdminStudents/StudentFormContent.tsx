@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { User, BookOpen, Phone, FileText, Camera, Check, ChevronRight, Hash, Mail, MapPin, X } from 'lucide-react';
+import { User, BookOpen, Phone, FileText, Camera, Check, ChevronRight, Hash, Mail, MapPin, X, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import ImageCropper from '@/components/ImageCropper/ImageCropper';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -62,25 +62,120 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
     const [cropSource, setCropSource] = useState<string | null>(null);
     const [activeTabIndex, setActiveTabIndex] = useState(0);
 
+    const formatCNIC = (value: string) => {
+        const v = value.replace(/\D/g, '');
+        if (v.length <= 5) return v;
+        if (v.length <= 12) return `${v.slice(0, 5)}-${v.slice(5)}`;
+        return `${v.slice(0, 5)}-${v.slice(5, 12)}-${v.slice(12, 13)}`;
+    };
+
+    const formatPhone = (value: string) => {
+        const v = value.replace(/\D/g, '');
+        if (v.length <= 4) return v;
+        return `${v.slice(0, 4)}-${v.slice(4, 11)}`;
+    };
+
     useEffect(() => {
         if (initialData) {
-            setFormData({ ...initialData });
+            const displayDob = initialData.dob ? initialData.dob.split('-').reverse().join('-') : '';
+            setFormData({ ...initialData, dob: displayDob });
             setPhotoPreview(initialData.photoUrl || null);
         } else {
-            setFormData({
-                fullName: '', fatherName: '', fatherCnic: '', dob: '', rollNumber: '',
-                grNumber: '', gender: 'male', admissionFor: '1', nationality: 'pakistani',
-                medicalCondition: 'no', cnicOrBform: '', email: '', phoneNumber: '',
-                whatsappNumber: '', address: '', formerEducation: '', previousInstitute: '',
-                lastExamPercentage: '', guardianName: '', guardianContact: '',
-                guardianCnic: '', guardianRelation: '',
-            });
+            const savedDraft = localStorage.getItem('studentFormDraft');
+            if (savedDraft) {
+                try {
+                    setFormData(JSON.parse(savedDraft));
+                } catch (e) {
+                    console.error("Draft parse error", e);
+                }
+            } else {
+                setFormData({
+                    fullName: '', fatherName: '', fatherCnic: '', dob: '', rollNumber: '',
+                    grNumber: '', gender: 'male', admissionFor: '1', nationality: 'pakistani',
+                    medicalCondition: 'no', cnicOrBform: '', email: '', phoneNumber: '',
+                    whatsappNumber: '', address: '', formerEducation: '', previousInstitute: '',
+                    lastExamPercentage: '', guardianName: '', guardianContact: '',
+                    guardianCnic: '', guardianRelation: '',
+                });
+            }
             setPhotoPreview(null);
         }
     }, [initialData]);
 
+    useEffect(() => {
+        if (!initialData && Object.keys(formData).length > 0) {
+            localStorage.setItem('studentFormDraft', JSON.stringify(formData));
+        }
+    }, [formData, initialData]);
+
+    const handleSave = async () => {
+        if (!formData.fullName || !formData.fatherName || !formData.grNumber) {
+            toast.warning("Missing Required Fields", {
+                description: "Please provide Full Name, Father Name, and GR Number."
+            });
+            return;
+        }
+        
+        const payload = { ...formData };
+        if (payload.dob && payload.dob.includes('-')) {
+            const parts = payload.dob.split('-');
+            if (parts.length === 3 && parts[2].length === 4) {
+               payload.dob = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+        }
+        
+        await onSave(payload, photoFile);
+        if (!initialData) localStorage.removeItem('studentFormDraft');
+    };
+
+    const handleDiscard = () => {
+        if (!initialData) localStorage.removeItem('studentFormDraft');
+        onCancel();
+    };
+
     const handleChange = (field: string, value: any) => {
         setFormData((prev: any) => ({ ...prev, [field]: value }));
+    };
+
+    const formatDob = (value: string) => {
+        const v = value.replace(/\D/g, '');
+        if (v.length <= 2) return v;
+        if (v.length <= 4) return `${v.slice(0, 2)}-${v.slice(2)}`;
+        return `${v.slice(0, 2)}-${v.slice(2, 4)}-${v.slice(4, 8)}`;
+    };
+
+    const calculateAge = (dobString: string) => {
+        if (!dobString || dobString.length < 10) return null;
+        const parts = dobString.split('-');
+        let day, month, year;
+        if (parts[2]?.length === 4) {
+            day = parts[0]; month = parts[1]; year = parts[2];
+        } else if (parts[0]?.length === 4) {
+            year = parts[0]; month = parts[1]; day = parts[2];
+        } else return null;
+
+        if (!day || !month || !year || year.length < 4) return null;
+        
+        const dobDate = new Date(Number(year), Number(month) - 1, Number(day));
+        if (isNaN(dobDate.getTime())) return null;
+
+        const today = new Date();
+        let ageYears = today.getFullYear() - dobDate.getFullYear();
+        let ageMonths = today.getMonth() - dobDate.getMonth();
+        let ageDays = today.getDate() - dobDate.getDate();
+
+        if (ageDays < 0) {
+            ageMonths -= 1;
+            const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+            ageDays += lastMonth.getDate();
+        }
+        
+        if (ageMonths < 0) {
+            ageYears -= 1;
+            ageMonths += 12;
+        }
+
+        return { years: ageYears, months: ageMonths, days: ageDays };
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,23 +212,25 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={onCancel} className="px-3 py-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-white rounded-none">Discard</button>
-                    <button
-                        onClick={() => {
-                            if (!formData.fullName || !formData.fatherName || !formData.grNumber) {
-                                toast.warning("Missing Required Fields", {
-                                    description: "Please provide Full Name, Father Name, and GR Number."
-                                });
-                                return;
-                            }
-                            onSave(formData, photoFile);
-                        }}
-                        disabled={loading}
-                        className="px-4 py-1.5 rounded-none bg-neutral-900 dark:bg-white text-white dark:text-black text-xs font-bold disabled:opacity-50 flex items-center gap-2 shadow-sm"
-                    >
-                        {loading ? <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded animate-spin" /> : <Check size={14} />}
-                        <span>Save</span>
-                    </button>
+                    <button onClick={handleDiscard} className="px-3 py-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-white rounded-none">Discard</button>
+                    {activeTabIndex < TABS_CONFIG.length - 1 ? (
+                        <button
+                            onClick={() => setActiveTabIndex(prev => prev + 1)}
+                            className="px-4 py-1.5 rounded-none bg-neutral-900 dark:bg-white text-white dark:text-black text-xs font-bold flex items-center gap-2 shadow-sm hover:opacity-80 transition-opacity"
+                        >
+                            <span>Next Step</span>
+                            <ChevronRight size={14} />
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleSave}
+                            disabled={loading}
+                            className="px-4 py-1.5 rounded-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 flex items-center gap-2 shadow-sm transition-colors"
+                        >
+                            {loading ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded animate-spin" /> : <Check size={14} />}
+                            <span>Save & Complete</span>
+                        </button>
+                    )}
                 </div>
             </header>
 
@@ -202,9 +299,45 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 mt-6">
-                                        <div className="space-y-2"><FieldLabel icon={Hash}>Father's CNIC</FieldLabel><TextInput value={formData.fatherCnic} onChange={(e) => handleChange('fatherCnic', e.target.value)} placeholder="42101-XXXXXXX-X" /></div>
-                                        <div className="space-y-2"><FieldLabel icon={BookOpen}>Date of Birth</FieldLabel><TextInput type="date" value={formData.dob} onChange={(e) => handleChange('dob', e.target.value)} /></div>
-                                        <div className="space-y-2"><FieldLabel icon={Hash}>CNIC / B-Form</FieldLabel><TextInput value={formData.cnicOrBform} onChange={(e) => handleChange('cnicOrBform', e.target.value)} placeholder="42101-XXXXXXX-X" /></div>
+                                        <div className="space-y-2"><FieldLabel icon={Hash}>Father's CNIC</FieldLabel><TextInput value={formData.fatherCnic} onChange={(e) => handleChange('fatherCnic', formatCNIC(e.target.value))} placeholder="42101-XXXXXXX-X" /></div>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <FieldLabel icon={BookOpen}>Date of Birth</FieldLabel>
+                                                {(() => {
+                                                    const age = calculateAge(formData.dob);
+                                                    if (age) {
+                                                        return (
+                                                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                                                                {age.years} Yrs, {age.months} Mos, {age.days} Days
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                            </div>
+                                            <div className="relative flex items-center">
+                                                <TextInput 
+                                                    value={formData.dob} 
+                                                    onChange={(e) => handleChange('dob', formatDob(e.target.value))} 
+                                                    placeholder="DD-MM-YYYY" 
+                                                />
+                                                <div className="absolute right-0 top-0 h-full w-10 overflow-hidden flex items-center justify-center cursor-pointer text-neutral-400 hover:text-neutral-600">
+                                                    <Calendar size={16} />
+                                                    <input 
+                                                        type="date" 
+                                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                        onChange={(e) => {
+                                                            const d = e.target.value;
+                                                            if (d) {
+                                                                const [y, m, day] = d.split('-');
+                                                                handleChange('dob', `${day}-${m}-${y}`);
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2"><FieldLabel icon={Hash}>CNIC / B-Form</FieldLabel><TextInput value={formData.cnicOrBform} onChange={(e) => handleChange('cnicOrBform', formatCNIC(e.target.value))} placeholder="42101-XXXXXXX-X" /></div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2"><FieldLabel>Gender</FieldLabel><SelectInput value={formData.gender} onChange={(e) => handleChange('gender', e.target.value)}><option value="male">Male</option><option value="female">Female</option></SelectInput></div>
                                             <div className="space-y-2"><FieldLabel>Medical</FieldLabel><SelectInput value={formData.medicalCondition} onChange={(e) => handleChange('medicalCondition', e.target.value)}><option value="no">None</option><option value="yes">Specific</option></SelectInput></div>
@@ -236,8 +369,8 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
                                 <div className="space-y-6">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                         <div className="space-y-2"><FieldLabel icon={Mail}>Email</FieldLabel><TextInput type="email" value={formData.email} onChange={(e) => handleChange('email', e.target.value)} placeholder="email@example.com" /></div>
-                                        <div className="space-y-2"><FieldLabel icon={Phone}>Mobile</FieldLabel><TextInput value={formData.phoneNumber} onChange={(e) => handleChange('phoneNumber', e.target.value.replace(/[^0-9]/g, ''))} placeholder="03XXXXXXXXX" /></div>
-                                        <div className="space-y-2"><FieldLabel icon={Phone}>WhatsApp</FieldLabel><TextInput value={formData.whatsappNumber} onChange={(e) => handleChange('whatsappNumber', e.target.value.replace(/[^0-9]/g, ''))} placeholder="03XXXXXXXXX" /></div>
+                                        <div className="space-y-2"><FieldLabel icon={Phone}>Mobile</FieldLabel><TextInput value={formData.phoneNumber} onChange={(e) => handleChange('phoneNumber', formatPhone(e.target.value))} placeholder="03XX-XXXXXXX" /></div>
+                                        <div className="space-y-2"><FieldLabel icon={Phone}>WhatsApp</FieldLabel><TextInput value={formData.whatsappNumber} onChange={(e) => handleChange('whatsappNumber', formatPhone(e.target.value))} placeholder="03XX-XXXXXXX" /></div>
                                     </div>
                                     <div className="space-y-2 pt-2">
                                         <FieldLabel icon={MapPin}>Residential Address</FieldLabel>
@@ -255,8 +388,8 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
                             {activeTabIndex === 3 && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
                                     <div className="space-y-2"><FieldLabel icon={User}>Guardian Name</FieldLabel><TextInput value={formData.guardianName} onChange={(e) => handleChange('guardianName', e.target.value)} placeholder="Official Name" /></div>
-                                    <div className="space-y-2"><FieldLabel icon={Phone}>Contact No.</FieldLabel><TextInput value={formData.guardianContact} onChange={(e) => handleChange('guardianContact', e.target.value.replace(/[^0-9]/g, ''))} placeholder="03XXXXXXXXX" /></div>
-                                    <div className="space-y-2"><FieldLabel icon={Hash}>CNIC</FieldLabel><TextInput value={formData.guardianCnic} onChange={(e) => handleChange('guardianCnic', e.target.value)} placeholder="42101-XXXXXXX-X" /></div>
+                                    <div className="space-y-2"><FieldLabel icon={Phone}>Contact No.</FieldLabel><TextInput value={formData.guardianContact} onChange={(e) => handleChange('guardianContact', formatPhone(e.target.value))} placeholder="03XX-XXXXXXX" /></div>
+                                    <div className="space-y-2"><FieldLabel icon={Hash}>CNIC</FieldLabel><TextInput value={formData.guardianCnic} onChange={(e) => handleChange('guardianCnic', formatCNIC(e.target.value))} placeholder="42101-XXXXXXX-X" /></div>
                                     <div className="space-y-2"><FieldLabel icon={User}>Relation</FieldLabel><SelectInput value={formData.guardianRelation} onChange={(e) => handleChange('guardianRelation', e.target.value)}><option value="">Select Relation</option>{['Father', 'Mother', 'Brother', 'Sister', 'Uncle', 'Other'].map(r => (<option key={r} value={r.toLowerCase()}>{r}</option>))}</SelectInput></div>
                                 </div>
                             )}

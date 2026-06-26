@@ -35,18 +35,18 @@ const AdminDashboard = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (
 
                 // Fetch Total Students from Sanity
                 try {
-                    const list: any[] = await client.fetch(getAllStudentsQuery, params);
+                    const list: any[] = await client.fetch(getAllStudentsQuery, params, { cache: 'no-store' });
                     setStudents(Array.isArray(list) ? list : []);
                     setTotalStudents(Array.isArray(list) ? list.length : 0);
                 } catch {
-                    const res = await fetch(`/api/stats?session=${encodeURIComponent(selectedSession)}&gender=${genderFilter || ''}`);
+                    const res = await fetch(`/api/stats?session=${encodeURIComponent(selectedSession)}&gender=${genderFilter || ''}`, { cache: 'no-store' });
                     const json = await res.json().catch(() => ({}));
                     const data = json?.data || {};
                     setTotalStudents(data.totalStudents || 0);
                 }
 
                 // Load other stats
-                const res = await fetch(`/api/stats?session=${encodeURIComponent(selectedSession)}&gender=${genderFilter || ''}`);
+                const res = await fetch(`/api/stats?session=${encodeURIComponent(selectedSession)}&gender=${genderFilter || ''}`, { cache: 'no-store' });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
                     throw new Error(err?.details || err?.error || `HTTP ${res.status}`);

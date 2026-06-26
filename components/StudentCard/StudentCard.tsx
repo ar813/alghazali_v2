@@ -19,7 +19,8 @@ function intToRoman(value?: string) {
 }
 
 function buildQrData(s: Student, issue: string, expiry: string) {
-  return s.grNumber || '';
+  const gr = s.grNumber?.trim();
+  return (!gr || gr === '-') ? (s.rollNumber || '') : gr;
 }
 
 function getQrSrc(s: Student, issue: string, expiry: string, size = 80) {

@@ -9,7 +9,8 @@ import quiz from './quiz'
 import quizResult from './quizResult'
 import examResultSet from './examResultSet'
 import sessionMeta from './sessionMeta'
+import academicClass from './academicClass'
 
 export const schema: { types: SchemaTypeDefinition[] } = {
-  types: [student, adminUser, schedule, fees, feeStructure, notice, quiz, quizResult, examResultSet, sessionMeta],
+  types: [student, adminUser, schedule, fees, feeStructure, notice, quiz, quizResult, examResultSet, sessionMeta, academicClass],
 }

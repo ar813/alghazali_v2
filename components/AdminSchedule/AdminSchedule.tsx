@@ -4,7 +4,6 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { Calendar, Plus, Save, Trash2, Upload, Download, Search, FileSpreadsheet, Loader2, AlertTriangle, ListFilter } from 'lucide-react'
 import { toast } from "sonner";
 import ScheduleCard from './ScheduleCard';
-import { useSession } from '@/context/SessionContext';
 import { ScheduleDoc } from './types';
 import {
   Drawer,
@@ -28,7 +27,6 @@ import {
 } from "@/components/ui/alert-dialog"
 
 const AdminSchedule = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
-  const { selectedSession } = useSession();
   const [schedules, setSchedules] = useState<ScheduleDoc[]>([])
   const [loadingSchedules, setLoadingSchedules] = useState<boolean>(false)
 
@@ -158,7 +156,7 @@ const AdminSchedule = ({ onLoadingChange }: { onLoadingChange?: (loading: boolea
       for (const k of Object.keys(byKey)) {
         const rec = byKey[k]
         const res = await fetch('/api/schedule', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ className: rec.className, day: rec.day, periods: rec.periods, session: selectedSession })
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ className: rec.className, day: rec.day, periods: rec.periods })
         })
         const j = await res.json()
         if (j?.ok) saved++
@@ -176,17 +174,16 @@ const AdminSchedule = ({ onLoadingChange }: { onLoadingChange?: (loading: boolea
 
   const loadSchedules = React.useCallback(async () => {
     try {
-      if (!selectedSession) return;
       setLoadingSchedules(true)
       onLoadingChange?.(true)
-      const res = await fetch(`/api/schedule?session=${selectedSession}`, { cache: 'no-store' })
+      const res = await fetch(`/api/schedule`, { cache: 'no-store' })
       const json = await res.json()
       if (json?.ok) setSchedules(json.data as ScheduleDoc[])
     } catch {
       toast.error('Failed to load schedules')
     }
     finally { setLoadingSchedules(false); onLoadingChange?.(false) }
-  }, [onLoadingChange, selectedSession])
+  }, [onLoadingChange])
 
   useEffect(() => {
     loadSchedules()
@@ -231,7 +228,7 @@ const AdminSchedule = ({ onLoadingChange }: { onLoadingChange?: (loading: boolea
       const res = await fetch('/api/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ className: editClass, day: editDay, periods: editPeriods, session: selectedSession })
+        body: JSON.stringify({ className: editClass, day: editDay, periods: editPeriods })
       })
       const json = await res.json()
       if (!json?.ok) throw new Error(json?.error || 'Failed to save schedule')
@@ -249,13 +246,13 @@ const AdminSchedule = ({ onLoadingChange }: { onLoadingChange?: (loading: boolea
   const deleteScheduleDay = async (className: string, day: string) => {
     try {
       setDeleting(true)
-      const url = `/api/schedule?className=${encodeURIComponent(className)}&day=${encodeURIComponent(day)}&session=${encodeURIComponent(selectedSession || '')}`
+      const url = `/api/schedule?className=${encodeURIComponent(className)}&day=${encodeURIComponent(day)}`
       let res = await fetch(url, { method: 'DELETE' })
       if (!res.ok) {
         res = await fetch('/api/schedule', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'delete', className, day, session: selectedSession })
+          body: JSON.stringify({ action: 'delete', className, day })
         })
       }
       const json = await res.json().catch(() => ({ ok: res.ok }))
@@ -276,7 +273,7 @@ const AdminSchedule = ({ onLoadingChange }: { onLoadingChange?: (loading: boolea
       const res = await fetch('/api/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'deleteFullClass', className, session: selectedSession })
+        body: JSON.stringify({ action: 'deleteFullClass', className })
       })
       const json = await res.json()
       if (!json?.ok) throw new Error(json?.error || 'Failed to delete class schedule')
@@ -300,8 +297,7 @@ const AdminSchedule = ({ onLoadingChange }: { onLoadingChange?: (loading: boolea
         body: JSON.stringify({
           className: targetClass,
           day: targetDay,
-          periods: copyingSchedule.periods,
-          session: selectedSession
+          periods: copyingSchedule.periods
         })
       })
       const json = await res.json()

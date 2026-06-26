@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, BookOpen, Phone, FileText, Camera, Upload } from 'lucide-react';
+import { X, User, BookOpen, Phone, FileText, Camera, Upload, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import ImageCropper from '@/components/ImageCropper/ImageCropper';
@@ -34,34 +34,44 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
         if (isOpen) {
             if (initialData) {
                 // Edit Mode
-                setFormData({ ...initialData });
+                const displayDob = initialData.dob ? initialData.dob.split('-').reverse().join('-') : '';
+                setFormData({ ...initialData, dob: displayDob });
                 setPhotoPreview(initialData.photoUrl || null);
             } else {
-                // Create Mode - Default Values (matching original file)
-                setFormData({
-                    fullName: '',
-                    fatherName: '',
-                    fatherCnic: '',
-                    dob: '',
-                    rollNumber: '',
-                    grNumber: '',
-                    gender: 'male',
-                    admissionFor: '1',
-                    nationality: 'pakistani',
-                    medicalCondition: 'no',
-                    cnicOrBform: '',
-                    email: '',
-                    phoneNumber: '0',
-                    whatsappNumber: '0',
-                    address: '',
-                    formerEducation: '',
-                    previousInstitute: '',
-                    lastExamPercentage: '',
-                    guardianName: '',
-                    guardianContact: '0',
-                    guardianCnic: '',
-                    guardianRelation: '',
-                });
+                // Create Mode
+                const savedDraft = localStorage.getItem('studentFormDraft');
+                if (savedDraft) {
+                    try {
+                        setFormData(JSON.parse(savedDraft));
+                    } catch (e) {
+                        console.error("Draft parse error", e);
+                    }
+                } else {
+                    setFormData({
+                        fullName: '',
+                        fatherName: '',
+                        fatherCnic: '',
+                        dob: '',
+                        rollNumber: '',
+                        grNumber: '',
+                        gender: 'male',
+                        admissionFor: '1',
+                        nationality: 'pakistani',
+                        medicalCondition: 'no',
+                        cnicOrBform: '',
+                        email: '',
+                        phoneNumber: '0',
+                        whatsappNumber: '0',
+                        address: '',
+                        formerEducation: '',
+                        previousInstitute: '',
+                        lastExamPercentage: '',
+                        guardianName: '',
+                        guardianContact: '0',
+                        guardianCnic: '',
+                        guardianRelation: '',
+                    });
+                }
                 setPhotoPreview(null);
             }
             setPhotoFile(null);
@@ -69,8 +79,55 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
         }
     }, [isOpen, initialData]);
 
+    useEffect(() => {
+        if (isOpen && !initialData && Object.keys(formData).length > 0) {
+            localStorage.setItem('studentFormDraft', JSON.stringify(formData));
+        }
+    }, [formData, isOpen, initialData]);
+
     const handleChange = (field: string, value: any) => {
         setFormData((prev: any) => ({ ...prev, [field]: value }));
+    };
+
+    const formatDob = (value: string) => {
+        const v = value.replace(/\D/g, '');
+        if (v.length <= 2) return v;
+        if (v.length <= 4) return `${v.slice(0, 2)}-${v.slice(2)}`;
+        return `${v.slice(0, 2)}-${v.slice(2, 4)}-${v.slice(4, 8)}`;
+    };
+
+    const calculateAge = (dobString: string) => {
+        if (!dobString || dobString.length < 10) return null;
+        const parts = dobString.split('-');
+        let day, month, year;
+        if (parts[2]?.length === 4) {
+            day = parts[0]; month = parts[1]; year = parts[2];
+        } else if (parts[0]?.length === 4) {
+            year = parts[0]; month = parts[1]; day = parts[2];
+        } else return null;
+
+        if (!day || !month || !year || year.length < 4) return null;
+        
+        const dobDate = new Date(Number(year), Number(month) - 1, Number(day));
+        if (isNaN(dobDate.getTime())) return null;
+
+        const today = new Date();
+        let ageYears = today.getFullYear() - dobDate.getFullYear();
+        let ageMonths = today.getMonth() - dobDate.getMonth();
+        let ageDays = today.getDate() - dobDate.getDate();
+
+        if (ageDays < 0) {
+            ageMonths -= 1;
+            const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+            ageDays += lastMonth.getDate();
+        }
+        
+        if (ageMonths < 0) {
+            ageYears -= 1;
+            ageMonths += 12;
+        }
+
+        return { years: ageYears, months: ageMonths, days: ageDays };
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,7 +150,20 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
     };
 
     const handleSave = () => {
-        onSave(formData, photoFile);
+        const payload = { ...formData };
+        if (payload.dob && payload.dob.includes('-')) {
+            const parts = payload.dob.split('-');
+            if (parts.length === 3 && parts[2].length === 4) {
+               payload.dob = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+        }
+        onSave(payload, photoFile);
+        if (!initialData) localStorage.removeItem('studentFormDraft');
+    };
+
+    const handleClose = () => {
+        if (!initialData) localStorage.removeItem('studentFormDraft');
+        onClose();
     };
 
     if (!isOpen) return null;
@@ -113,7 +183,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                         <h2 className="text-xl font-bold text-gray-800">{initialData ? 'Edit Student' : 'Add New Student'}</h2>
                         <p className="text-sm text-gray-500">Please fill in the details below. Fields in tabs must be completed.</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-red-50 hover:text-red-600 rounded transition-colors">
+                    <button onClick={handleClose} className="p-2 hover:bg-red-50 hover:text-red-600 rounded transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -195,9 +265,23 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                                             value={formData.fatherName} onChange={(e) => handleChange('fatherName', e.target.value)} />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-sm font-medium text-gray-700">Date of Birth</label>
-                                        <input type="date" className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                            value={formData.dob} onChange={(e) => handleChange('dob', e.target.value)} />
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-sm font-medium text-gray-700">Date of Birth</label>
+                                            {(() => {
+                                                const age = calculateAge(formData.dob);
+                                                if (age) {
+                                                    return (
+                                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                                                            {age.years} Yrs, {age.months} Mos, {age.days} Days
+                                                        </span>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
+                                        </div>
+                                        <input type="text" className="w-full px-4 py-2 rounded-none border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                            placeholder="DD-MM-YYYY"
+                                            value={formData.dob} onChange={(e) => handleChange('dob', formatDob(e.target.value))} />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium text-gray-700">CNIC / B-Form</label>
@@ -364,21 +448,36 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                 {/* Footer Actions */}
                 <div className="p-4 sm:p-6 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div className="text-xs text-gray-500 hidden sm:block">
-                        * All changes are saved directly to database
+                        * All changes are saved locally to prevent data loss
                     </div>
                     <div className="flex w-full sm:w-auto gap-3">
-                        <button onClick={onClose} className="flex-1 sm:flex-none px-4 py-2 sm:px-6 sm:py-2.5 rounded-none border border-gray-200 text-gray-700 font-medium hover:bg-gray-100 transition-colors text-sm sm:text-base">
+                        <button onClick={handleClose} className="flex-1 sm:flex-none px-4 py-2 sm:px-6 sm:py-2.5 rounded-none border border-gray-200 text-gray-700 font-medium hover:bg-gray-100 transition-colors text-sm sm:text-base">
                             Cancel
                         </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={loading}
-                            className="flex-1 sm:flex-none px-4 py-2 sm:px-6 sm:py-2.5 rounded-none bg-primary text-white font-medium hover:bg-primary/90 shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed text-sm sm:text-base"
-                        >
-                            {loading ? <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded animate-spin" /> : <Upload size={18} />}
+                        {activeTab !== 'guardian' ? (
+                            <button
+                                onClick={() => {
+                                    const currentIndex = TABS.findIndex(t => t.id === activeTab);
+                                    if (currentIndex < TABS.length - 1) {
+                                        setActiveTab(TABS[currentIndex + 1].id);
+                                    }
+                                }}
+                                className="flex-1 sm:flex-none px-4 py-2 sm:px-6 sm:py-2.5 rounded-none bg-blue-600 text-white font-medium hover:bg-blue-700 shadow-lg flex items-center justify-center gap-2 transition-all text-sm sm:text-base"
+                            >
+                                <span>Next Step</span>
+                                <ChevronRight size={18} />
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleSave}
+                                disabled={loading}
+                                className="flex-1 sm:flex-none px-4 py-2 sm:px-6 sm:py-2.5 rounded-none bg-emerald-600 text-white font-medium hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed text-sm sm:text-base"
+                            >
+                                {loading ? <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded animate-spin" /> : <Upload size={18} />}
 
-                            {initialData ? 'Update Student' : 'Save Student'}
-                        </button>
+                                {initialData ? 'Update Student' : 'Save & Complete'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </motion.div>

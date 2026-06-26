@@ -305,7 +305,8 @@ const AdminCards = ({ genderFilter, onLoadingChange }: { genderFilter?: string; 
 
           try {
             const buildQrData = (s: Student) => {
-              return s.grNumber || '';
+              const gr = s.grNumber?.trim();
+              return (!gr || gr === '-') ? (s.rollNumber || '') : gr;
             };
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(buildQrData(s))}`;
             const qr = await loadImage(qrUrl);

@@ -397,7 +397,9 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
         
         // QR Code (Top Right)
         try {
-          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(s.grNumber || 'N/A')}`;
+          const gr = s.grNumber?.trim();
+          const qrVal = (!gr || gr === '-') ? (s.rollNumber || 'N/A') : gr;
+          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrVal)}`;
           const qr = await loadImage(qrUrl);
           doc.addImage(qr, 'PNG', xOffset + cardWidth - 26, headerY - 5, 18, 18);
           doc.setFontSize(7);

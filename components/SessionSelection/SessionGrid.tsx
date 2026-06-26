@@ -29,7 +29,11 @@ import {
     Lock as LockIcon,
     GraduationCap,
     MessageSquare,
-    Globe
+    Globe,
+    Megaphone,
+    Calendar,
+    Bot,
+    School
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -62,6 +66,13 @@ import {
     DialogContent,
     DialogTitle,
 } from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import AccessDeniedDialog from '@/components/Auth/AccessDeniedDialog';
@@ -178,6 +189,35 @@ export default function SessionGrid() {
         setIsNavigating(true);
         router.push(`/admin/${selectedSessionForGender}?gender=${selectedGender}`);
         setGenderDialogOpen(false);
+    };
+
+    const generateSessionOptions = () => {
+        const currentYear = new Date().getFullYear();
+        const options: string[] = [];
+        let yearOffset = 0;
+        
+        while (options.length < 5) {
+            const startYear = currentYear + yearOffset;
+            const sessionString = `${startYear}-${startYear + 1}`;
+            
+            if (!sessions.includes(sessionString)) {
+                options.push(sessionString);
+            }
+            yearOffset++;
+            
+            // Safety break
+            if (yearOffset > 20) break;
+        }
+        return options;
+    };
+    const sessionOptions = generateSessionOptions();
+
+    const handleSessionInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value.replace(/[^\d]/g, '');
+        if (value.length > 4) {
+            value = value.slice(0, 4) + '-' + value.slice(4, 8);
+        }
+        setNewSessionName(value);
     };
 
     const handleCreateSession = async (e: React.FormEvent) => {
@@ -638,6 +678,24 @@ export default function SessionGrid() {
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Classes Setup Card */}
+                        <Link href="/admin/classes" className="group bg-white dark:bg-black border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:shadow-lg hover:border-indigo-500/50 transition-all duration-300 relative overflow-hidden flex items-start gap-5">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-indigo-500/10 dark:group-hover:bg-indigo-500/20 transition-all duration-500" />
+                            
+                            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-800/50">
+                                <School size={24} strokeWidth={1.5} />
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Class & Fees Setup</h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">Manage all academic classes and configure global fee structures.</p>
+                            </div>
+                            
+                            <div className="shrink-0 self-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                                <ChevronRight className="w-5 h-5 text-indigo-500" />
+                            </div>
+                        </Link>
+
                         {/* Admissions Card */}
                         <Link href="/admin/admissions" className="group bg-white dark:bg-black border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:shadow-lg hover:border-blue-500/50 transition-all duration-300 relative overflow-hidden flex items-start gap-5">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/20 transition-all duration-500" />
@@ -673,13 +731,96 @@ export default function SessionGrid() {
                                 <ChevronRight className="w-5 h-5 text-emerald-500" />
                             </div>
                         </Link>
+
+                        {/* Notice Board Card */}
+                        <Link href="/admin/notice" className="group bg-white dark:bg-black border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:shadow-lg hover:border-amber-500/50 transition-all duration-300 relative overflow-hidden flex items-start gap-5">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 dark:bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-amber-500/10 dark:group-hover:bg-amber-500/20 transition-all duration-500" />
+                            
+                            <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-100 dark:border-amber-800/50">
+                                <Megaphone size={24} strokeWidth={1.5} />
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">Notice Board</h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">Broadcast announcements and important alerts to all students globally.</p>
+                            </div>
+                            
+                            <div className="shrink-0 self-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                                <ChevronRight className="w-5 h-5 text-amber-500" />
+                            </div>
+                        </Link>
+
+                        {/* Schedule Card */}
+                        <Link href="/admin/schedule" className="group bg-white dark:bg-black border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:shadow-lg hover:border-violet-500/50 transition-all duration-300 relative overflow-hidden flex items-start gap-5">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 dark:bg-violet-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-violet-500/10 dark:group-hover:bg-violet-500/20 transition-all duration-500" />
+                            
+                            <div className="w-12 h-12 rounded-xl bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 border border-violet-100 dark:border-violet-800/50">
+                                <Calendar size={24} strokeWidth={1.5} />
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">Class Schedule</h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">Manage master timetables and academic calendars across the school.</p>
+                            </div>
+                            
+                            <div className="shrink-0 self-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                                <ChevronRight className="w-5 h-5 text-violet-500" />
+                            </div>
+                        </Link>
+
+                        {/* AI Assistant Card */}
+                        <Link href="/admin/chatbot" className="group bg-white dark:bg-black border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:shadow-lg hover:border-cyan-500/50 transition-all duration-300 relative overflow-hidden flex items-start gap-5">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 dark:bg-cyan-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-cyan-500/10 dark:group-hover:bg-cyan-500/20 transition-all duration-500" />
+                            
+                            <div className="w-12 h-12 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-100 dark:border-cyan-800/50">
+                                <Bot size={24} strokeWidth={1.5} />
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">AI Assistant</h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">Interact with the smart assistant for reports, stats, and school insights.</p>
+                            </div>
+                            
+                            <div className="shrink-0 self-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                                <ChevronRight className="w-5 h-5 text-cyan-500" />
+                            </div>
+                        </Link>
+
+                        {/* User Management Card */}
+                        {isSuperAdmin && (
+                        <Link href="/admin/users" className="group bg-white dark:bg-black border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:shadow-lg hover:border-rose-500/50 transition-all duration-300 relative overflow-hidden flex items-start gap-5">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 dark:bg-rose-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-rose-500/10 dark:group-hover:bg-rose-500/20 transition-all duration-500" />
+                            
+                            <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-100 dark:border-rose-800/50">
+                                <UsersIcon size={24} strokeWidth={1.5} />
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">User Management</h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">Manage super admin and admin access across the platform.</p>
+                            </div>
+                            
+                            <div className="shrink-0 self-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                                <ChevronRight className="w-5 h-5 text-rose-500" />
+                            </div>
+                        </Link>
+                        )}
                     </div>
                 </div>
             </main>
 
             {/* New Session Dialog */}
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-                <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[400px] border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden p-0 shadow-2xl">
+                <DialogContent 
+                    onInteractOutside={(e) => {
+                        const target = e.target as Element;
+                        if (target?.closest?.('[role="listbox"], [role="option"], [data-radix-popper-content-wrapper], [id^="radix-"]')) {
+                            return;
+                        }
+                        e.preventDefault();
+                    }}
+                    className="w-[calc(100%-2rem)] sm:max-w-[400px] border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden p-0 shadow-2xl"
+                >
                     <div className="bg-neutral-50 dark:bg-neutral-900/50 p-4 sm:p-6 border-b border-neutral-200 dark:border-neutral-800">
                         <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 mb-3 sm:mb-4">
                             <Plus size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
@@ -688,15 +829,39 @@ export default function SessionGrid() {
                         <p className="text-[10px] sm:text-xs text-neutral-500 mt-1">Create a separate workspace for a new academic year.</p>
                     </div>
                     <form onSubmit={handleCreateSession} className="p-4 sm:p-6 space-y-5 sm:space-y-6">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] uppercase tracking-widest font-bold text-neutral-400 ml-1">Session Name</label>
-                            <Input
-                                autoFocus
-                                value={newSessionName}
-                                onChange={(e) => setNewSessionName(e.target.value)}
-                                placeholder="e.g. 2026-2027"
-                                className="h-10 text-sm font-medium border-neutral-200 dark:border-neutral-800 focus:ring-offset-0 focus:ring-1 focus:ring-blue-500 transition-all rounded-lg"
-                            />
+                        <div className="space-y-3">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] uppercase tracking-widest font-bold text-neutral-400 ml-1">Select Session</label>
+                                <Select onValueChange={setNewSessionName} value={newSessionName || undefined}>
+                                    <SelectTrigger className="w-full h-10 text-sm font-medium rounded-lg">
+                                        <SelectValue placeholder="Choose a session" />
+                                    </SelectTrigger>
+                                    <SelectContent className="z-[10000]">
+                                        {newSessionName && !sessionOptions.includes(newSessionName) && (
+                                            <SelectItem value={newSessionName} className="hidden">{newSessionName}</SelectItem>
+                                        )}
+                                        {sessionOptions.map(option => (
+                                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="relative flex items-center py-1">
+                                <div className="flex-grow border-t border-neutral-200 dark:border-neutral-800"></div>
+                                <span className="flex-shrink-0 mx-4 text-neutral-400 text-xs font-medium">OR TYPE</span>
+                                <div className="flex-grow border-t border-neutral-200 dark:border-neutral-800"></div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] uppercase tracking-widest font-bold text-neutral-400 ml-1">Custom Session</label>
+                                <Input
+                                    autoFocus
+                                    value={newSessionName}
+                                    onChange={handleSessionInputChange}
+                                    placeholder="e.g. 2025-2026"
+                                    className="h-10 text-sm font-medium border-neutral-200 dark:border-neutral-800 focus:ring-offset-0 focus:ring-1 focus:ring-blue-500 transition-all rounded-lg"
+                                    maxLength={9}
+                                />
+                            </div>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-2 pt-2">
                             <Button type="button" variant="ghost" className="order-2 sm:order-1 flex-1 text-xs h-10 rounded-lg" onClick={() => setCreateDialogOpen(false)}>

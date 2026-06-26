@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { client } from '@/sanity/lib/client'
-import { getAllStudentsQuery } from '@/sanity/lib/queries'
+import { getAllStudentsQuery, getAllAcademicClassesQuery } from '@/sanity/lib/queries'
 import type { Student } from '@/types/student'
 import type { FeeStatus } from '@/types/fees'
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/use-auth';
 import OTPVerificationModal from '@/components/Security/OTPVerificationModal';
 import FeeConfirmationModal from './FeeConfirmationModal';
 import FeeDetails from './FeeDetails';
+import GenerateFeesModal from './GenerateFeesModal';
 
 const MONTHS = ['Month', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'admission'] as const
 
@@ -20,11 +21,21 @@ import { useSession } from '@/context/SessionContext';
 
 const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loading: boolean) => void; genderFilter?: "male" | "female" }) => {
   const [students, setStudents] = useState<Student[]>([])
+  const [academicClasses, setAcademicClasses] = useState<any[]>([])
   const [fees, setFees] = useState<any[]>([])
   const [loading, setLoading] = useState<boolean>(false)
 
   // Filters
-  const [filterClass, setFilterClass] = useState<string>('')
+  const [filterClass, setFilterClass] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('fees_filter_class');
+      if (saved) {
+        localStorage.removeItem('fees_filter_class');
+        return saved;
+      }
+    }
+    return '';
+  });
   const [filterMonth, setFilterMonth] = useState<string>('')
   const [filterYear, setFilterYear] = useState<number | ''>(new Date().getFullYear())
   const [filterStatus, setFilterStatus] = useState<string>('')
@@ -44,6 +55,10 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
   const [showOTPModal, setShowOTPModal] = useState(false)
   const [otpAction, setOtpAction] = useState<{ type: 'deleteSingle' | 'deleteAll', label: string, id?: string } | null>(null)
   
+  // Generation state
+  const [showGenerateModal, setShowGenerateModal] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+
   // Security Modal State
   const [showSecurityModal, setShowSecurityModal] = useState(false)
   const [feeToDelete, setFeeToDelete] = useState<string | null>(null)
@@ -54,8 +69,12 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
     const load = async () => {
       setLoading(true); onLoadingChange?.(true)
       try {
-        const s: Student[] = await client.fetch(getAllStudentsQuery, { session: selectedSession, gender: genderFilter || null })
+        const [s, cls] = await Promise.all([
+          client.fetch(getAllStudentsQuery, { session: selectedSession, gender: genderFilter || null }),
+          client.fetch(getAllAcademicClassesQuery)
+        ])
         setStudents(s)
+        setAcademicClasses(cls)
       } finally {
         setLoading(false); onLoadingChange?.(false)
       }
@@ -269,6 +288,31 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
     finally { setUpdatingStatusId(null) }
   }
 
+  const handleGenerateFees = async (month: string, year: number, dueDate: string) => {
+    if (!selectedSession || !user) return;
+    setIsGenerating(true)
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/fees/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ month, year, session: selectedSession, dueDate })
+      })
+      const json = await res.json()
+      if (json?.ok) {
+        toast.success(`Generated ${json.generated} fees. Skipped ${json.skipped} existing.`)
+        setShowGenerateModal(false)
+        await loadFees()
+      } else {
+        throw new Error(json?.error || 'Failed to generate')
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Generation failed')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   const handleSubmitFee = async (formData: any) => {
     setSaving(true)
     console.log('[AdminFees] Submitting fee with session:', selectedSession);
@@ -342,7 +386,8 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
             setShowOTPModal(true);
           }}
           onAddFee={() => { setEditingFee(null); setShowModal(true); }}
-          loading={loading} importLoading={importLoading}
+          onGenerateFees={() => setShowGenerateModal(true)}
+          loading={loading} importLoading={importLoading} isGenerating={isGenerating}
           hasFilters={!!(filterClass || filterMonth || filterYear || filterStatus || search)}
         />
 
@@ -361,6 +406,15 @@ const AdminFees = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loadi
         isOpen={showModal} onClose={() => setShowModal(false)}
         onSubmit={handleSubmitFee} initialData={editingFee}
         students={students} MONTHS={MONTHS} submitting={saving}
+        academicClasses={academicClasses}
+      />
+
+      <GenerateFeesModal 
+        isOpen={showGenerateModal} 
+        onClose={() => setShowGenerateModal(false)} 
+        onGenerate={handleGenerateFees} 
+        months={MONTHS} 
+        isGenerating={isGenerating} 
       />
 
       {detailFee && <FeeDetails fee={detailFee} onClose={() => setDetailFee(null)} />}
