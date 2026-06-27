@@ -1,5 +1,7 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, X, RefreshCw, AlertCircle } from 'lucide-react';
+import { ShieldCheck, RefreshCw, AlertCircle, Mail, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -20,15 +22,21 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     userId,
     actionName
 }) => {
-    const [otp, setOtp] = useState(['', '', '', '', '', '']);
+    const [otp, setOtp] = useState(['', '', '', '']);
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
+    const [sent, setSent] = useState(false);
     const [timer, setTimer] = useState(60);
     const [error, setError] = useState<string | null>(null);
+    const [showHelp, setShowHelp] = useState(false);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     useEffect(() => {
         if (isOpen) {
+            setOtp(['', '', '', '']);
+            setError(null);
+            setSent(false);
+            setShowHelp(false);
             sendOTP();
             setTimer(60);
         }
@@ -43,9 +51,17 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         return () => clearInterval(interval);
     }, [timer, isOpen]);
 
+    // Auto-focus first input after sending
+    useEffect(() => {
+        if (sent && !sending) {
+            setTimeout(() => inputRefs.current[0]?.focus(), 100);
+        }
+    }, [sent, sending]);
+
     const sendOTP = async () => {
         setSending(true);
         setError(null);
+        setSent(false);
         try {
             const res = await fetch('/api/auth/otp?action=send', {
                 method: 'POST',
@@ -54,10 +70,10 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
             });
             const data = await res.json();
             if (!data.ok) throw new Error(data.error);
-            toast.success('Verification code sent to your email');
+            setSent(true);
+            setTimer(60);
         } catch (err: any) {
-            setError(err.message);
-            toast.error(err.message || 'Failed to send code');
+            setError(err.message || 'Failed to send code');
         } finally {
             setSending(false);
         }
@@ -65,8 +81,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
     const handleVerify = async () => {
         const fullOtp = otp.join('');
-        if (fullOtp.length < 6) return;
-
+        if (fullOtp.length < 4) return;
         setLoading(true);
         setError(null);
         try {
@@ -77,136 +92,275 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
             });
             const data = await res.json();
             if (!data.ok) throw new Error(data.error);
-            
             toast.success('Identity verified');
             onVerifySuccess();
         } catch (err: any) {
-            setError(err.message);
-            toast.error(err.message || 'Verification failed');
+            setError(err.message || 'Verification failed');
+            setOtp(['', '', '', '']);
+            setTimeout(() => inputRefs.current[0]?.focus(), 50);
         } finally {
             setLoading(false);
         }
     };
 
     const handleChange = (index: number, value: string) => {
-        if (isNaN(Number(value))) return;
-        
+        if (!/^\d*$/.test(value)) return;
         const newOtp = [...otp];
         newOtp[index] = value.slice(-1);
         setOtp(newOtp);
-
-        // Move to next input
-        if (value && index < 5) {
+        if (value && index < 3) {
             inputRefs.current[index + 1]?.focus();
+        }
+        // Auto-submit when last digit filled
+        if (value && index === 3) {
+            const filled = [...newOtp];
+            if (filled.every(d => d !== '')) {
+                setTimeout(() => handleVerifyWith(filled), 100);
+            }
+        }
+    };
+
+    const handleVerifyWith = async (digits: string[]) => {
+        const fullOtp = digits.join('');
+        if (fullOtp.length < 4) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch('/api/auth/otp?action=verify', {
+                method: 'POST',
+                body: JSON.stringify({ userId, otp: fullOtp }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error);
+            toast.success('Identity verified');
+            onVerifySuccess();
+        } catch (err: any) {
+            setError(err.message || 'Verification failed');
+            setOtp(['', '', '', '']);
+            setTimeout(() => inputRefs.current[0]?.focus(), 50);
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-        if (e.key === 'Backspace' && !otp[index] && index > 0) {
-            inputRefs.current[index - 1]?.focus();
+        if (e.key === 'Backspace') {
+            if (otp[index]) {
+                const newOtp = [...otp];
+                newOtp[index] = '';
+                setOtp(newOtp);
+            } else if (index > 0) {
+                inputRefs.current[index - 1]?.focus();
+            }
         }
     };
 
     const handlePaste = (e: React.ClipboardEvent) => {
         e.preventDefault();
-        const pastedData = e.clipboardData.getData('text').slice(0, 6).split('');
-        const newOtp = [...otp];
-        pastedData.forEach((char, i) => {
-            if (!isNaN(Number(char))) newOtp[i] = char;
-        });
+        const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4).split('');
+        const newOtp = ['', '', '', ''];
+        pastedData.forEach((char, i) => { newOtp[i] = char; });
         setOtp(newOtp);
-        inputRefs.current[Math.min(pastedData.length, 5)]?.focus();
+        const nextEmpty = newOtp.findIndex(d => d === '');
+        const focusIdx = nextEmpty === -1 ? 3 : nextEmpty;
+        inputRefs.current[focusIdx]?.focus();
     };
 
     if (!isOpen) return null;
 
+    const isComplete = otp.every(d => d !== '');
+
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={onClose}
-                    className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                />
+            {isOpen && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    {/* Backdrop — NOT clickable to close */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                    />
 
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="relative w-full max-w-md bg-white dark:bg-neutral-950 rounded-none shadow-2xl overflow-hidden border border-neutral-100 dark:border-neutral-900"
-                >
-                    <div className="p-8">
-                        <div className="flex flex-col items-center text-center mb-8">
-                            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-none flex items-center justify-center mb-4 text-blue-600">
-                                <ShieldCheck size={32} />
+                    {/* Modal */}
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.96, y: 24 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.96, y: 24 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                        className="relative w-full max-w-sm bg-[#141414] rounded-2xl shadow-2xl overflow-hidden border border-white/10"
+                    >
+                        {/* Top accent bar */}
+                        <div className="h-1 w-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500" />
+
+                        <div className="p-7">
+                            {/* Icon + Title */}
+                            <div className="flex flex-col items-center text-center mb-6">
+                                <div className="relative mb-4">
+                                    <div className="w-16 h-16 rounded-2xl bg-blue-600/15 border border-blue-500/20 flex items-center justify-center">
+                                        <ShieldCheck size={30} className="text-blue-400" />
+                                    </div>
+                                    {sending && (
+                                        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#141414] border border-white/10 flex items-center justify-center">
+                                            <RefreshCw size={10} className="text-blue-400 animate-spin" />
+                                        </div>
+                                    )}
+                                </div>
+                                <h3 className="text-lg font-bold text-white mb-1 tracking-tight">Verify Your Identity</h3>
+                                <p className="text-neutral-400 text-[13px] leading-relaxed">
+                                    {sending ? (
+                                        <span className="flex items-center gap-1.5 justify-center"><RefreshCw size={11} className="animate-spin" /> Sending code...</span>
+                                    ) : sent ? (
+                                        <>4-digit code sent to<br /><span className="text-white font-semibold">{email}</span></>
+                                    ) : (
+                                        <>Enter the code sent to<br /><span className="text-white font-semibold">{email}</span></>
+                                    )}
+                                </p>
                             </div>
-                            <h3 className="text-xl font-black text-neutral-900 dark:text-white mb-2 uppercase tracking-tight">Email Verification</h3>
-                            <p className="text-neutral-500 dark:text-neutral-400 text-sm">
-                                Enter the 6-digit code sent to <br />
-                                <span className="font-bold text-neutral-900 dark:text-white">{email}</span>
-                            </p>
-                        </div>
 
-                        <div className="flex justify-between gap-2 mb-8">
-                            {otp.map((digit, index) => (
-                                <input
-                                    key={index}
-                                    ref={el => { inputRefs.current[index] = el }}
-                                    type="text"
-                                    inputMode="numeric"
-                                    maxLength={1}
-                                    value={digit}
-                                    onChange={e => handleChange(index, e.target.value)}
-                                    onKeyDown={e => handleKeyDown(index, e)}
-                                    onPaste={handlePaste}
-                                    className="w-12 h-14 text-center text-2xl font-black bg-neutral-50 dark:bg-neutral-900 border-2 border-neutral-100 dark:border-neutral-800 rounded-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-neutral-900 dark:text-white"
-                                />
-                            ))}
-                        </div>
-
-                        {error && (
-                            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-none flex items-center gap-3 text-red-600 border border-red-100 dark:border-red-900/30">
-                                <AlertCircle size={18} className="flex-shrink-0" />
-                                <p className="text-xs font-bold leading-tight">{error}</p>
+                            {/* OTP Inputs */}
+                            <div className="flex justify-center gap-3 mb-5">
+                                {otp.map((digit, index) => (
+                                    <input
+                                        key={index}
+                                        ref={el => { inputRefs.current[index] = el; }}
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={1}
+                                        value={digit}
+                                        onChange={e => handleChange(index, e.target.value)}
+                                        onKeyDown={e => handleKeyDown(index, e)}
+                                        onPaste={handlePaste}
+                                        disabled={loading || sending}
+                                        className={`w-14 h-16 text-center text-2xl font-bold rounded-xl border-2 outline-none transition-all
+                                            bg-white/5 text-white caret-blue-400
+                                            ${digit ? 'border-blue-500 bg-blue-500/10' : 'border-white/10'}
+                                            ${error ? 'border-red-500/60 bg-red-500/5' : ''}
+                                            focus:border-blue-400 focus:bg-blue-500/10 focus:ring-4 focus:ring-blue-500/10
+                                            disabled:opacity-50`}
+                                    />
+                                ))}
                             </div>
-                        )}
 
-                        <div className="space-y-4">
+                            {/* Error */}
+                            <AnimatePresence>
+                                {error && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0 }}
+                                        className="mb-4 px-3 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2.5"
+                                    >
+                                        <AlertCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
+                                        <p className="text-xs text-red-400 font-medium leading-tight">{error}</p>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Verify Button */}
                             <button
                                 onClick={handleVerify}
-                                disabled={loading || otp.some(d => !d)}
-                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-none font-black uppercase tracking-wider text-sm shadow-xl shadow-blue-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                disabled={!isComplete || loading || sending}
+                                className="w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
+                                    bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25
+                                    disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none
+                                    active:scale-[0.98]"
                             >
                                 {loading ? (
-                                    <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded animate-spin" />
+                                    <>
+                                        <RefreshCw size={14} className="animate-spin" />
+                                        Verifying...
+                                    </>
                                 ) : (
                                     'Verify & Continue'
                                 )}
                             </button>
 
-                            <div className="text-center">
+                            {/* Resend */}
+                            <div className="flex items-center justify-between mt-4">
                                 <button
-                                    onClick={sendOTP}
-                                    disabled={timer > 0 || sending}
-                                    className="text-[12px] font-bold text-neutral-400 hover:text-blue-600 disabled:opacity-50 transition-colors flex items-center gap-2 mx-auto"
+                                    onClick={() => { sendOTP(); setOtp(['', '', '', '']); setError(null); }}
+                                    disabled={timer > 0 || sending || loading}
+                                    className="text-[12px] font-semibold text-neutral-500 hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
                                 >
-                                    {sending ? <RefreshCw size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                                    {timer > 0 ? `Resend code in ${timer}s` : 'Resend Code'}
+                                    <RefreshCw size={11} className={sending ? 'animate-spin' : ''} />
+                                    {timer > 0 ? `Resend in ${timer}s` : 'Resend Code'}
+                                </button>
+
+                                <button
+                                    onClick={onClose}
+                                    disabled={loading}
+                                    className="text-[12px] font-semibold text-neutral-600 hover:text-neutral-400 disabled:opacity-40 transition-colors"
+                                >
+                                    Cancel
                                 </button>
                             </div>
                         </div>
-                    </div>
 
-                    <button
-                        onClick={onClose}
-                        className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-                    >
-                        <X size={20} />
-                    </button>
-                </motion.div>
-            </div>
+                        {/* Help / Info Section */}
+                        <div className="border-t border-white/5">
+                            <button
+                                onClick={() => setShowHelp(h => !h)}
+                                className="w-full flex items-center justify-between px-5 py-3 text-[12px] text-neutral-500 hover:text-neutral-300 transition-colors"
+                            >
+                                <span className="flex items-center gap-2">
+                                    <Info size={12} />
+                                    Email not received?
+                                </span>
+                                {showHelp ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                            </button>
+
+                            <AnimatePresence>
+                                {showHelp && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="px-5 pb-5 space-y-3">
+                                            <div className="flex items-start gap-2.5">
+                                                <div className="w-5 h-5 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                                                    <span className="text-[9px] font-bold text-amber-400">1</span>
+                                                </div>
+                                                <p className="text-[11px] text-neutral-500 leading-relaxed">
+                                                    <span className="text-neutral-300 font-semibold">Check your Spam/Junk folder.</span> Gmail and other providers sometimes move automated emails to spam.
+                                                </p>
+                                            </div>
+                                            <div className="flex items-start gap-2.5">
+                                                <div className="w-5 h-5 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                                                    <span className="text-[9px] font-bold text-amber-400">2</span>
+                                                </div>
+                                                <p className="text-[11px] text-neutral-500 leading-relaxed">
+                                                    <span className="text-neutral-300 font-semibold">Wait 1–2 minutes.</span> Email delivery can sometimes be delayed, especially on first send.
+                                                </p>
+                                            </div>
+                                            <div className="flex items-start gap-2.5">
+                                                <div className="w-5 h-5 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                                                    <span className="text-[9px] font-bold text-amber-400">3</span>
+                                                </div>
+                                                <p className="text-[11px] text-neutral-500 leading-relaxed">
+                                                    <span className="text-neutral-300 font-semibold">Search for "Al-Ghazali Security"</span> in your inbox. The email is sent from the school's official SMTP account.
+                                                </p>
+                                            </div>
+                                            <div className="flex items-start gap-2.5">
+                                                <div className="w-5 h-5 rounded-full bg-blue-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                                                    <Mail size={9} className="text-blue-400" />
+                                                </div>
+                                                <p className="text-[11px] text-neutral-500 leading-relaxed">
+                                                    If issues persist, ask your IT admin to verify that <span className="text-neutral-300 font-semibold">Gmail App Password</span> is correctly set in the server environment variables (<code className="text-blue-400 text-[10px]">EMAIL_PASSWORD</code>).
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </AnimatePresence>
     );
 };

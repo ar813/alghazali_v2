@@ -22,6 +22,7 @@ const SessionContent = ({ sessionName }: { sessionName: string }) => {
     const { setSelectedSession, selectedSession } = useSession();
     const { user, loading, gender, isSuperAdmin } = useAuth();
     const [childLoading, setChildLoading] = useState(true);
+    const { isSessionLocked } = useSession();
 
     // Force the session context to match the URL
     useEffect(() => {
@@ -50,6 +51,26 @@ const SessionContent = ({ sessionName }: { sessionName: string }) => {
             >
                 <AdminLoginForm onLoginSuccess={() => { }} />
             </AuthLayout>
+        );
+    }
+
+    // Block non-super-admins from locked sessions
+    if (!isSuperAdmin && isSessionLocked(sessionName)) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-neutral-950">
+                <div className="text-center max-w-sm px-6">
+                    <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-2">Session Locked</h2>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-5">
+                        The session <span className="font-semibold text-neutral-800 dark:text-neutral-200">{sessionName}</span> has been locked by the Super Admin.
+                    </p>
+                    <a href="/admin" className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors">
+                        Go Back
+                    </a>
+                </div>
+            </div>
         );
     }
 

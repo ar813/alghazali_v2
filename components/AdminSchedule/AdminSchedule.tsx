@@ -318,77 +318,78 @@ const AdminSchedule = ({ onLoadingChange }: { onLoadingChange?: (loading: boolea
     [schedules, searchTerm]);
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-20">
+    <div className="space-y-6 w-full min-w-0 pb-20 overflow-x-hidden">
       <input id={fileInputId} type="file" accept=".xlsx" className="hidden" onChange={handleImport} />
 
       {/* Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 relative z-10">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">Class Schedule</h1>
-          <p className="text-zinc-500 text-sm flex items-center gap-2 font-medium max-w-lg">
-            Manage academic calendars and weekly timetables. Import from Excel or configure manually.
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Class Schedule</h1>
+          <p className="text-zinc-500 text-sm font-medium">
+            Manage academic timetables. Import from Excel or configure manually.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3 w-full lg:w-auto">
-          <div className="relative group w-full sm:min-w-[240px] sm:w-auto">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-zinc-900 dark:group-focus-within:text-white transition-colors" />
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full lg:w-auto">
+          <div className="relative w-full sm:w-56">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
             <input
               type="text"
               placeholder="Filter classes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white focus:border-transparent transition-all outline-none font-medium placeholder:text-zinc-400"
+              className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all placeholder:text-zinc-400"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <button onClick={handleDownloadTemplate} className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
-              <FileSpreadsheet size={16} /> <span>Template</span>
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button onClick={handleDownloadTemplate} className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:bg-zinc-50 transition-all whitespace-nowrap">
+              <FileSpreadsheet size={14} /> Template
             </button>
-            <button onClick={handleExport} className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
-              <Upload size={16} /> <span>Export</span>
+            <button onClick={handleExport} className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:bg-zinc-50 transition-all whitespace-nowrap">
+              <Upload size={14} /> Export
             </button>
-            <button onClick={onClickImport} disabled={importLoading} className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-700 transition-all disabled:opacity-50">
-              <Download size={16} /> {importLoading ? '...' : <span>Import</span>}
+            <button onClick={onClickImport} disabled={importLoading} className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:bg-zinc-50 transition-all disabled:opacity-50 whitespace-nowrap">
+              <Download size={14} /> {importLoading ? 'Importing...' : 'Import'}
             </button>
             <button
               onClick={openAddDrawer}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-zinc-900 dark:bg-zinc-800 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-700 transition-all"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 rounded-xl hover:bg-zinc-800 transition-all whitespace-nowrap"
             >
-              <Plus size={16} /> <span>Add Schedule</span>
+              <Plus size={14} /> Add Schedule
             </button>
           </div>
         </div>
       </div>
 
+      {/* Stats bar */}
+      <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+        <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+          {schedules.length} {schedules.length === 1 ? 'Class' : 'Classes'} scheduled
+        </span>
+        {searchTerm && filteredSchedules.length !== schedules.length && (
+          <span className="text-xs text-zinc-400">· showing {filteredSchedules.length} filtered</span>
+        )}
+      </div>
 
-      {/* Overview Section */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between px-2">
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Active Timetables</h2>
-          <div className="flex items-center gap-2 text-xs font-mono text-zinc-500 px-3 py-1 bg-zinc-100 dark:bg-zinc-900 rounded-full">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            {schedules.length} CLASSES
-          </div>
-        </div>
-
+      {/* Schedule Grid */}
         {loadingSchedules ? (
-          <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800">
+          <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800">
             <div className="relative mb-4">
-              <div className="w-10 h-10 border-4 border-indigo-50 dark:border-indigo-900/30 rounded-full"></div>
-              <div className="absolute inset-0 w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-10 h-10 border-4 border-indigo-100 dark:border-indigo-900/30 rounded-full" />
+              <div className="absolute inset-0 w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
             </div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-widest animate-pulse">Loading Schedules...</h3>
+            <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest animate-pulse">Loading Schedules...</p>
           </div>
         ) : filteredSchedules.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
-            <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center mb-4">
-              <Calendar size={24} className="text-zinc-400" />
+          <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
+            <div className="w-14 h-14 bg-zinc-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center mb-4">
+              <Calendar size={22} className="text-zinc-400" />
             </div>
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">No schedules found</h3>
-            <p className="text-zinc-500 mb-6 max-w-xs mx-auto">Either import schedules from Excel or add them manually using the form above.</p>
+            <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-1">No schedules yet</h3>
+            <p className="text-sm text-zinc-400 max-w-xs">Import from Excel or click "Add Schedule" to get started.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredSchedules.map(sc => (
               <ScheduleCard
                 key={sc._id}
@@ -405,7 +406,6 @@ const AdminSchedule = ({ onLoadingChange }: { onLoadingChange?: (loading: boolea
             ))}
           </div>
         )}
-      </div>
 
       {/* Schedule Drawer */}
       <Drawer

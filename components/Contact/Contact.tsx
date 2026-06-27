@@ -1,8 +1,10 @@
 "use client"
 import React, { useEffect, useState } from 'react'
-import { ArrowRight, Mail, MapPin, Phone, Loader2, Building2 } from 'lucide-react'
+import { ArrowRight, Mail, MapPin, Phone, Loader2, Building2, CheckCircle2 } from 'lucide-react'
 import { toast } from "sonner"
 import { SectionReveal } from '@/components/ScrollEffects/SectionReveal'
+import { db } from '@/lib/firebase'
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 
 const Contact = () => {
     const [settings, setSettings] = useState<any>(null)
@@ -15,25 +17,28 @@ const Contact = () => {
 
     const [formData, setFormData] = useState({ fullName: '', email: '', message: '' })
     const [isLoading, setIsLoading] = useState(false)
+    const [submitted, setSubmitted] = useState(false)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsLoading(true)
         try {
-            const response = await fetch('/api/contact', { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ ...formData, subject: 'General Inquiry' }) 
+            await addDoc(collection(db, 'contact_inquiries'), {
+                name: formData.fullName,
+                email: formData.email,
+                message: formData.message,
+                subject: 'General Inquiry',
+                phone: '',
+                status: 'unread',
+                createdAt: serverTimestamp()
             })
-            const data = await response.json()
-            if (response.ok) {
-                toast.success('Message Sent!', { description: 'Thank you! We will get back to you shortly.' })
-                setFormData({ fullName: '', email: '', message: '' })
-            } else { throw new Error(data.error || 'Failed') }
-        } catch { 
-            toast.error('Submission Failed', { description: 'Sorry, there was an error. Please try again.' }) 
-        } finally { 
-            setIsLoading(false) 
+            setSubmitted(true)
+            toast.success('Message Sent!', { description: 'Thank you! We will get back to you shortly.' })
+            setFormData({ fullName: '', email: '', message: '' })
+        } catch {
+            toast.error('Submission Failed', { description: 'Sorry, there was an error. Please try again.' })
+        } finally {
+            setIsLoading(false)
         }
     }
 
@@ -99,16 +104,17 @@ const Contact = () => {
 
                                 <button 
                                     type="submit" 
-                                    disabled={isLoading}
+                                    disabled={isLoading || submitted}
                                     className="px-10 py-4 bg-[#064e3b] text-white font-bold text-sm uppercase tracking-widest transition-all hover:bg-[#003527] disabled:opacity-50 active:scale-95 shadow-lg flex items-center justify-center gap-3"
                                 >
                                     {isLoading ? (
                                         <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
+                                    ) : submitted ? (
+                                        <><CheckCircle2 className="w-4 h-4" /> Message Sent!</>
                                     ) : (
                                         <>Send Message</>
                                     )}
-                                </button>
-                            </form>
+                                </button>                            </form>
                         </div>
                     </SectionReveal>
 

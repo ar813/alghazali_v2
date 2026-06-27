@@ -33,7 +33,8 @@ import {
     Megaphone,
     Calendar,
     Bot,
-    School
+    School,
+    BookMarked,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -78,10 +79,9 @@ import { Button } from "@/components/ui/button";
 import AccessDeniedDialog from '@/components/Auth/AccessDeniedDialog';
 import LogoutConfirmationDialog from "../Auth/LogoutConfirmationDialog";
 import ProfileUpdateDialog from "../Auth/ProfileUpdateDialog";
-import OTPVerificationModal from '@/components/Security/OTPVerificationModal';
 
 export default function SessionGrid() {
-    const { sessions, addSession, renameSession, deleteSession, isLoading, refreshSessions } = useSession();
+    const { sessions, addSession, renameSession, deleteSession, isLoading, refreshSessions, isSessionLocked, toggleSessionLock } = useSession();
     const router = useRouter();
     const { user, logout, isSuperAdmin, gender, photoURL } = useAuth();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -125,9 +125,11 @@ export default function SessionGrid() {
     const [genderDialogOpen, setGenderDialogOpen] = useState(false);
     const [selectedSessionForGender, setSelectedSessionForGender] = useState<string | null>(null);
 
-    // OTP State
-    const [showOTPModal, setShowOTPModal] = useState(false);
-    const [otpAction, setOtpAction] = useState<{ type: 'deleteSession', label: string } | null>(null);
+    // OTP State removed — session delete uses multi-step confirmation only
+
+    // Lock state
+    const [showLockedDialog, setShowLockedDialog] = useState(false);
+    const [lockedSessionName, setLockedSessionName] = useState<string | null>(null);
 
     // Sanity API Configuration
     const SANITY_PROJECT_ID = "3u9cr7x9";
@@ -162,6 +164,12 @@ export default function SessionGrid() {
     const filteredSessions = sessions.filter(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const handleSessionClick = (session: string) => {
+        // Block access if session is locked and user is not super admin
+        if (!isSuperAdmin && isSessionLocked(session)) {
+            setLockedSessionName(session);
+            setShowLockedDialog(true);
+            return;
+        }
         setClickedSession(session);
         setSelectedSessionForGender(session);
         setGenderDialogOpen(true);
@@ -254,20 +262,11 @@ export default function SessionGrid() {
     const handleDelete = async () => {
         if (!sessionToDelete || isDeleteDisabled) return;
 
-        // Require OTP
-        if (!showOTPModal && !otpAction) {
-            setOtpAction({ type: 'deleteSession', label: `Delete Session ${sessionToDelete}` });
-            setShowOTPModal(true);
-            return;
-        }
-
         setIsProcessing(true);
         try {
             await deleteSession(sessionToDelete);
             toast.success("Deleted successfully");
             setDeleteAlertOpen(false);
-            setShowOTPModal(false);
-            setOtpAction(null);
         } catch {
             toast.error("Failed to delete");
         } finally {
@@ -282,8 +281,28 @@ export default function SessionGrid() {
         setRenameDialogOpen(true);
     };
 
-    const openDeleteAlert = (session: string, e: React.MouseEvent) => {
+    const handleToggleLock = async (session: string, e: React.MouseEvent) => {
         e.stopPropagation();
+        if (!isSuperAdmin) {
+            setShowAccessDenied(true);
+            return;
+        }
+        const currentlyLocked = isSessionLocked(session);
+        const toastId = toast.loading(
+            currentlyLocked ? `Unlocking "${session}"...` : `Locking "${session}"...`
+        );
+        try {
+            await toggleSessionLock(session, !currentlyLocked);
+            toast.success(
+                `Session "${session}" ${!currentlyLocked ? 'locked' : 'unlocked'} successfully.`,
+                { id: toastId }
+            );
+        } catch {
+            toast.error('Failed to update session lock.', { id: toastId });
+        }
+    };
+
+    const openDeleteAlert = (session: string, e: React.MouseEvent) => {        e.stopPropagation();
 
         if (!isSuperAdmin) {
             setShowAccessDenied(true);
@@ -313,6 +332,28 @@ export default function SessionGrid() {
     return (
         <div className="min-h-screen bg-white dark:bg-black text-neutral-900 dark:text-neutral-100 font-sans selection:bg-neutral-200 dark:selection:bg-neutral-800">
             <AccessDeniedDialog open={showAccessDenied} onOpenChange={setShowAccessDenied} />
+
+            {/* Session Locked Dialog */}
+            <AlertDialog open={showLockedDialog} onOpenChange={setShowLockedDialog}>
+                <AlertDialogContent className="max-w-sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                            <LockIcon size={18} /> Session Locked
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-sm text-neutral-600 dark:text-neutral-400">
+                            The session <span className="font-semibold text-neutral-800 dark:text-neutral-200">{lockedSessionName}</span> has been locked by the Super Admin. You do not have permission to access it at this time.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction
+                            onClick={() => setShowLockedDialog(false)}
+                            className="bg-amber-500 hover:bg-amber-600 text-white"
+                        >
+                            Got it
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Header / Toolbar */}
             <div className="border-b border-neutral-200 dark:border-neutral-800 bg-white/50 dark:bg-black/50 backdrop-blur-md sticky top-0 z-50">
@@ -569,6 +610,7 @@ export default function SessionGrid() {
                     <div className={viewMode === 'grid' ? "grid grid-cols-2 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4" : "flex flex-col gap-2"}>
                         {filteredSessions.map((session, index) => {
                             const isMasterSession = session === "2025-2026";
+                            const isLocked = isSessionLocked(session);
                             return (
                                 <motion.div
                                     key={session}
@@ -580,7 +622,9 @@ export default function SessionGrid() {
                                     group relative cursor-pointer
                                     ${isMasterSession
                                             ? 'border-2 border-red-500 dark:border-red-500 ring-2 ring-red-500/20'
-                                            : 'border border-neutral-200 dark:border-neutral-800'
+                                            : isLocked
+                                                ? 'border-2 border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/20'
+                                                : 'border border-neutral-200 dark:border-neutral-800'
                                         }
                                     bg-white dark:bg-black hover:bg-neutral-50 dark:hover:bg-neutral-900/50
                                     transition-all duration-200
@@ -589,6 +633,7 @@ export default function SessionGrid() {
                                             : 'rounded-lg p-2.5 sm:p-3 flex items-center justify-between hover:border-neutral-300 dark:hover:border-neutral-700'
                                         }
                                     ${isMasterSession ? 'hover:border-red-400 dark:hover:border-red-400' : ''}
+                                    ${isLocked && !isMasterSession ? 'hover:border-amber-400 dark:hover:border-amber-400' : ''}
                                 `}
                                 >
                                     {/* Master Session Badge */}
@@ -596,6 +641,21 @@ export default function SessionGrid() {
                                         <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10">
                                             <span className="px-2 py-0.5 bg-red-500 text-white text-[9px] font-bold uppercase tracking-wider rounded-full shadow-sm whitespace-nowrap">
                                                 Master Data
+                                            </span>
+                                        </div>
+                                    )}
+                                    {/* Lock Badge */}
+                                    {isLocked && !isMasterSession && (
+                                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10">
+                                            <span className="px-2 py-0.5 bg-amber-500 text-white text-[9px] font-bold uppercase tracking-wider rounded-full shadow-sm whitespace-nowrap flex items-center gap-1">
+                                                <LockIcon size={8} /> Locked
+                                            </span>
+                                        </div>
+                                    )}
+                                    {isLocked && isMasterSession && (
+                                        <div className="absolute -top-2 right-2 z-10">
+                                            <span className="px-2 py-0.5 bg-amber-500 text-white text-[9px] font-bold uppercase tracking-wider rounded-full shadow-sm whitespace-nowrap flex items-center gap-1">
+                                                <LockIcon size={8} /> Locked
                                             </span>
                                         </div>
                                     )}
@@ -607,12 +667,17 @@ export default function SessionGrid() {
                                                     <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                                                 ) : (
                                                     <>
-                                                        <Folder className="w-full h-full text-blue-500 fill-blue-500/20 group-hover:fill-blue-500/30 transition-colors" strokeWidth={1.5} />
+                                                        <Folder className={`w-full h-full ${isLocked ? 'text-amber-400 fill-amber-400/20 group-hover:fill-amber-400/30' : 'text-blue-500 fill-blue-500/20 group-hover:fill-blue-500/30'} transition-colors`} strokeWidth={1.5} />
                                                         <div className="absolute top-[60%] left-1/2 -translate-x-1/2 -translate-y-1/2 mt-1">
                                                             <span className="text-[0.6rem] font-bold text-blue-700 dark:text-blue-300 bg-white/80 dark:bg-black/80 px-1 py-0.5 rounded-[2px] shadow-sm tracking-tighter block w-max max-w-[50px] truncate">
                                                                 {session}
                                                             </span>
                                                         </div>
+                                                        {isLocked && !isSuperAdmin && (
+                                                            <div className="absolute inset-0 flex items-center justify-center bg-white/30 dark:bg-black/30 rounded-md">
+                                                                <LockIcon className="w-5 h-5 text-amber-500 drop-shadow" />
+                                                            </div>
+                                                        )}
                                                     </>
                                                 )}
                                             </div>
@@ -632,9 +697,10 @@ export default function SessionGrid() {
                                                 {clickedSession === session ? (
                                                     <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
                                                 ) : (
-                                                    <Folder className="w-5 h-5 text-blue-500 fill-blue-500/20" />
+                                                    <Folder className={`w-5 h-5 ${isLocked ? 'text-amber-400 fill-amber-400/20' : 'text-blue-500 fill-blue-500/20'}`} />
                                                 )}
                                                 <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{session}</span>
+                                                {isLocked && !isSuperAdmin && <LockIcon size={13} className="text-amber-500 ml-1" />}
                                             </div>
                                             <div className="text-xs text-neutral-400 hidden sm:block">Academic Session</div>
                                         </>
@@ -657,6 +723,18 @@ export default function SessionGrid() {
                                                 <DropdownMenuItem onClick={(e) => handleCopySessionAPI(session, e)}>
                                                     <Code className="mr-2 h-3.5 w-3.5 text-blue-500" /> Copy API
                                                 </DropdownMenuItem>
+                                                {isSuperAdmin && (
+                                                    <DropdownMenuItem
+                                                        onClick={(e) => handleToggleLock(session, e)}
+                                                        className={isSessionLocked(session)
+                                                            ? "text-green-600 focus:text-green-600 focus:bg-green-50 dark:focus:bg-green-950/20"
+                                                            : "text-amber-600 focus:text-amber-600 focus:bg-amber-50 dark:focus:bg-amber-950/20"
+                                                        }
+                                                    >
+                                                        <LockIcon className="mr-2 h-3.5 w-3.5" />
+                                                        {isSessionLocked(session) ? 'Unlock Session' : 'Lock Session'}
+                                                    </DropdownMenuItem>
+                                                )}
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem onClick={(e) => openDeleteAlert(session, e)} className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20">
                                                     <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
@@ -783,6 +861,24 @@ export default function SessionGrid() {
                             
                             <div className="shrink-0 self-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
                                 <ChevronRight className="w-5 h-5 text-cyan-500" />
+                            </div>
+                        </Link>
+
+                        {/* Diary Manager Card */}
+                        <Link href="/admin/diary" className="group bg-white dark:bg-black border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:shadow-lg hover:border-teal-500/50 transition-all duration-300 relative overflow-hidden flex items-start gap-5">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 dark:bg-teal-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-teal-500/10 dark:group-hover:bg-teal-500/20 transition-all duration-500" />
+                            
+                            <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 border border-teal-100 dark:border-teal-800/50">
+                                <BookMarked size={24} strokeWidth={1.5} />
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">Diary Manager</h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">Record daily lesson plans, topics taught, homework and tests. Export as PDF.</p>
+                            </div>
+                            
+                            <div className="shrink-0 self-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                                <ChevronRight className="w-5 h-5 text-teal-500" />
                             </div>
                         </Link>
 
@@ -1114,18 +1210,6 @@ export default function SessionGrid() {
                 )}
             </AnimatePresence>
 
-            {user && (
-                <OTPVerificationModal
-                    isOpen={showOTPModal}
-                    onClose={() => { setShowOTPModal(false); setOtpAction(null); }}
-                    onVerifySuccess={() => {
-                        if (otpAction?.type === 'deleteSession') handleDelete();
-                    }}
-                    email={user.email || ''}
-                    userId={user.uid}
-                    actionName={otpAction?.label || 'Critical Session Deletion'}
-                />
-            )}
         </div>
     );
 }

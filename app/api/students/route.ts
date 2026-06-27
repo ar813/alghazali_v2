@@ -157,12 +157,36 @@ export async function DELETE(request: Request) {
 
   // Otherwise delete a single student by id (expects JSON body with { id })
   let id = null;
+  let ids: string[] | null = null;
   try {
     const body = await request.json();
     id = body.id;
+    ids = Array.isArray(body.ids) ? body.ids : null;
   } catch {
-    // If JSON parsing fails, check query params as a fallback for single ID
     id = url.searchParams.get('id');
+  }
+
+  // Bulk delete by selected IDs
+  if (ids && ids.length > 0) {
+    try {
+      const deleted: string[] = [];
+      const blocked: string[] = [];
+      for (const sid of ids) {
+        const refs = await serverClient.fetch('*[references($id)]{_id,_type}', { id: sid });
+        if (Array.isArray(refs) && refs.length > 0) {
+          // force-delete refs first
+          for (const r of refs) { try { await serverClient.delete(r._id) } catch { } }
+          const remaining = await serverClient.fetch('*[references($id)]{_id}', { id: sid });
+          if (remaining.length === 0) { await serverClient.delete(sid); deleted.push(sid); }
+          else { blocked.push(sid); }
+        } else {
+          await serverClient.delete(sid); deleted.push(sid);
+        }
+      }
+      return NextResponse.json({ ok: true, deletedCount: deleted.length, deleted, blocked });
+    } catch (err) {
+      return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
+    }
   }
 
 

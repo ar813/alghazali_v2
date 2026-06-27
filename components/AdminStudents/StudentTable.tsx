@@ -1,8 +1,7 @@
 "use client";
 import React from 'react';
 import Image from 'next/image';
-import { Edit, Trash2, Phone, Lock } from 'lucide-react';
-
+import { Edit, Trash2, Phone, Lock, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import type { Student } from '@/types/student';
 
 interface StudentTableProps {
@@ -15,9 +14,11 @@ interface StudentTableProps {
     isSuperAdmin?: boolean;
     currentSort?: { key: string; dir: 'asc' | 'desc' };
     onSort?: (key: any) => void;
+    // Multi-select
+    selectedIds?: Set<string>;
+    onSelectId?: (id: string) => void;
+    onSelectAll?: (ids: string[]) => void;
 }
-
-import { ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 
 const StudentTable: React.FC<StudentTableProps> = ({
     students,
@@ -28,10 +29,16 @@ const StudentTable: React.FC<StudentTableProps> = ({
     deleteLoadingId,
     isSuperAdmin = false,
     currentSort,
-    onSort
+    onSort,
+    selectedIds = new Set(),
+    onSelectId,
+    onSelectAll,
 }) => {
-
     const getInitial = (name?: string) => name ? name.charAt(0).toUpperCase() : '?';
+
+    const allVisibleIds = students.map(s => s._id).filter(Boolean) as string[];
+    const allSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedIds.has(id));
+    const someSelected = allVisibleIds.some(id => selectedIds.has(id)) && !allSelected;
 
     if (loading) {
         return (
@@ -39,7 +46,7 @@ const StudentTable: React.FC<StudentTableProps> = ({
                 <div className="w-10 h-10 border-4 border-neutral-200 dark:border-neutral-800 border-t-neutral-900 dark:border-t-white rounded animate-spin" />
                 <p className="mt-4 text-sm font-medium text-neutral-500">Loading directory...</p>
             </div>
-        )
+        );
     }
 
     if (students.length === 0) {
@@ -48,7 +55,7 @@ const StudentTable: React.FC<StudentTableProps> = ({
                 <p className="text-lg font-bold text-neutral-900 dark:text-white mb-1">No Students Found</p>
                 <p className="text-sm text-neutral-500">Try adjusting your filters or search query.</p>
             </div>
-        )
+        );
     }
 
     return (
@@ -57,6 +64,20 @@ const StudentTable: React.FC<StudentTableProps> = ({
                 <table className="w-full text-left">
                     <thead>
                         <tr className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
+                            {/* Select-all checkbox */}
+                            {isSuperAdmin && (
+                                <th className="pl-5 pr-2 py-5 w-10">
+                                    <input
+                                        type="checkbox"
+                                        checked={allSelected}
+                                        ref={el => { if (el) el.indeterminate = someSelected; }}
+                                        onChange={() => onSelectAll?.(allVisibleIds)}
+                                        onClick={e => e.stopPropagation()}
+                                        className="w-4 h-4 rounded border-neutral-300 accent-blue-600 cursor-pointer"
+                                        title="Select all on this page"
+                                    />
+                                </th>
+                            )}
                             {[
                                 { key: 'fullName', label: 'Student' },
                                 { key: 'admissionFor', label: 'Class' },
@@ -73,7 +94,7 @@ const StudentTable: React.FC<StudentTableProps> = ({
                                     <div className="flex items-center gap-2">
                                         {col.label}
                                         {!col.noSort && (
-                                            <div className="flex flex-col opacity-30 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex flex-col opacity-30">
                                                 {currentSort?.key === col.key ? (
                                                     currentSort.dir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
                                                 ) : (
@@ -88,67 +109,82 @@ const StudentTable: React.FC<StudentTableProps> = ({
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-50 dark:divide-neutral-900">
-                        {students.map((student) => (
-                            <tr
-                                key={student._id || student.grNumber}
-                                onClick={() => onView(student)}
-                                className="group hover:bg-neutral-50/50 dark:hover:bg-neutral-900/30 transition-colors cursor-pointer"
-                            >
-                                <td className="px-6 py-3 whitespace-nowrap">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-none flex-shrink-0 overflow-hidden bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 relative">
-                                            {student.photoUrl ? (
-                                                <Image src={student.photoUrl} alt="" fill className="object-cover" unoptimized />
-                                            ) : (
-                                                <div className="h-full w-full flex items-center justify-center text-neutral-400 font-bold text-sm">
-                                                    {getInitial(student.fullName)}
-                                                </div>
-                                            )}
+                        {students.map((student) => {
+                            const sid = student._id || student.grNumber || '';
+                            const isSelected = selectedIds.has(sid);
+                            return (
+                                <tr
+                                    key={sid}
+                                    onClick={() => onView(student)}
+                                    className={`group transition-colors cursor-pointer ${isSelected ? 'bg-blue-50/60 dark:bg-blue-900/10' : 'hover:bg-neutral-50/50 dark:hover:bg-neutral-900/30'}`}
+                                >
+                                    {/* Row checkbox */}
+                                    {isSuperAdmin && (
+                                        <td className="pl-5 pr-2 py-3 w-10" onClick={e => e.stopPropagation()}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => onSelectId?.(sid)}
+                                                className="w-4 h-4 rounded border-neutral-300 accent-blue-600 cursor-pointer"
+                                            />
+                                        </td>
+                                    )}
+                                    <td className="px-6 py-3 whitespace-nowrap">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-none flex-shrink-0 overflow-hidden bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 relative">
+                                                {student.photoUrl ? (
+                                                    <Image src={student.photoUrl} alt="" fill className="object-cover" unoptimized />
+                                                ) : (
+                                                    <div className="h-full w-full flex items-center justify-center text-neutral-400 font-bold text-sm">
+                                                        {getInitial(student.fullName)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-bold text-neutral-900 dark:text-white leading-tight">{student.fullName}</div>
+                                                <div className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">{student.gender}</div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className="text-sm font-bold text-neutral-900 dark:text-white leading-tight">{student.fullName}</div>
-                                            <div className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">{student.gender}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-[10px] font-bold uppercase border border-neutral-200 dark:border-neutral-700">
+                                            Class {student.admissionFor}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400 font-medium">{student.rollNumber || '—'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400 font-medium">{student.grNumber}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400">{student.fatherName}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-sm">
+                                            <Phone size={14} className="text-neutral-400" />
+                                            <span>{student.phoneNumber || '—'}</span>
                                         </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-[10px] font-bold uppercase border border-neutral-200 dark:border-neutral-700">
-                                        Class {student.admissionFor}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400 font-medium">{student.rollNumber || '—'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400 font-medium">{student.grNumber}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400">{student.fatherName}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-sm">
-                                        <Phone size={14} className="text-neutral-400" />
-                                        <span>{student.phoneNumber || '—'}</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right">
-                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onEdit(student); }}
-                                            className="p-2 text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-none transition-all relative group/btn"
-                                            title="Edit"
-                                        >
-                                            {isSuperAdmin ? <Edit size={16} /> : <Lock size={16} />}
-                                        </button>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); if (student._id) onDelete(student._id); }}
-                                            className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-none transition-all"
-                                            title="Delete"
-                                        >
-                                            {deleteLoadingId === student._id ? (
-                                                <div className="w-4 h-4 rounded border-2 border-rose-200 border-t-rose-600 animate-spin" />
-                                            ) : (
-                                                isSuperAdmin ? <Trash2 size={16} /> : <Lock size={16} />
-                                            )}
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onEdit(student); }}
+                                                className="p-2 text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-none transition-all"
+                                                title="Edit"
+                                            >
+                                                {isSuperAdmin ? <Edit size={16} /> : <Lock size={16} />}
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); if (student._id) onDelete(student._id); }}
+                                                className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-none transition-all"
+                                                title="Delete"
+                                            >
+                                                {deleteLoadingId === student._id ? (
+                                                    <div className="w-4 h-4 rounded border-2 border-rose-200 border-t-rose-600 animate-spin" />
+                                                ) : (
+                                                    isSuperAdmin ? <Trash2 size={16} /> : <Lock size={16} />
+                                                )}
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
             designation: designation || null,
             assignedClass: assignedClass || null,
             createdAt: new Date().toISOString(),
+            profileSetupRequired: true,  // Force first-time profile setup
         });
 
         // 3. Sync to Sanity (Backup)

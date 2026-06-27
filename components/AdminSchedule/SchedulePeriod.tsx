@@ -27,21 +27,16 @@ const SchedulePeriod = memo(({ index, subject, time }: SchedulePeriodProps) => {
     const colorClasses = getSubjectColor(subject);
 
     return (
-        <div className="flex items-center justify-between p-2.5 rounded-lg border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 bg-white/50 dark:bg-zinc-900/30 hover:bg-white dark:hover:bg-zinc-900 transition-all duration-200 group/period">
-            <div className="flex items-center gap-3">
-                {/* Index number with Geist mono style */}
-                <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 w-4 select-none">
+        <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 bg-white/50 dark:bg-zinc-900/30 hover:bg-white dark:hover:bg-zinc-900 transition-all duration-200 group/period min-w-0">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+                <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 w-4 shrink-0 select-none">
                     {(index + 1).toString().padStart(2, '0')}
                 </span>
-
-                {/* Subject Pill */}
-                <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium border ${colorClasses} transition-colors leading-tight`}>
+                <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium border ${colorClasses} transition-colors leading-tight truncate max-w-[120px]`}>
                     {subject}
                 </span>
             </div>
-
-            {/* Time Slot */}
-            <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 px-2 py-0.5 rounded border border-zinc-100 dark:border-zinc-800">
+            <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 px-2 py-0.5 rounded border border-zinc-100 dark:border-zinc-800 shrink-0 whitespace-nowrap">
                 {time}
             </span>
         </div>
