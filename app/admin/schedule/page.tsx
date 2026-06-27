@@ -35,7 +35,7 @@ export default function GlobalSchedulePage() {
     }
 
     return (
-        <div className="min-h-screen bg-neutral-50/50 dark:bg-neutral-950/50 text-neutral-900 dark:text-neutral-100 font-sans selection:bg-indigo-500/30">
+        <div className="min-h-screen bg-neutral-50/50 dark:bg-neutral-950/50 text-neutral-900 dark:text-neutral-100 font-sans selection:bg-indigo-500/30 overflow-x-hidden">
             {/* Header */}
             <div className="sticky top-0 z-40 bg-white/70 dark:bg-black/70 backdrop-blur-xl border-b border-neutral-200 dark:border-neutral-800">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
@@ -57,11 +57,8 @@ export default function GlobalSchedulePage() {
                 </div>
             </div>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 relative">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                <div className="relative z-10">
-                    <AdminSchedule />
-                </div>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+                <AdminSchedule />
             </main>
         </div>
     );

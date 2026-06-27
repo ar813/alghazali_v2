@@ -60,7 +60,57 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
   // Bulk Actions State
   const [, setImportLoading] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
+  const handleSelectId = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+  };
+
+  const handleSelectAll = (ids: string[]) => {
+    setSelectedIds(prev => {
+      const allSelected = ids.every(id => prev.has(id));
+      if (allSelected) {
+        const next = new Set(prev);
+        ids.forEach(id => next.delete(id));
+        return next;
+      } else {
+        const next = new Set(prev);
+        ids.forEach(id => next.add(id));
+        return next;
+      }
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (!isSuperAdmin) { setShowAccessDenied(true); return; }
+    if (selectedIds.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/students', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'Bulk delete failed');
+      toast.success(`${json.deletedCount} student${json.deletedCount !== 1 ? 's' : ''} deleted`);
+      if (json.blocked?.length > 0) toast.warning(`${json.blocked.length} could not be deleted (referenced)`);
+      setSelectedIds(new Set());
+      setBulkDeleteConfirm(false);
+      await refreshStudents();
+    } catch (err: any) {
+      toast.error(err.message || 'Bulk delete failed');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
   const [showDeleteByClassConfirm, setShowDeleteByClassConfirm] = useState(false)
@@ -679,6 +729,58 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
       <AccessDeniedDialog open={showAccessDenied} onOpenChange={setShowAccessDenied} />
 
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-2xl shadow-2xl shadow-black/30 animate-in slide-in-from-bottom-4 duration-200">
+          <span className="text-sm font-bold">
+            {selectedIds.size} selected
+          </span>
+          <div className="w-px h-4 bg-white/20 dark:bg-neutral-900/20" />
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs font-semibold text-white/60 dark:text-neutral-900/60 hover:text-white dark:hover:text-neutral-900 transition-colors"
+          >
+            Clear
+          </button>
+          <button
+            onClick={() => setBulkDeleteConfirm(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition-all active:scale-95"
+          >
+            <Trash2 size={13} />
+            Delete {selectedIds.size}
+          </button>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirm Dialog */}
+      {bulkDeleteConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !bulkDeleting && setBulkDeleteConfirm(false)} />
+          <div className="relative w-full sm:max-w-sm bg-[#141414] border border-white/10 rounded-3xl sm:rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
+            <div className="h-1 bg-gradient-to-r from-rose-600 to-red-500" />
+            <div className="p-7 text-center space-y-4">
+              <div className="w-14 h-14 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto">
+                <Trash2 size={24} className="text-rose-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Delete {selectedIds.size} Students?</h3>
+                <p className="text-sm text-neutral-400 mt-1 leading-relaxed">
+                  This will permanently delete <span className="text-white font-semibold">{selectedIds.size} selected student{selectedIds.size !== 1 ? 's' : ''}</span>. This cannot be undone.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setBulkDeleteConfirm(false)} disabled={bulkDeleting} className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-sm font-semibold transition-all">
+                  Cancel
+                </button>
+                <button onClick={handleBulkDelete} disabled={bulkDeleting} className="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-rose-600/20">
+                  {bulkDeleting ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Deleting…</> : `Delete ${selectedIds.size}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <HeaderStats stats={stats} />
 
       <div className="bg-white dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-900 p-3 rounded-none shadow-sm mb-6 flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between transition-all sticky top-2 z-30">
@@ -776,12 +878,6 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
                     >
                       <AlertCircle size={14} /> Clear Class Data
                     </MenuItem>
-                    <MenuItem
-                      onClick={() => { if (!isSuperAdmin) { setShowAccessDenied(true); return; } setShowDeleteAllConfirm(true) }}
-                      className="rounded-none px-4 py-2 text-[12px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-3"
-                    >
-                      <Trash2 size={14} /> Wipe Directory
-                    </MenuItem>
                   </MenuList>
                 </Portal>
               </Menu>
@@ -835,6 +931,9 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
           isSuperAdmin={isSuperAdmin}
           currentSort={{ key: sortKey, dir: sortDir }}
           onSort={handleSort}
+          selectedIds={selectedIds}
+          onSelectId={handleSelectId}
+          onSelectAll={handleSelectAll}
         />
 
         <StudentGrid

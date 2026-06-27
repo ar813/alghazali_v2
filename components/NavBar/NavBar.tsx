@@ -29,7 +29,8 @@ export default function NavBar() {
     },
     {
       name: "Fees",
-      link: "/#admissions",
+      link: "/fees",
+      target: "_blank",
       icon: <ReceiptText size={16} />,
     },
     {

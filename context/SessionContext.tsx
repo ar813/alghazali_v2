@@ -13,11 +13,13 @@ interface SessionContextType {
     renameSession: (oldName: string, newName: string) => Promise<void>;
     deleteSession: (sessionName: string) => Promise<void>;
     refreshSessions: () => Promise<void>;
+    lockedSessions: string[];
+    toggleSessionLock: (sessionName: string, lock: boolean) => Promise<void>;
+    isSessionLocked: (sessionName: string) => boolean;
 }
 
 // Create Context
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
-
 // Hook to use the Session Context
 export const useSession = () => {
     const context = useContext(SessionContext);
@@ -35,6 +37,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     // Hardcoded sessions for now (later can be fetched from DB)
     const [sessions, setSessions] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [lockedSessions, setLockedSessions] = useState<string[]>([]);
 
     useEffect(() => {
         const DEFAULT_SESSION = "2025-2026";
@@ -69,6 +72,13 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
                 console.log('[SessionContext] Sync complete. Sessions:', finalSessions);
                 setSessions(finalSessions);
                 localStorage.setItem("admin_sessions_list", JSON.stringify(finalSessions));
+
+                // Fetch locked sessions
+                try {
+                    const lockRes = await fetch('/api/sessions/lock', { cache: 'no-store' });
+                    const lockData = await lockRes.json();
+                    if (lockData.ok) setLockedSessions(lockData.locked || []);
+                } catch (_e) { /* ignore lock fetch error */ }
 
             } catch (error) {
                 console.error("Failed to fetch sessions from API:", error);
@@ -228,8 +238,30 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const toggleSessionLock = async (sessionName: string, lock: boolean) => {
+        try {
+            const token = await auth.currentUser?.getIdToken();
+            const res = await fetch('/api/sessions/lock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ sessionName, locked: lock })
+            });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error);
+
+            setLockedSessions(prev =>
+                lock ? [...prev.filter(s => s !== sessionName), sessionName] : prev.filter(s => s !== sessionName)
+            );
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    };
+
+    const isSessionLocked = (sessionName: string) => lockedSessions.includes(sessionName);
+
     return (
-        <SessionContext.Provider value={{ selectedSession, setSelectedSession, sessions, isLoading, addSession, renameSession, deleteSession, refreshSessions }}>
+        <SessionContext.Provider value={{ selectedSession, setSelectedSession, sessions, isLoading, addSession, renameSession, deleteSession, refreshSessions, lockedSessions, toggleSessionLock, isSessionLocked }}>
             {children}
         </SessionContext.Provider>
     );

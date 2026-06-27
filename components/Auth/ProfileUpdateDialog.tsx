@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import Image from 'next/image';
-import { Camera, Trash2, Upload, X, User as UserIcon, ShieldCheck, Mail } from 'lucide-react';
+import { Camera, Trash2, Upload, X, User as UserIcon, ShieldCheck, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import DeletePhotoConfirmationDialog from './DeletePhotoConfirmationDialog';
 
@@ -17,9 +17,12 @@ interface ProfileUpdateDialogProps {
 }
 
 const ProfileUpdateDialog = ({ open, onOpenChange }: ProfileUpdateDialogProps) => {
-    const { user, gender, photoURL, updateName, updateGender, updatePhoto, removePhoto, isSuperAdmin, role } = useAuth();
+    const { user, gender, photoURL, updateName, updateGender, updateEmail, updatePassword, updatePhoto, removePhoto, isSuperAdmin, role } = useAuth();
     const [newName, setNewName] = useState(user?.displayName || '');
     const [newGender, setNewGender] = useState<"male" | "female" | "">(gender || '');
+    const [newEmail, setNewEmail] = useState(user?.email || '');
+    const [newPassword, setNewPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const [isPhotoUpdating, setIsPhotoUpdating] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -32,11 +35,13 @@ const ProfileUpdateDialog = ({ open, onOpenChange }: ProfileUpdateDialogProps) =
         if (open) {
             setNewName(user?.displayName || '');
             setNewGender(gender || '');
+            setNewEmail(user?.email || '');
+            setNewPassword('');
             setPreviewUrl(null);
             setSelectedFile(null);
             setShowRemoveConfirm(false);
         }
-    }, [open, user?.displayName, gender]);
+    }, [open, user?.displayName, user?.email, gender]);
 
     const currentPhoto = previewUrl || photoURL;
     const initials = (user?.displayName || 'AD')
@@ -85,6 +90,8 @@ const ProfileUpdateDialog = ({ open, onOpenChange }: ProfileUpdateDialogProps) =
         if (!newName.trim()) return;
         if (isSuperAdmin && !newGender) return;
 
+        const credentialsChanged = (newEmail.trim() && newEmail !== user?.email) || !!newPassword;
+
         setIsUpdating(true);
         try {
             if (selectedFile) {
@@ -96,8 +103,29 @@ const ProfileUpdateDialog = ({ open, onOpenChange }: ProfileUpdateDialogProps) =
             if (isSuperAdmin && newGender) {
                 await updateGender(newGender as "male" | "female");
             }
-            toast.success('Profile updated successfully!');
-            onOpenChange(false);
+            // Email/password changes — triggers auto-logout
+            if (newEmail.trim() && newEmail !== user?.email) {
+                await updateEmail(newEmail.trim(), newPassword || '');
+            } else if (newPassword) {
+                await updatePassword(newPassword);
+            }
+
+            if (credentialsChanged) {
+                toast.success('Credentials updated. Signing you out now...');
+                onOpenChange(false);
+                // Short delay so toast is visible, then logout + redirect
+                setTimeout(async () => {
+                    const { auth } = await import('@/lib/firebase');
+                    const { signOut } = await import('firebase/auth');
+                    await signOut(auth);
+                    localStorage.removeItem('adminSession');
+                    localStorage.removeItem('adminCredentials');
+                    window.location.href = '/admin';
+                }, 1500);
+            } else {
+                toast.success('Profile updated successfully!');
+                onOpenChange(false);
+            }
         } catch {
             toast.error('Failed to update profile.');
         } finally {
@@ -235,19 +263,6 @@ const ProfileUpdateDialog = ({ open, onOpenChange }: ProfileUpdateDialogProps) =
 
                         <form id="profile-form" onSubmit={handleSubmit} className="space-y-8 flex-1 flex flex-col">
                             <div className="space-y-6">
-                                {/* Email (Read Only) */}
-                                <div className="space-y-2 group">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Mail size={12} className="text-neutral-400" />
-                                        <label className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400">Email Address</label>
-                                    </div>
-                                    <Input 
-                                        value={user?.email || ''} 
-                                        disabled 
-                                        className="bg-neutral-50 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 rounded-xl h-12 text-sm font-medium opacity-60 cursor-not-allowed"
-                                    />
-                                </div>
-                                
                                 {/* Display Name */}
                                 <div className="space-y-3 group">
                                     <div className="flex items-center gap-2">
@@ -263,7 +278,52 @@ const ProfileUpdateDialog = ({ open, onOpenChange }: ProfileUpdateDialogProps) =
                                     />
                                 </div>
 
-                                {/* Gender (Super Admin) */}
+                                {/* Email */}
+                                <div className="space-y-2 group">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Mail size={12} className="text-neutral-400" />
+                                        <label className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400">Email Address</label>
+                                    </div>
+                                    <Input 
+                                        type="email"
+                                        value={newEmail}
+                                        onChange={(e) => setNewEmail(e.target.value)}
+                                        className="bg-neutral-50 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 rounded-xl h-12 text-sm font-medium focus:border-emerald-500"
+                                        placeholder="your@email.com"
+                                    />
+                                </div>
+
+                                {/* Password */}
+                                <div className="space-y-2 group">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Lock size={12} className="text-neutral-400" />
+                                        <label className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400">New Password</label>
+                                        <span className="text-[9px] text-neutral-400 ml-auto">(leave blank to keep current)</span>
+                                    </div>
+                                    <div className="relative">
+                                        <Input
+                                            type={showPassword ? "text" : "password"}
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            placeholder="Min. 6 characters"
+                                            className="bg-neutral-50 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 rounded-xl h-12 text-sm font-medium pr-10 focus:border-emerald-500"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                                        >
+                                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
+                                    {(newEmail !== user?.email || newPassword) && (
+                                        <p className="text-[10px] text-amber-500 font-semibold mt-1">
+                                            ⚠ Changing email or password will sign you out.
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Gender (Super Admin only) */}
                                 {isSuperAdmin && (
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">

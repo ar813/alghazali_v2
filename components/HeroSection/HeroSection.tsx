@@ -10,6 +10,7 @@ const HeroSection = () => {
     const [mounted, setMounted] = useState(false)
     const [headlineNotices, setHeadlineNotices] = useState<any[]>([])
     const [openHeadline, setOpenHeadline] = useState(false)
+    const [activeNoticeIdx, setActiveNoticeIdx] = useState(0)
 
     const names = [
         "Al Ghazali High School",
@@ -129,35 +130,48 @@ const HeroSection = () => {
                     {/* Notice Pill */}
                     {headlineNotices.length > 0 && (
                         <div className="animate-fade-in w-full max-w-lg mx-auto pt-8 pb-4">
-                            <button
-                                onClick={() => setOpenHeadline(true)}
-                                className="group relative w-full overflow-hidden border border-[#e5e7eb] dark:border-neutral-800 bg-[#f9fafb] dark:bg-neutral-900/50 p-0 pr-4 transition-all hover:border-[#065f46] dark:hover:border-emerald-500 active:scale-95 flex items-center"
-                            >
-                                <div className="flex items-center gap-3 w-full">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-[#065f46]/10 dark:bg-emerald-500/10 text-[#065f46] dark:text-emerald-450 border-r border-[#e5e7eb] dark:border-neutral-800">
-                                        <Megaphone size={14} />
-                                    </div>
-                                    <div className="flex-1 overflow-hidden py-2.5 text-left">
-                                        <div className="relative h-4 w-full">
-                                            <div className="marquee-track absolute flex items-center whitespace-nowrap text-xs font-medium text-[#6b7280] dark:text-neutral-400">
-                                                {/* Map through notices multiple times for a continuous loop if needed */}
-                                                {[...headlineNotices, ...headlineNotices].map((notice, idx) => (
-                                                    <React.Fragment key={idx}>
-                                                        <span className="font-bold text-[#065f46] dark:text-emerald-400 mr-2">
-                                                            {notice.title}:
-                                                        </span>
-                                                        <span className="mr-12 italic">{notice.content}</span>
-                                                    </React.Fragment>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <ChevronRight
-                                        size={14}
-                                        className="shrink-0 text-[#9ca3af] group-hover:text-[#065f46] transition-colors group-hover:translate-x-0.5 duration-200"
-                                    />
+                            <div className="relative border border-[#e5e7eb] dark:border-neutral-800 bg-[#f9fafb] dark:bg-neutral-900/50 flex items-center overflow-hidden">
+                                {/* Icon */}
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-[#065f46]/10 dark:bg-emerald-500/10 text-[#065f46] dark:text-emerald-400 border-r border-[#e5e7eb] dark:border-neutral-800">
+                                    <Megaphone size={14} />
                                 </div>
-                            </button>
+
+                                {/* Content — clickable */}
+                                <button
+                                    onClick={() => setOpenHeadline(true)}
+                                    className="flex-1 overflow-hidden py-2.5 px-3 text-left min-w-0"
+                                >
+                                    <p className="text-xs font-bold text-[#065f46] dark:text-emerald-400 truncate">
+                                        {headlineNotices[activeNoticeIdx]?.title}
+                                    </p>
+                                    <p className="text-[11px] text-[#6b7280] dark:text-neutral-400 truncate mt-0.5 italic">
+                                        {headlineNotices[activeNoticeIdx]?.content}
+                                    </p>
+                                </button>
+
+                                {/* Counter */}
+                                <span className="text-[10px] font-bold text-neutral-400 shrink-0 px-2">
+                                    {activeNoticeIdx + 1}/{headlineNotices.length}
+                                </span>
+
+                                {/* Prev / Next */}
+                                <div className="flex shrink-0 border-l border-[#e5e7eb] dark:border-neutral-800">
+                                    <button
+                                        onClick={() => setActiveNoticeIdx(i => (i - 1 + headlineNotices.length) % headlineNotices.length)}
+                                        className="flex h-10 w-9 items-center justify-center text-neutral-400 hover:text-[#065f46] hover:bg-[#065f46]/5 transition-colors border-r border-[#e5e7eb] dark:border-neutral-800"
+                                        aria-label="Previous"
+                                    >
+                                        <ChevronRight size={14} className="rotate-180" />
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveNoticeIdx(i => (i + 1) % headlineNotices.length)}
+                                        className="flex h-10 w-9 items-center justify-center text-neutral-400 hover:text-[#065f46] hover:bg-[#065f46]/5 transition-colors"
+                                        aria-label="Next"
+                                    >
+                                        <ChevronRight size={14} />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -170,17 +184,9 @@ const HeroSection = () => {
             </section>
 
             <style jsx>{`
-                @keyframes marquee {
-                    0% { transform: translateX(0) translateZ(0); }
-                    100% { transform: translateX(-50%) translateZ(0); }
-                }
-                .marquee-track {
-                    animation: marquee 32s linear infinite;
-                    will-change: transform;
-                }
-                .group:hover .marquee-track {
-                    animation-play-state: paused;
-                }
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
             `}</style>
 
             {/* Modal Overlay */}

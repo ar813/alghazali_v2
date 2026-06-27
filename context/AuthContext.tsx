@@ -12,11 +12,15 @@ interface AuthContextType {
     photoURL: string | null;
     loading: boolean;
     isSuperAdmin: boolean;
+    profileSetupRequired: boolean;
     logout: () => Promise<void>;
     updateName: (newName: string) => Promise<void>;
+    updateEmail: (newEmail: string, newPassword: string) => Promise<void>;
+    updatePassword: (newPassword: string) => Promise<void>;
     updateGender: (newGender: "male" | "female") => Promise<void>;
     updatePhoto: (file: File) => Promise<void>;
     removePhoto: () => Promise<void>;
+    completeProfileSetup: (name: string, email: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -26,11 +30,15 @@ const AuthContext = createContext<AuthContextType>({
     photoURL: null,
     loading: true,
     isSuperAdmin: false,
+    profileSetupRequired: false,
     logout: async () => { },
     updateName: async () => { },
+    updateEmail: async () => { },
+    updatePassword: async () => { },
     updateGender: async () => { },
     updatePhoto: async () => { },
     removePhoto: async () => { },
+    completeProfileSetup: async () => { },
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -39,6 +47,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [gender, setGender] = useState<"male" | "female" | null>(null);
     const [photoURL, setPhotoURL] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [profileSetupRequired, setProfileSetupRequired] = useState(false);
 
     useEffect(() => {
         let unsubscribeRole: (() => void) | undefined;
@@ -58,8 +67,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         const userData = userDoc.data();
                         setRole(userData.role || "admin");
                         setGender(userData.gender || null);
-                        // Firestore photoURL takes priority over Firebase Auth photoURL
                         setPhotoURL(userData.photoURL || currentUser.photoURL || null);
+                        setProfileSetupRequired(userData.profileSetupRequired === true);
                     } else {
                         console.warn("User account deleted. Logging out.");
                         signOut(auth).then(() => {
@@ -77,6 +86,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             } else {
                 setRole(null);
                 setPhotoURL(null);
+                setProfileSetupRequired(false);
                 setLoading(false);
             }
         });
@@ -97,43 +107,77 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const updateName = async (newName: string) => {
-        try {
-            if (auth.currentUser) {
-                await updateProfile(auth.currentUser, { displayName: newName.trim() });
+        if (!auth.currentUser) return;
+        await updateProfile(auth.currentUser, { displayName: newName.trim() });
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch("/api/auth/profile", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ displayName: newName.trim() })
+        });
+        if (!res.ok) throw new Error("Failed to update name on server");
+        setUser({ ...auth.currentUser } as User);
+    };
 
-                const token = await auth.currentUser.getIdToken();
-                const res = await fetch("/api/auth/profile", {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ displayName: newName.trim() })
-                });
+    const updateEmail = async (newEmail: string, newPassword: string) => {
+        if (!auth.currentUser) return;
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch("/api/auth/profile", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ email: newEmail, password: newPassword })
+        });
+        if (!res.ok) throw new Error("Failed to update email on server");
+        setUser({ ...auth.currentUser } as User);
+    };
 
-                if (!res.ok) throw new Error("Failed to update profile on server");
-                setUser({ ...auth.currentUser } as User);
-            }
-        } catch (error) {
-            console.error("Error updating name:", error);
-            throw error;
-        }
+    const updatePassword = async (newPassword: string) => {
+        if (!auth.currentUser) return;
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch("/api/auth/profile", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ password: newPassword })
+        });
+        if (!res.ok) throw new Error("Failed to update password on server");
     };
 
     const updateGender = async (newGender: "male" | "female") => {
-        try {
-            if (auth.currentUser) {
-                const token = await auth.currentUser.getIdToken();
-                const res = await fetch("/api/auth/profile", {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ gender: newGender })
-                });
+        if (!auth.currentUser) return;
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch("/api/auth/profile", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ gender: newGender })
+        });
+        if (!res.ok) throw new Error("Failed to update gender on server");
+        setGender(newGender);
+    };
 
-                if (!res.ok) throw new Error("Failed to update gender on server");
-                setGender(newGender);
-            }
-        } catch (error) {
-            console.error("Error updating gender:", error);
-            throw error;
-        }
+    const completeProfileSetup = async (name: string, email: string, password: string) => {
+        if (!auth.currentUser) return;
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch("/api/auth/profile", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+                displayName: name.trim(),
+                email,
+                password,
+                profileSetupRequired: false,
+            })
+        });
+        if (!res.ok) throw new Error("Failed to complete profile setup");
+        await updateProfile(auth.currentUser, { displayName: name.trim() });
+        setProfileSetupRequired(false);
+        // Sign out so user must log in fresh with their new credentials
+        await signOut(auth);
+        localStorage.removeItem("adminSession");
+        localStorage.removeItem("adminCredentials");
+        // Redirect after a short delay to show success screen
+        setTimeout(() => {
+            window.location.href = "/admin";
+        }, 2000);
     };
 
     // Helper to compress image to base64
@@ -150,23 +194,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     const MAX_HEIGHT = 200;
                     let width = img.width;
                     let height = img.height;
-
                     if (width > height) {
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                     } else {
-                        if (height > MAX_HEIGHT) {
-                            width *= MAX_HEIGHT / height;
-                            height = MAX_HEIGHT;
-                        }
+                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
                     }
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx?.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% quality
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
                 };
             };
             reader.onerror = error => reject(error);
@@ -175,43 +212,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const updatePhoto = async (file: File) => {
         if (!auth.currentUser) throw new Error("Not authenticated");
-
-        // 1. Compress to small Base64 string
         const base64Photo = await compressImage(file);
-
-        // 2. Update Firebase Auth profile (Name only, skip photoURL due to char limit)
         await updateProfile(auth.currentUser, { displayName: auth.currentUser.displayName });
-
-        // 3. Update Firestore + server sync via API (This saves the Base64)
         const token = await auth.currentUser.getIdToken();
         const res = await fetch("/api/auth/profile", {
             method: "PUT",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify({ photoURL: base64Photo })
         });
-
         if (!res.ok) throw new Error("Failed to sync photo on server");
-
         setPhotoURL(base64Photo);
         setUser({ ...auth.currentUser } as User);
     };
 
     const removePhoto = async () => {
         if (!auth.currentUser) throw new Error("Not authenticated");
-
-        // 1. Update Firebase Auth profile (skip photoURL)
         await updateProfile(auth.currentUser, { displayName: auth.currentUser.displayName });
-
-        // 2. Update Firestore + server sync via API
         const token = await auth.currentUser.getIdToken();
         const res = await fetch("/api/auth/profile", {
             method: "PUT",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify({ photoURL: null })
         });
-
         if (!res.ok) throw new Error("Failed to remove photo on server");
-
         setPhotoURL(null);
         setUser({ ...auth.currentUser } as User);
     };
@@ -223,11 +246,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         photoURL,
         loading,
         isSuperAdmin: role === "super_admin",
+        profileSetupRequired,
         logout,
         updateName,
+        updateEmail,
+        updatePassword,
         updateGender,
         updatePhoto,
         removePhoto,
+        completeProfileSetup,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

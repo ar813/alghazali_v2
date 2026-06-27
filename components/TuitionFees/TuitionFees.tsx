@@ -14,55 +14,7 @@ const TuitionFees = () => {
         client.fetch(getAllAcademicClassesQuery).then(setClasses).catch(console.error)
     }, [])
 
-    const groupedFees = classes.reduce((acc, cls) => {
-        const group = cls.group || "General"
-        if (!acc[group]) {
-            acc[group] = {
-                title: group,
-                price: cls.monthlyFee,
-                period: "/month",
-                grades: [cls.name],
-                popular: cls.isPopular
-            }
-        } else {
-            acc[group].grades.push(cls.name)
-            if (cls.isPopular) acc[group].popular = true
-        }
-        return acc
-    }, {} as Record<string, any>)
-
-    const dynamicMainFees = Object.values(groupedFees).map((g: any) => ({
-        ...g,
-        grades: g.grades.join(', ')
-    }))
-
-    const defaultMainFees = [
-        {
-            title: "Primary School",
-            price: "900",
-            period: "/month",
-            grades: "Grades 1-5",
-            popular: false
-        },
-        {
-            title: "Middle School",
-            price: "1,200",
-            period: "/month",
-            grades: "Grades 6-8",
-            popular: true
-        },
-        {
-            title: "High School",
-            price: "1,300",
-            period: "/month",
-            grades: "Grades 9-10 (SSC)",
-            popular: false
-        }
-    ]
-
-    const mainFees = dynamicMainFees.length > 0 ? dynamicMainFees : defaultMainFees
-
-    const uniqueAdmissionFees = Array.from(new Set(classes.map(c => c.admissionFee).filter(Boolean)))
+    const uniqueAdmissionFees = Array.from(new Set(classes.map(c => c.admissionFeeNew).filter(Boolean)))
     const uniqueAnnualFees = Array.from(new Set(classes.map(c => c.annualFee).filter(Boolean)))
 
     let additionalFees = [
@@ -74,12 +26,24 @@ const TuitionFees = () => {
     if (classes.length > 0) {
         additionalFees = []
         if (uniqueAdmissionFees.length > 0) {
-            additionalFees.push({ label: "Admission Fee (Starts from)", price: `Rs. ${Math.min(...uniqueAdmissionFees as number[])}` })
+            additionalFees.push({ label: "Admission Fee (New Students)", price: `Rs. ${Math.min(...uniqueAdmissionFees as number[]).toLocaleString()}` })
+        }
+        const uniqueOldFees = Array.from(new Set(classes.map(c => c.admissionFeeOld).filter(Boolean)))
+        if (uniqueOldFees.length > 0) {
+            additionalFees.push({ label: "Admission Fee (Old Students)", price: `Rs. ${Math.min(...uniqueOldFees as number[]).toLocaleString()}` })
         }
         if (uniqueAnnualFees.length > 0) {
-            additionalFees.push({ label: "Annual Charges (Starts from)", price: `Rs. ${Math.min(...uniqueAnnualFees as number[])}` })
+            additionalFees.push({ label: "Annual Charges (Starts from)", price: `Rs. ${Math.min(...uniqueAnnualFees as number[]).toLocaleString()}` })
         }
     }
+
+    // Group classes by group name for section headers
+    const grouped = classes.reduce((acc: Record<string, any[]>, cls) => {
+        const g = cls.group || 'General';
+        if (!acc[g]) acc[g] = [];
+        acc[g].push(cls);
+        return acc;
+    }, {});
 
     return (
         <section id="tuition" className="py-24 bg-[#fcfdff] relative overflow-hidden">
@@ -96,31 +60,61 @@ const TuitionFees = () => {
                     </p>
                 </div>
 
-                {/* Main Fee Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                    {mainFees.map((fee, idx) => (
-                        <SectionReveal key={idx} delay={idx * 0.1}>
-                            <div className={`relative p-8 border transition-all duration-300 h-full flex flex-col items-center text-center bg-white ${
-                                fee.popular 
-                                ? 'border-[#064e3b] shadow-[0_20px_50px_rgba(6,78,59,0.12)] scale-105 z-20' 
-                                : 'border-[#e2e8f0] shadow-sm hover:border-[#cbd5e1]'
-                            }`}>
-                                {fee.popular && (
-                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#064e3b] text-white px-4 py-1 text-[10px] font-bold uppercase tracking-widest">
-                                        Popular
-                                    </div>
-                                )}
-                                
-                                <h3 className="text-xl font-bold text-[#0f172a] mb-4">{fee.title}</h3>
-                                <div className="flex items-baseline gap-1 mb-2">
-                                    <span className="text-3xl font-bold text-[#0f172a]">Rs. {fee.price}</span>
-                                    <span className="text-[#64748b] text-sm">{fee.period}</span>
+                {/* Class-wise Fee Cards grouped by section */}
+                {classes.length === 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                        {[1,2,3].map(i => <div key={i} className="h-48 bg-neutral-100 rounded animate-pulse" />)}
+                    </div>
+                ) : (
+                    <div className="space-y-10 mb-12">
+                        {Object.entries(grouped).map(([groupName, groupClasses]) => (
+                            <div key={groupName}>
+                                <h3 className="text-xs font-black uppercase tracking-widest text-[#065f46] mb-5 flex items-center gap-3">
+                                    <span>{groupName}</span>
+                                    <span className="flex-1 h-px bg-[#065f46]/10" />
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                                    {(groupClasses as any[]).map((cls, idx) => (
+                                        <SectionReveal key={cls._id || idx} delay={idx * 0.05}>
+                                            <div className={`relative p-6 border transition-all duration-300 h-full flex flex-col bg-white ${
+                                                cls.isPopular
+                                                    ? 'border-[#064e3b] shadow-[0_8px_30px_rgba(6,78,59,0.12)]'
+                                                    : 'border-[#e2e8f0] hover:border-[#064e3b]/30 hover:shadow-md'
+                                            }`}>
+                                                {cls.isPopular && (
+                                                    <div className="absolute -top-3 left-4 bg-[#064e3b] text-white px-3 py-0.5 text-[9px] font-black uppercase tracking-widest">
+                                                        Popular
+                                                    </div>
+                                                )}
+                                                <h4 className="text-sm font-black text-[#0f172a] uppercase tracking-tight mb-3">{cls.name}</h4>
+                                                <div className="flex items-baseline gap-1 mb-4">
+                                                    <span className="text-2xl font-black text-[#065f46]">Rs. {(cls.monthlyFee || 0).toLocaleString()}</span>
+                                                    <span className="text-xs text-[#64748b]">/mo</span>
+                                                </div>
+                                                <div className="mt-auto space-y-2 pt-3 border-t border-neutral-100 text-xs">
+                                                    <div className="flex justify-between text-neutral-500">
+                                                        <span>New Admission</span>
+                                                        <span className="font-semibold text-neutral-700">Rs. {(cls.admissionFeeNew || 0).toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-neutral-500">
+                                                        <span>Old Admission</span>
+                                                        <span className="font-semibold text-neutral-700">Rs. {(cls.admissionFeeOld || 0).toLocaleString()}</span>
+                                                    </div>
+                                                    {cls.annualFee > 0 && (
+                                                        <div className="flex justify-between text-neutral-500">
+                                                            <span>Annual</span>
+                                                            <span className="font-semibold text-neutral-700">Rs. {(cls.annualFee).toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </SectionReveal>
+                                    ))}
                                 </div>
-                                <p className="text-[#94a3b8] text-sm font-medium">{fee.grades}</p>
                             </div>
-                        </SectionReveal>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
 
                 {/* Bottom Row: Additional Fees & Scholarship */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">

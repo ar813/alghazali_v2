@@ -16,8 +16,8 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ ok: false, error: "Email and User ID are required" }, { status: 400 });
             }
 
-            // Generate 6-digit OTP
-            const otp = Math.floor(100000 + Math.random() * 900000).toString();
+            // Generate 4-digit OTP
+            const otp = Math.floor(1000 + Math.random() * 9000).toString();
             const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
             // Store in Firestore using admin SDK

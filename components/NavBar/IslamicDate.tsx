@@ -37,7 +37,7 @@ export default function IslamicDate({ className = "", variant = 'nav' }: Islamic
                 let maghribTimeStr = localStorage.getItem(timingsCacheKey) || "";
 
                 if (!maghribTimeStr) {
-                    const res = await fetch(`https://api.aladhan.com/v1/timingsByCity/${dd}-${mm}-${yyyy}?city=Karachi&country=Pakistan&method=1`);
+                    const res = await fetch(`https://api.aladhan.com/v1/timingsByCity/${dd}-${mm}-${yyyy}?city=Karachi&country=Pakistan&method=18`);
                     const json = await res.json();
                     if (json.status === "OK" && json.data.timings.Maghrib) {
                         maghribTimeStr = json.data.timings.Maghrib;

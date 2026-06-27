@@ -90,8 +90,15 @@ const AdminClasses = () => {
 
   const fetchStudentCounts = async () => {
     try {
+      // Determine current session dynamically (YYYY-YYYY format)
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const currentSession = month >= 4 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+
       const data = await client.fetch(
-        `*[_type == "student" && !(_id in path("drafts.**"))]{ admissionFor }`
+        `*[_type == "student" && session == $session && !(_id in path("drafts.**"))]{ admissionFor }`,
+        { session: currentSession }
       );
       const counts: Record<string, number> = {};
       data.forEach((student: any) => {

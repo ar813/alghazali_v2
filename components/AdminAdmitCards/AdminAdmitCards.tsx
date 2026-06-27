@@ -325,8 +325,8 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
 
       if (cardsPerPage === 4) {
         // A4 Landscape is 297 x 210
-        cardWidth = 132;
-        cardHeight = 92;
+        cardWidth = 136;
+        cardHeight = 94;
       } else {
         cardWidth = pageWidth - (margin * 2);
         cardHeight = (pageHeight - (margin * 3)) / 2;
@@ -361,8 +361,8 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
           const row = Math.floor(pos / 2);
           
           // Calculate centering
-          const hGap = 8; // gap between columns
-          const vGap = 8; // gap between rows
+          const hGap = 5; // gap between columns
+          const vGap = 5; // gap between rows
           const startX = (pageWidth - (cardWidth * 2 + hGap)) / 2;
           const startY = (pageHeight - (cardHeight * 2 + vGap)) / 2;
           
@@ -402,10 +402,6 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
           const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrVal)}`;
           const qr = await loadImage(qrUrl);
           doc.addImage(qr, 'PNG', xOffset + cardWidth - 26, headerY - 5, 18, 18);
-          doc.setFontSize(7);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(0);
-          doc.text("GR: " + (s.grNumber || '---'), xOffset + cardWidth - 17, headerY + 16, { align: 'center' });
         } catch (e) { }
 
         doc.setTextColor(0);
@@ -515,13 +511,12 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
         doc.text("T.A", attTableX + (attCellW * 2) + (attCellW / 2), attTableY + (attCellH * 0.7), { align: 'center' });
         doc.text("T.L", attTableX + (attCellW * 3) + (attCellW / 2), attTableY + (attCellH * 0.7), { align: 'center' });
 
-        // Table Values (Real-time computed session attendance)
-        const studentAtt = attendanceMap[s.grNumber || ''] || { present: 0, absent: 0, leave: 0, total: 0 };
+        // Table Values — left blank for manual fill
         doc.setFont('helvetica', 'normal');
-        doc.text(String(studentAtt.total), attTableX + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
-        doc.text(String(studentAtt.present), attTableX + attCellW + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
-        doc.text(String(studentAtt.absent), attTableX + (attCellW * 2) + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
-        doc.text(String(studentAtt.leave), attTableX + (attCellW * 3) + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
+        doc.text("", attTableX + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
+        doc.text("", attTableX + attCellW + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
+        doc.text("", attTableX + (attCellW * 2) + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
+        doc.text("", attTableX + (attCellW * 3) + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
         doc.setFont('helvetica', 'bold');
 
         // Fees Status
