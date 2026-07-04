@@ -520,6 +520,10 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
       // Add rows
       for (let i = 0; i < students.length; i++) {
+        if (i > 0 && i % 5 === 0) {
+          const pct = Math.floor(((i + 1) / students.length) * 100);
+          toast.loading(`Exporting data with images: ${pct}%...`, { id: toastId })
+        }
         const student = students[i];
         const row = ws.addRow({
           picture: '',
@@ -676,7 +680,8 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
 
       for (let idx = 0; idx < toCreate.length; idx++) {
         const item = toCreate[idx];
-        toast.loading(`Importing student ${idx + 1} of ${toCreate.length}...`, { id: toastId });
+        const pct = Math.floor(((idx + 1) / toCreate.length) * 100);
+        toast.loading(`Importing student ${idx + 1} of ${toCreate.length} (${pct}%)...`, { id: toastId });
 
         try {
           const doc = item.data;

@@ -35,6 +35,7 @@ import {
     Bot,
     School,
     BookMarked,
+    FileDigit,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -843,6 +844,24 @@ export default function SessionGrid() {
                             
                             <div className="shrink-0 self-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
                                 <ChevronRight className="w-5 h-5 text-violet-500" />
+                            </div>
+                        </Link>
+
+                        {/* OMR Sheet Generator Card */}
+                        <Link href="/admin/omr" className="group bg-white dark:bg-black border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 hover:shadow-lg hover:border-pink-500/50 transition-all duration-300 relative overflow-hidden flex items-start gap-5">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/5 dark:bg-pink-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-pink-500/10 dark:group-hover:bg-pink-500/20 transition-all duration-500" />
+                            
+                            <div className="w-12 h-12 rounded-xl bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400 flex items-center justify-center shrink-0 border border-pink-100 dark:border-pink-800/50">
+                                <FileDigit size={24} strokeWidth={1.5} />
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">OMR Sheets</h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">Generate printable OMR sheets for exams and quizzes.</p>
+                            </div>
+                            
+                            <div className="shrink-0 self-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                                <ChevronRight className="w-5 h-5 text-pink-500" />
                             </div>
                         </Link>
 

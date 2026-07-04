@@ -11,6 +11,32 @@ import { useSession } from '@/context/SessionContext'
 import { db } from '@/lib/firebase'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 
+const ALL_EXPORT_COLUMNS = [
+  { id: 'picture', label: 'Picture' },
+  { id: 'fullName', label: 'Full Name' },
+  { id: 'fatherName', label: "Father's Name" },
+  { id: 'fatherCnic', label: 'Father CNIC' },
+  { id: 'dob', label: 'DOB' },
+  { id: 'rollNumber', label: 'Roll No' },
+  { id: 'grNumber', label: 'GR Number' },
+  { id: 'gender', label: 'Gender' },
+  { id: 'admissionFor', label: 'Class' },
+  { id: 'nationality', label: 'Nationality' },
+  { id: 'medicalCondition', label: 'Medical' },
+  { id: 'cnicOrBform', label: 'CNIC/B-Form' },
+  { id: 'email', label: 'Email' },
+  { id: 'phoneNumber', label: 'Phone' },
+  { id: 'whatsappNumber', label: 'WhatsApp' },
+  { id: 'address', label: 'Address' },
+  { id: 'formerEducation', label: 'Former Edu' },
+  { id: 'previousInstitute', label: 'Prev Institute' },
+  { id: 'lastExamPercentage', label: 'Last %' },
+  { id: 'guardianName', label: 'Guardian Name' },
+  { id: 'guardianContact', label: 'Guardian Contact' },
+  { id: 'guardianCnic', label: 'Guardian CNIC' },
+  { id: 'guardianRelation', label: 'Relation' }
+]
+
 type StudentType = {
   _id: string
   fullName: string
@@ -41,6 +67,8 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
   useEffect(() => {
     setMounted(true)
   }, [])
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(ALL_EXPORT_COLUMNS.map(c => c.id))
+
   type ExportTabType = 'data' | 'fees' | 'forms' | 'pictures' | 'certificates'
   const [activeExportTab, setActiveExportTab] = useState<ExportTabType>('data')
 
@@ -228,7 +256,8 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         const s = list[i]
         
         if (i > 0 && i % 5 === 0) {
-          toast.loading(`Generating PDFs: ${i}/${list.length}...`, { id: toastId })
+          const pct = Math.floor(((i + 1) / list.length) * 100);
+          toast.loading(`Generating PDFs: ${pct}%...`, { id: toastId })
         }
 
         const doc = new jsPDFMod.jsPDF({ unit: 'pt', format: 'a4' })
@@ -493,8 +522,9 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
       for (let i = 0; i < studentsWithPhotos.length; i++) {
         const s = studentsWithPhotos[i]
         
-        if (i > 0 && i % 10 === 0) {
-          toast.loading(`Zipping photos: ${i}/${studentsWithPhotos.length}...`, { id: toastId })
+        if (i > 0 && i % 5 === 0) {
+          const pct = Math.floor(((i + 1) / studentsWithPhotos.length) * 100);
+          toast.loading(`Zipping photos: ${pct}%...`, { id: toastId })
         }
 
         const url = s.photoUrl || s.imageUrl
@@ -703,6 +733,13 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         return
       }
 
+      // Automatically sort selected array by roll number (alpha-numeric)
+      selected.sort((a, b) => {
+        const ra = (a.rollNumber || '').toString()
+        const rb = (b.rollNumber || '').toString()
+        return ra.localeCompare(rb, undefined, { numeric: true })
+      })
+
       const ExcelJS: any = await loadExcel()
       const fileSaver = await import('file-saver')
       const saveAs = (fileSaver as any).default?.saveAs || (fileSaver as any).saveAs
@@ -714,8 +751,8 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
       
       const ws = wb.addWorksheet('Student Records')
 
-      // Define columns with specific styling
-      ws.columns = [
+      // Define full columns map
+      const fullColumns = [
         { header: 'Picture', key: 'picture', width: 15 },
         { header: 'Full Name', key: 'fullName', width: 30 },
         { header: "Father's Name", key: 'fatherName', width: 30 },
@@ -740,6 +777,8 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         { header: 'Guardian CNIC', key: 'guardianCnic', width: 20 },
         { header: 'Relation', key: 'guardianRelation', width: 15 },
       ]
+
+      ws.columns = fullColumns.filter(c => selectedColumns.includes(c.key))
 
       // Style headers
       const headerRow = ws.getRow(1)
@@ -781,36 +820,38 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
       for (let i = 0; i < selected.length; i++) {
         const student = selected[i];
         
-        // Periodic update for large lists
-        if (i > 0 && i % 10 === 0) {
-          toast.loading(`Exporting: ${i}/${selected.length} students...`, { id: toastId })
+        // Periodic update for large lists showing exact percentage
+        if (i > 0 && i % 5 === 0) {
+          const pct = Math.floor(((i + 1) / selected.length) * 100);
+          toast.loading(`Exporting data: ${pct}%...`, { id: toastId })
         }
 
-        const row = ws.addRow({
-          picture: '', 
-          fullName: (student.fullName || '').toUpperCase(),
-          fatherName: (student.fatherName || '').toUpperCase(),
-          fatherCnic: student.fatherCnic || '—',
-          dob: student.dob ? new Date(student.dob).toLocaleDateString('en-GB') : '—',
-          rollNumber: student.rollNumber || '—',
-          grNumber: student.grNumber || '—',
-          gender: (student.gender || '—').toUpperCase(),
-          admissionFor: (student.admissionFor || '—').toUpperCase(),
-          nationality: student.nationality || 'PAKISTANI',
-          medicalCondition: student.medicalCondition || 'NO',
-          cnicOrBform: student.cnicOrBform || '—',
-          email: student.email || '—',
-          phoneNumber: student.phoneNumber || '—',
-          whatsappNumber: student.whatsappNumber || '—',
-          address: student.address || '—',
-          formerEducation: student.formerEducation || '—',
-          previousInstitute: student.previousInstitute || '—',
-          lastExamPercentage: student.lastExamPercentage || '—',
-          guardianName: student.guardianName || '—',
-          guardianContact: student.guardianContact || '—',
-          guardianCnic: student.guardianCnic || '—',
-          guardianRelation: student.guardianRelation || '—'
-        })
+        const rowData: any = {}
+        if (selectedColumns.includes('picture')) rowData.picture = ''
+        if (selectedColumns.includes('fullName')) rowData.fullName = (student.fullName || '').toUpperCase()
+        if (selectedColumns.includes('fatherName')) rowData.fatherName = (student.fatherName || '').toUpperCase()
+        if (selectedColumns.includes('fatherCnic')) rowData.fatherCnic = student.fatherCnic || '—'
+        if (selectedColumns.includes('dob')) rowData.dob = student.dob ? new Date(student.dob).toLocaleDateString('en-GB') : '—'
+        if (selectedColumns.includes('rollNumber')) rowData.rollNumber = student.rollNumber || '—'
+        if (selectedColumns.includes('grNumber')) rowData.grNumber = student.grNumber || '—'
+        if (selectedColumns.includes('gender')) rowData.gender = (student.gender || '—').toUpperCase()
+        if (selectedColumns.includes('admissionFor')) rowData.admissionFor = (student.admissionFor || '—').toUpperCase()
+        if (selectedColumns.includes('nationality')) rowData.nationality = student.nationality || 'PAKISTANI'
+        if (selectedColumns.includes('medicalCondition')) rowData.medicalCondition = student.medicalCondition || 'NO'
+        if (selectedColumns.includes('cnicOrBform')) rowData.cnicOrBform = student.cnicOrBform || '—'
+        if (selectedColumns.includes('email')) rowData.email = student.email || '—'
+        if (selectedColumns.includes('phoneNumber')) rowData.phoneNumber = student.phoneNumber || '—'
+        if (selectedColumns.includes('whatsappNumber')) rowData.whatsappNumber = student.whatsappNumber || '—'
+        if (selectedColumns.includes('address')) rowData.address = student.address || '—'
+        if (selectedColumns.includes('formerEducation')) rowData.formerEducation = student.formerEducation || '—'
+        if (selectedColumns.includes('previousInstitute')) rowData.previousInstitute = student.previousInstitute || '—'
+        if (selectedColumns.includes('lastExamPercentage')) rowData.lastExamPercentage = student.lastExamPercentage || '—'
+        if (selectedColumns.includes('guardianName')) rowData.guardianName = student.guardianName || '—'
+        if (selectedColumns.includes('guardianContact')) rowData.guardianContact = student.guardianContact || '—'
+        if (selectedColumns.includes('guardianCnic')) rowData.guardianCnic = student.guardianCnic || '—'
+        if (selectedColumns.includes('guardianRelation')) rowData.guardianRelation = student.guardianRelation || '—'
+
+        const row = ws.addRow(rowData)
 
         // Style the data row
         row.height = 65; // Tall enough for pictures
@@ -825,22 +866,27 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
           }
         })
 
-        // Embed Image
-        const url = student.photoUrl || student.imageUrl;
-        if (url) {
-          const buffer = await fetchImageBlob(url);
-          if (buffer) {
-            const ext = url.toLowerCase().includes('png') ? 'png' : 'jpeg';
-            const imageId = wb.addImage({
-              buffer: buffer,
-              extension: ext,
-            });
+        // Embed Image if selected
+        if (selectedColumns.includes('picture')) {
+          const url = student.photoUrl || student.imageUrl;
+          if (url) {
+            const buffer = await fetchImageBlob(url);
+            if (buffer) {
+              const ext = url.toLowerCase().includes('png') ? 'png' : 'jpeg';
+              const imageId = wb.addImage({
+                buffer: buffer,
+                extension: ext,
+              });
 
-            ws.addImage(imageId, {
-              tl: { col: 0, row: i + 1 },
-              ext: { width: 60, height: 60 },
-              editAs: 'oneCell'
-            });
+              // Find which column index the picture column actually is
+              const picColIndex = ws.columns?.findIndex(c => c.key === 'picture') || 0;
+              
+              ws.addImage(imageId, {
+                tl: { col: picColIndex, row: i + 1 },
+                ext: { width: 60, height: 60 },
+                editAs: 'oneCell'
+              });
+            }
           }
         }
       }
@@ -1145,10 +1191,48 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
                     </div>
                   )}
                 </div>
+                <div className="mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-800 animate-in fade-in">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest">Select Columns to Export</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSelectedColumns(ALL_EXPORT_COLUMNS.map(c => c.id))}
+                        className="px-3 py-1 text-xs font-bold rounded-lg bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        onClick={() => setSelectedColumns(['rollNumber', 'fullName', 'admissionFor'])}
+                        className="px-3 py-1 text-xs font-bold rounded-lg bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                      >
+                        Minimum
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-200 dark:border-neutral-800">
+                    {ALL_EXPORT_COLUMNS.map(col => (
+                      <label key={col.id} className="flex items-center gap-2.5 text-sm text-neutral-700 dark:text-neutral-300 font-medium cursor-pointer group select-none">
+                        <div className="relative flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedColumns.includes(col.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedColumns([...selectedColumns, col.id])
+                              else setSelectedColumns(selectedColumns.filter(id => id !== col.id))
+                            }}
+                            className="w-4 h-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500 bg-white dark:bg-neutral-900 cursor-pointer transition-all"
+                          />
+                        </div>
+                        <span className="group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">{col.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                
                 <div className="pt-4 mt-auto">
-                  <button onClick={handleExportExcel} disabled={exporting || (targetType === 'class' && !className) || (targetType === 'student' && !studentId)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm disabled:opacity-50 transition-all shadow-sm">
+                  <button onClick={handleExportExcel} disabled={exporting || (targetType === 'class' && !className) || (targetType === 'student' && !studentId) || selectedColumns.length === 0} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm disabled:opacity-50 transition-all shadow-sm">
                     {exporting ? <Loader2 className="animate-spin" size={16} /> : <FileDown size={16} />}
-                    <span>{exporting ? 'Exporting Data...' : 'Export Excel Data'}</span>
+                    <span>{exporting ? 'Exporting Data...' : `Export ${selectedColumns.length} Columns`}</span>
                   </button>
                 </div>
               </div>

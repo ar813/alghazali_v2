@@ -286,7 +286,7 @@ const AdminMobileAttendance = ({ onLoadingChange }: { onLoadingChange?: (loading
             return;
         }
 
-        const toastId = toast.loading("Generating Enterprise Register Report...");
+        const toastId = toast.loading("Generating Enterprise Register Report... (0%)");
 
         try {
             const ExcelJS = (await import('exceljs')).default || await import('exceljs');
@@ -294,6 +294,12 @@ const AdminMobileAttendance = ({ onLoadingChange }: { onLoadingChange?: (loading
             const workbook = new ExcelJS.Workbook();
             workbook.creator = 'Al-Ghazali Admin';
             workbook.created = new Date();
+
+            let progressPct = 0;
+            const updateProgress = (pct: number) => {
+                progressPct = pct;
+                toast.loading(`Generating Enterprise Register Report... (${pct}%)`, { id: toastId });
+            }
 
             // Function to generate all dates in a month
             const getDaysInMonth = (year: number, month: number) => {
@@ -392,6 +398,9 @@ const AdminMobileAttendance = ({ onLoadingChange }: { onLoadingChange?: (loading
                         });
 
                     classStudents.forEach((student, idx) => {
+                        if (idx > 0 && idx % 10 === 0) {
+                            updateProgress(Math.floor((idx / classStudents.length) * 100));
+                        }
                         const rowData: any[] = [
                             idx + 1,
                             student.grNumber || '-',
