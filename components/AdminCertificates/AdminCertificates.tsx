@@ -589,7 +589,8 @@ export default function AdminCertificates({ genderFilter, onLoadingChange }: { g
             total: ids.length,
             currentName: student.fullName
           });
-          toast.loading(`Processing [${processed + 1}/${ids.length}]: ${student.fullName}`, { id: toastId });
+          const pct = Math.floor(((processed + 1) / ids.length) * 100);
+          toast.loading(`Processing [${processed + 1}/${ids.length}] (${pct}%): ${student.fullName}`, { id: toastId });
           
           try {
             const canvas = await generateCertificateCanvas(student);

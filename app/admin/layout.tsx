@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import AdminClientWrapper from '@/components/AdminPortal/AdminClientWrapper';
+import AdminSidebarLayout from '@/components/AdminSidebar/AdminSidebarLayout';
 
 export const metadata: Metadata = {
   title: 'Admin Portal',
@@ -13,7 +14,9 @@ export default function AdminLayout({
 }) {
   return (
     <AdminClientWrapper>
-      {children}
+      <AdminSidebarLayout>
+        {children}
+      </AdminSidebarLayout>
     </AdminClientWrapper>
   );
 }
