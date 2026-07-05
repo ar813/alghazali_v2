@@ -71,7 +71,7 @@ export default function AdminOMR() {
         const data: StudentType[] = await client.fetch(getAllStudentsQuery, { session: selectedSession, gender: null })
         setAllStudents(data)
         // Extract unique classes
-        const classes = [...new Set(data.map(s => s.admissionFor).filter(Boolean) as string[])].sort()
+        const classes = Array.from(new Set(data.map(s => s.admissionFor).filter(Boolean) as string[])).sort()
         setClassOptions(classes)
       } catch (err) {
         console.error(err)

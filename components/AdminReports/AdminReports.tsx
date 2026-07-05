@@ -879,7 +879,7 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
               });
 
               // Find which column index the picture column actually is
-              const picColIndex = ws.columns?.findIndex(c => c.key === 'picture') || 0;
+              const picColIndex = ws.columns?.findIndex((c: any) => c.key === 'picture') || 0;
               
               ws.addImage(imageId, {
                 tl: { col: picColIndex, row: i + 1 },
