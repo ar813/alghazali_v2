@@ -7,9 +7,21 @@ import AdminSidebar from './AdminSidebar'
 export default function AdminSidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   
-  // Do not show sidebar on the main admin dashboard (/admin)
-  // Only show it on inner global admin routes (e.g. /admin/omr)
-  const isInnerRoute = pathname !== '/admin' && pathname.startsWith('/admin/')
+  const globalRoutes = [
+    '/admin/admissions',
+    '/admin/chatbot',
+    '/admin/classes',
+    '/admin/diary',
+    '/admin/inquiries',
+    '/admin/notice',
+    '/admin/omr',
+    '/admin/schedule',
+    '/admin/students',
+    '/admin/users'
+  ]
+
+  // Only show sidebar on specific global admin routes
+  const isInnerRoute = globalRoutes.some(route => pathname.startsWith(route))
 
   if (!isInnerRoute) {
     return <>{children}</>
