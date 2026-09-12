@@ -19,14 +19,21 @@ const formatCnic = (s: string) => {
 
 interface StudentLoginFormProps {
     onLoginSuccess: (student: Student) => void;
+    initialBForm?: string;
+    initialGr?: string;
 }
 
-const StudentLoginForm = ({ onLoginSuccess }: StudentLoginFormProps) => {
-    const [bForm, setBForm] = useState('');
-    const [grNumber, setGrNumber] = useState('');
+const StudentLoginForm = ({ onLoginSuccess, initialBForm = '', initialGr = '' }: StudentLoginFormProps) => {
+    const [bForm, setBForm] = useState(initialBForm ? formatCnic(initialBForm) : '');
+    const [grNumber, setGrNumber] = useState(initialGr || '');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [focusedField, setFocusedField] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        if (initialBForm) setBForm(formatCnic(initialBForm));
+        if (initialGr) setGrNumber(initialGr);
+    }, [initialBForm, initialGr]);
 
     const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault();
