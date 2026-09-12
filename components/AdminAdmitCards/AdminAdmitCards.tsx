@@ -4,13 +4,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { client } from "@/sanity/lib/client";
 import { getAllStudentsQuery } from "@/sanity/lib/queries";
 import type { Student } from "@/types/student";
-import { auth, db } from '@/lib/firebase';
-import { collection, query, where, getDocs, documentId } from 'firebase/firestore';
 import { toast } from "sonner";
 import { useSession } from '@/context/SessionContext';
-import { Search, Printer, FileDown, Layers, User, Users, CheckCircle2 } from "lucide-react";
+import { Search, Printer, FileDown, Layers, User, Users, CheckCircle2, ShieldCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import QRCode from "qrcode";
 
 // Helper for image loading
 const loadImage = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
@@ -32,11 +31,25 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Config
-  const [examName, setExamName] = useState("Final Term Examination 2024");
+  const [examName, setExamName] = useState("Final Term Examination 2024-2025");
   const [cardsPerPage, setCardsPerPage] = useState<1 | 2 | 4>(2);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [qrCache, setQrCache] = useState<Record<string, string>>({});
 
-  // Load Data
+  // Current generation timestamp for preview and document
+  const formattedTimestamp = useMemo(() => {
+    const now = new Date();
+    return now.toLocaleString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  }, []);
+
+  // Load Students Data
   const loadStudents = React.useCallback(async () => {
     try {
       if (!selectedSession) return;
@@ -60,196 +73,11 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
     loadStudents();
   }, [loadStudents]);
 
-  // Attendance Map
-  const [attendanceMap, setAttendanceMap] = useState<Record<string, { present: number; absent: number; leave: number; total: number }>>({});
-
-  useEffect(() => {
-    const fetchAttendance = async () => {
-      if (!selectedSession || students.length === 0) return;
-      
-      try {
-        const parts = selectedSession.split('-');
-        const startYear = parseInt(parts[0], 10);
-        const endYear = parseInt(parts[1], 10);
-        if (isNaN(startYear) || isNaN(endYear)) return;
-
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        const todayStr = `${yyyy}-${mm}-${dd}`;
-
-        const startStr = `${startYear}-06-01`;
-        const sessionEndStr = `${endYear}-05-31`;
-        const endStr = todayStr < sessionEndStr ? todayStr : sessionEndStr;
-
-        const aggMap: Record<string, { present: number; absent: number; leave: number; total: number }> = {};
-        
-        // Initialize aggMap for all loaded students to avoid 0 defaults
-        students.forEach(s => {
-          if (s.grNumber) {
-            aggMap[s.grNumber] = { present: 0, absent: 0, leave: 0, total: 0 };
-          }
-        });
-
-        // 1. Fetch Manual monthly attendance records for the session
-        let manualDocs: any[] = [];
-        
-        // Primary: use documentId() for proper prefix-based document ID query
-        const prefixStart = `manual_monthly__${selectedSession}__`;
-        const prefixEnd = `manual_monthly__${selectedSession}__\uf8ff`;
-        
-        const manualQuery = query(
-          collection(db, 'attendance'),
-          where(documentId(), ">=", prefixStart),
-          where(documentId(), "<=", prefixEnd)
-        );
-        const manualSnap = await getDocs(manualQuery);
-        manualDocs = manualSnap.docs;
-
-        // Fallback: query by session field if documentId() query returns empty
-        if (manualDocs.length === 0) {
-          const fallbackQuery = query(
-            collection(db, 'attendance'),
-            where("session", "==", selectedSession)
-          );
-          const fallbackSnap = await getDocs(fallbackQuery);
-          manualDocs = fallbackSnap.docs;
-        }
-
-        const hasManualFor = new Set<string>();
-
-        manualDocs.forEach(docSnap => {
-          const data = docSnap.data();
-          
-          // Extract month and class from document ID or fields
-          const docIdParts = docSnap.id.split('__');
-          const month = docIdParts.length >= 3 ? docIdParts[2] : (data.month || '');
-          const cls = (docIdParts.length >= 4 ? docIdParts[3] : (data.class || '')).toString().replace(/^Class\s+/i, '').trim();
-          
-          if (month && cls) {
-            hasManualFor.add(`${month}__${cls}`);
-          }
-
-          const records = data.records || {};
-          Object.keys(records).forEach(gr => {
-            const row = records[gr];
-            if (gr) {
-              if (!aggMap[gr]) {
-                aggMap[gr] = { present: 0, absent: 0, leave: 0, total: 0 };
-              }
-              aggMap[gr].present += (row.present || 0);
-              aggMap[gr].absent += (row.absent || 0);
-              aggMap[gr].leave += (row.leave || 0);
-              aggMap[gr].total += (row.totalDays || 0);
-            }
-          });
-        });
-
-        // 2. Fetch Mobile daily scans for the session range
-        const mobileQuery = query(
-          collection(db, 'daily_attendance'),
-          where("date", ">=", startStr),
-          where("date", "<=", endStr)
-        );
-        const mobileSnap = await getDocs(mobileQuery);
-
-        // Keep track of unique scan dates per month and clean class:
-        // monthClassDatesMap["YYYY-MM__class"] = Set of dates
-        const monthClassDatesMap: Record<string, Set<string>> = {};
-        
-        // Keep track of mobile scans per student, per month:
-        // studentMonthScans[gr][month] = { present: 0, leave: 0 }
-        const studentMonthScans: Record<string, Record<string, { present: number; leave: number }>> = {};
-
-        mobileSnap.docs.forEach(docSnap => {
-          const record = docSnap.data();
-          const gr = record.grNumber;
-          const dateStr = record.date; // e.g. "2025-06-15"
-          const status = (record.status || 'present').toLowerCase().trim();
-          const rawClass = record.class || '';
-          const cleanClass = rawClass.replace(/^Class\s+/i, '').trim();
-
-          if (gr && dateStr) {
-            const monthStr = dateStr.substring(0, 7); // e.g. "2025-06"
-            
-            // If this month + class already has manual records, skip completely!
-            if (hasManualFor.has(`${monthStr}__${cleanClass}`)) {
-              return;
-            }
-
-            // Track active scan dates for this class in this month
-            const key = `${monthStr}__${cleanClass}`;
-            if (!monthClassDatesMap[key]) {
-              monthClassDatesMap[key] = new Set<string>();
-            }
-            monthClassDatesMap[key].add(dateStr);
-
-            // Track student scans
-            if (!studentMonthScans[gr]) {
-              studentMonthScans[gr] = {};
-            }
-            if (!studentMonthScans[gr][monthStr]) {
-              studentMonthScans[gr][monthStr] = { present: 0, leave: 0 };
-            }
-            if (status === 'present') {
-              studentMonthScans[gr][monthStr].present += 1;
-            } else if (status === 'leave') {
-              studentMonthScans[gr][monthStr].leave += 1;
-            }
-          }
-        });
-
-        // 3. Compute and add mobile scans to aggMap for each student
-        students.forEach(s => {
-          const gr = s.grNumber;
-          if (!gr) return;
-          
-          const cleanClass = (s.admissionFor || '').toString().replace(/^Class\s+/i, '').trim();
-          const studentScans = studentMonthScans[gr] || {};
-
-          // Loop through all months that have active scanner dates for this student's class
-          Object.keys(monthClassDatesMap).forEach(monthClassKey => {
-            const [monthStr, keyClass] = monthClassKey.split('__');
-            if (keyClass !== cleanClass) return;
-
-            const totalWorkingDays = monthClassDatesMap[monthClassKey].size;
-            if (totalWorkingDays === 0) return;
-
-            const scans = studentScans[monthStr] || { present: 0, leave: 0 };
-            const present = scans.present;
-            const leave = scans.leave;
-            const absent = Math.max(0, totalWorkingDays - present - leave);
-
-            if (!aggMap[gr]) {
-              aggMap[gr] = { present: 0, absent: 0, leave: 0, total: 0 };
-            }
-            aggMap[gr].present += present;
-            aggMap[gr].leave += leave;
-            aggMap[gr].absent += absent;
-            aggMap[gr].total += totalWorkingDays;
-          });
-        });
-
-        // DEBUG: Show counts on screen 
-        const nonZeroEntries = Object.entries(aggMap).filter(([_, v]) => v.total > 0);
-        toast.info(`📊 Attendance: ${manualDocs.length} manual docs, ${mobileSnap.size} mobile scans, ${nonZeroEntries.length} students with data`);
-
-        setAttendanceMap(aggMap);
-      } catch (error) {
-        console.error("Failed to load attendance for admit cards:", error);
-        toast.error(`Attendance fetch error: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    };
-
-    fetchAttendance();
-  }, [selectedSession, students]);
-
   // Derived State
   const classes = useMemo(() => {
     const unique = Array.from(new Set(students.map((s) => (s.admissionFor || "").toString().trim()).filter(Boolean)));
     return ["All", ...unique.sort((a, b) => {
-      const na = parseInt(a); const nb = parseInt(b);
+      const na = parseInt(a, 10); const nb = parseInt(b, 10);
       if (!isNaN(na) && !isNaN(nb)) return na - nb;
       return a.localeCompare(b);
     })];
@@ -287,6 +115,54 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
     sorted.filter((s) => selectedIds.size === 0 || selectedIds.has(s._id!)),
     [sorted, selectedIds]);
 
+  // Helper to build student portal direct auto-login URL (Dynamic Origin)
+  const getStudentPortalUrl = (s: Student) => {
+    const onlyDigits = (val?: string) => (val || '').replace(/\D+/g, '');
+    // Priority: Student B-Form / CNIC -> Father CNIC -> Guardian CNIC
+    const identity = onlyDigits(s.cnicOrBform) || onlyDigits(s.fatherCnic) || onlyDigits(s.guardianCnic) || '';
+    const gr = (s.grNumber || '').trim();
+
+    // Dynamically use current site origin (e.g. http://localhost:3000, local IP, or production)
+    const baseUrl = (typeof window !== 'undefined' && window.location.origin)
+      ? window.location.origin
+      : 'https://alghazali.vercel.app';
+
+    if (identity && gr) {
+      return `${baseUrl}/student-portal?bform=${encodeURIComponent(identity)}&gr=${encodeURIComponent(gr)}&auto=1`;
+    } else if (gr) {
+      return `${baseUrl}/student-portal?gr=${encodeURIComponent(gr)}`;
+    }
+    return `${baseUrl}/student-portal`;
+  };
+
+  // Pre-generate QR codes for preview cards
+  useEffect(() => {
+    const generatePreviewQrs = async () => {
+      const previewList = toPrint.slice(0, 2);
+      const newCache: Record<string, string> = { ...qrCache };
+      for (const s of previewList) {
+        const key = s.grNumber || s.rollNumber || s._id || 'unknown';
+        if (!newCache[key]) {
+          try {
+            const portalUrl = getStudentPortalUrl(s);
+            const url = await QRCode.toDataURL(portalUrl, {
+              margin: 1,
+              width: 140,
+              color: { dark: '#0f172a', light: '#ffffff' }
+            });
+            newCache[key] = url;
+          } catch (e) {
+            console.error("QR preview generation failed", e);
+          }
+        }
+      }
+      setQrCache(newCache);
+    };
+    if (toPrint.length > 0) {
+      generatePreviewQrs();
+    }
+  }, [toPrint]);
+
   // Handlers
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -300,6 +176,7 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
   const handleSelectAll = () => setSelectedIds(new Set(filtered.map((s) => s._id!)));
   const handleClearSelection = () => setSelectedIds(new Set());
 
+  // PDF Download Handler
   const handleDownloadPDF = async () => {
     if (toPrint.length === 0) {
       toast.error("No students selected");
@@ -319,28 +196,44 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
       const pageWidth = cardsPerPage === 4 ? 297 : 210;
       const pageHeight = cardsPerPage === 4 ? 210 : 297;
       const margin = 10;
-      
-      let cardWidth: number;
-      let cardHeight: number;
 
-      if (cardsPerPage === 4) {
-        // A4 Landscape is 297 x 210
-        cardWidth = 136;
-        cardHeight = 94;
-      } else {
-        cardWidth = pageWidth - (margin * 2);
-        cardHeight = (pageHeight - (margin * 3)) / 2;
+      // Load school logo
+      let logo: HTMLImageElement | null = null;
+      try {
+        logo = await loadImage('/logo.png');
+      } catch (e) {
+        console.warn("Could not load /logo.png", e);
       }
 
-      // Prepare images
-      const logo = await loadImage('/logo.png');
+      // Pre-generate QR codes (links to student portal with auto-login)
+      const studentQrMap: Record<string, string> = {};
+      for (const s of toPrint) {
+        try {
+          const portalUrl = getStudentPortalUrl(s);
+          const qrDataUrl = await QRCode.toDataURL(
+            portalUrl,
+            { margin: 1, width: 140, color: { dark: '#0f172a', light: '#ffffff' } }
+          );
+          studentQrMap[s._id!] = qrDataUrl;
+        } catch {
+          // ignore qr errors
+        }
+      }
 
-      // Cache QR codes if possible, but for now we'll fetch them in the loop
-      // (Alternative: Promise.all for all QR codes first if performance is an issue)
+      const timestamp = new Date().toLocaleString('en-US', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
 
+      // RENDER CARDS
       for (let i = 0; i < toPrint.length; i++) {
         const s = toPrint[i];
-        
+
+        // Page management
         let isNewPage = false;
         if (cardsPerPage === 1) isNewPage = i > 0;
         else if (cardsPerPage === 2) isNewPage = i > 0 && i % 2 === 0;
@@ -350,209 +243,320 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
           doc.addPage();
         }
 
+        // Layout calculation
         let xOffset = margin;
         let yOffset = margin;
+        let cardWidth: number;
+        let cardHeight: number;
 
         if (cardsPerPage === 2) {
-          yOffset = (i % 2 !== 0) ? (cardHeight + (margin * 2)) : margin;
+          // A4 Portrait: 210 x 297 mm
+          // Exact midpoint is 148.5 mm.
+          // Card height = 132 mm.
+          // Card 1: Y = 9mm to 141mm (leaves 7.5mm gap to cut line at 148.5mm)
+          // Scissor Cut Line: Y = 148.5mm
+          // Card 2: Y = 156mm to 288mm (leaves 7.5mm gap from cut line, 9mm from bottom)
+          cardWidth = pageWidth - (margin * 2); // 190 mm
+          cardHeight = 132; // 132 mm
+
+          const isSecondCard = i % 2 === 1;
+          yOffset = isSecondCard ? 156 : 9;
+
+          // Draw ONLY the clean dotted separation line in the exact middle of A4
+          if (!isSecondCard) {
+            const cutY = 148.5;
+
+            // Set dotted pattern
+            if (typeof (doc as any).setLineDashPattern === 'function') {
+              (doc as any).setLineDashPattern([1.5, 1.8], 0);
+            } else if (typeof (doc as any).setLineDash === 'function') {
+              (doc as any).setLineDash([1.5, 1.8], 0);
+            }
+
+            doc.setDrawColor(180, 190, 205); // clean subtle slate dotted line
+            doc.setLineWidth(0.35);
+            doc.line(6, cutY, pageWidth - 6, cutY);
+
+            // Reset line dash
+            if (typeof (doc as any).setLineDashPattern === 'function') {
+              (doc as any).setLineDashPattern([], 0);
+            } else if (typeof (doc as any).setLineDash === 'function') {
+              (doc as any).setLineDash([], 0);
+            }
+          }
         } else if (cardsPerPage === 4) {
+          // A4 Landscape: 297 x 210 mm
+          cardWidth = 136;
+          cardHeight = 94;
           const pos = i % 4;
           const col = pos % 2;
           const row = Math.floor(pos / 2);
-          
-          // Calculate centering
-          const hGap = 5; // gap between columns
-          const vGap = 5; // gap between rows
+          const hGap = 5;
+          const vGap = 6;
           const startX = (pageWidth - (cardWidth * 2 + hGap)) / 2;
           const startY = (pageHeight - (cardHeight * 2 + vGap)) / 2;
-          
           xOffset = startX + (col * (cardWidth + hGap));
           yOffset = startY + (row * (cardHeight + vGap));
+        } else {
+          // 1/A4
+          cardWidth = pageWidth - (margin * 2);
+          cardHeight = 180;
+          xOffset = margin;
+          yOffset = (pageHeight - cardHeight) / 2;
         }
 
-        const currentCardHeight = cardsPerPage === 1 ? pageHeight - (margin * 2) : cardHeight;
+        // ==========================================
+        // CARD RENDERING (PROFESSIONAL MODERN DESIGN)
+        // ==========================================
 
-        // Draw Card Border
-        doc.setDrawColor(0);
-        doc.setLineWidth(0.8);
-        doc.rect(xOffset, yOffset, cardWidth, currentCardHeight);
+        // 1. Outer Soft Card Border (Rounded & Subtle)
+        doc.setDrawColor(203, 213, 225); // slate-300: clean, premium, no hard black borders
+        doc.setLineWidth(0.35);
+        doc.roundedRect(xOffset, yOffset, cardWidth, cardHeight, 3, 3, 'S');
 
-        // Inner thin border for premium look
-        doc.setLineWidth(0.2);
-        doc.rect(xOffset + 1.5, yOffset + 1.5, cardWidth - 3, currentCardHeight - 3);
+        // Top Navy Accent Bar
+        doc.setFillColor(30, 58, 138); // Royal Navy #1e3a8a
+        doc.roundedRect(xOffset, yOffset, cardWidth, 3.2, 3, 3, 'F');
+        doc.rect(xOffset, yOffset + 1.8, cardWidth, 1.4, 'F'); // flush bottom radius edge
 
-        const cardCenterX = xOffset + (cardWidth / 2);
-        const cardBottom = yOffset + currentCardHeight;
-        const footerY = cardBottom - 8;
+        // Bottom Navy Accent Bar (Matching small bottom line at the very bottom)
+        const botBarH = 2.2;
+        const botBarY = yOffset + cardHeight - botBarH;
+        doc.setFillColor(30, 58, 138); // Royal Navy #1e3a8a
+        doc.roundedRect(xOffset, botBarY, cardWidth, botBarH, 2, 2, 'F');
+        doc.rect(xOffset, botBarY, cardWidth, 1, 'F'); // flush top radius edge
 
-        // --- Watermark ---
-        doc.saveGraphicsState();
-        doc.setGState(new (doc as any).GState({ opacity: 0.05 }));
-        doc.addImage(logo, 'PNG', cardCenterX - 40, yOffset + (currentCardHeight / 2) - 40, 80, 80);
-        doc.restoreGraphicsState();
+        // 2. Subtle School Logo Watermark
+        if (logo) {
+          try {
+            doc.saveGraphicsState();
+            doc.setGState(new (doc as any).GState({ opacity: 0.035 }));
+            const wmSize = cardsPerPage === 4 ? 45 : 62;
+            doc.addImage(
+              logo,
+              'PNG',
+              xOffset + (cardWidth / 2) - (wmSize / 2),
+              yOffset + (cardHeight / 2) - (wmSize / 2),
+              wmSize,
+              wmSize
+            );
+            doc.restoreGraphicsState();
+          } catch {
+            // ignore watermark error
+          }
+        }
 
-        // Header Section
-        const headerY = yOffset + 14; // Shifted down for better margin
-        doc.addImage(logo, 'PNG', xOffset + 8, headerY - 5, 18, 18);
-        
-        // QR Code (Top Right)
-        try {
-          const gr = s.grNumber?.trim();
-          const qrVal = (!gr || gr === '-') ? (s.rollNumber || 'N/A') : gr;
-          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrVal)}`;
-          const qr = await loadImage(qrUrl);
-          doc.addImage(qr, 'PNG', xOffset + cardWidth - 26, headerY - 5, 18, 18);
-        } catch (e) { }
+        // 3. Header Section (Logo, School Details, QR)
+        // Properly sized with generous breathing room so it NEVER touches the exam ribbon!
+        const headerTopY = yOffset + 5;
+        const logoSize = cardsPerPage === 4 ? 13 : 15.5;
 
-        doc.setTextColor(0);
-        doc.setFontSize(cardsPerPage === 4 ? 18 : 24);
+        // School Logo (Left)
+        if (logo) {
+          try {
+            doc.addImage(logo, 'PNG', xOffset + 6, headerTopY + 0.5, logoSize, logoSize);
+          } catch { }
+        }
+
+        // QR Code (Right)
+        const qrSize = cardsPerPage === 4 ? 13 : 15.5;
+        const qrDataUrl = studentQrMap[s._id!];
+        if (qrDataUrl) {
+          try {
+            doc.addImage(qrDataUrl, 'PNG', xOffset + cardWidth - qrSize - 6, headerTopY + 0.5, qrSize, qrSize);
+          } catch { }
+        }
+
+        // Center Title & Details
+        const centerTitleX = xOffset + (cardWidth / 2);
+        doc.setTextColor(30, 58, 138); // Deep Navy
         doc.setFont('times', 'bold');
-        doc.text("AL-GHAZALI HIGH SCHOOL", cardCenterX, headerY + 1, { align: 'center' });
+        doc.setFontSize(cardsPerPage === 4 ? 13.5 : 16.5);
+        doc.text("AL-GHAZALI HIGH SCHOOL", centerTitleX, headerTopY + 5, { align: 'center' });
 
-        doc.setFontSize(cardsPerPage === 4 ? 7 : 8.5);
+        doc.setTextColor(71, 85, 105); // slate-600
         doc.setFont('helvetica', 'normal');
-        doc.text("41/25-28, Area 36-B Landhi, Karachi 75160, Pakistan", cardCenterX, headerY + 7, { align: 'center' });
-        doc.text("Phone: 0324-8266424", cardCenterX, headerY + 11, { align: 'center' });
+        doc.setFontSize(cardsPerPage === 4 ? 6.2 : 7.2);
+        doc.text("41/25-28, Area 36-B Landhi, Karachi 75160, Pakistan", centerTitleX, headerTopY + 9.2, { align: 'center' });
+        doc.text(`Tel: 0324-8266424  |  Web: alghazali.vercel.app  |  Session: ${selectedSession || "2024-2025"}`, centerTitleX, headerTopY + 12.8, { align: 'center' });
 
-        // Exam Title - Premium Ribbon Style
-        const examY = headerY + 16;
-        doc.setFillColor(248, 248, 248);
-        doc.rect(xOffset + 10, examY, cardWidth - 20, 10, 'F');
-        doc.setDrawColor(0);
-        doc.setLineWidth(0.4);
-        doc.line(xOffset + 10, examY, xOffset + cardWidth - 10, examY);
-        doc.line(xOffset + 10, examY + 10, xOffset + cardWidth - 10, examY + 10);
+        // 4. Exam Title Ribbon (Clean & Professional, with 4.5mm clear space from Logo and QR!)
+        const ribbonY = headerTopY + 18.5; // Starts at headerTopY + 18.5mm, logo ends at headerTopY + 16mm -> full clear gap!
+        const ribbonH = cardsPerPage === 4 ? 6 : 7;
+        doc.setFillColor(153, 27, 27); // Maroon/Crimson
+        doc.roundedRect(xOffset + 6, ribbonY, cardWidth - 12, ribbonH, 1.5, 1.5, 'F');
 
-        doc.setFontSize(cardsPerPage === 4 ? 12 : 14);
+        doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
-        doc.text(examName.toUpperCase(), cardCenterX, examY + 6.5, { align: 'center' });
+        doc.setFontSize(cardsPerPage === 4 ? 8 : 9.5);
+        const examTitleText = (examName.trim() ? examName.trim().toUpperCase() : "ANNUAL EXAMINATION") + "  •  ADMIT CARD";
+        doc.text(examTitleText, centerTitleX, ribbonY + (ribbonH * 0.65), { align: 'center' });
 
-        // Student Info Section
-        const infoY = examY + 15;
-        const col1 = xOffset + 12;
-        const col2 = xOffset + (cardsPerPage === 4 ? 48 : 55); // Adjusted for better label/value gap
+        // 5. Student Details & Photo Box
+        const detailsY = ribbonY + ribbonH + 3;
+        const detailsH = cardsPerPage === 4 ? 37 : 47;
 
-        // Photo Box
-        doc.setLineWidth(0.6);
-        doc.setDrawColor(0);
-        const photoW = cardsPerPage === 4 ? 30 : 35;
-        const photoH = cardsPerPage === 4 ? 36 : 42;
-        doc.rect(xOffset + cardWidth - photoW - 10, infoY, photoW, photoH);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100);
-        if (!s.photoUrl) {
-          doc.text("AFFIX PHOTO", xOffset + cardWidth - (photoW / 2) - 10, infoY + (photoH / 2), { align: 'center' });
-        }
+        // Background card for student info
+        doc.setFillColor(248, 250, 252); // slate-50
+        doc.setDrawColor(226, 232, 240); // slate-200
+        doc.setLineWidth(0.25);
+        doc.roundedRect(xOffset + 6, detailsY, cardWidth - 12, detailsH, 2, 2, 'FD');
 
+        // Photo Box (Right side of info card)
+        const photoW = cardsPerPage === 4 ? 24 : 29;
+        const photoH = cardsPerPage === 4 ? 30 : 36;
+        const photoX = xOffset + cardWidth - 6 - photoW - 4;
+        const photoY = detailsY + 3;
+
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(photoX, photoY, photoW, photoH, 1.5, 1.5, 'FD');
+
+        let photoLoaded = false;
         if (s.photoUrl) {
           try {
-            const photo = await loadImage(s.photoUrl);
-            doc.addImage(photo, 'JPEG', xOffset + cardWidth - photoW - 10, infoY, photoW, photoH);
-          } catch (e) { }
+            const photoImg = await loadImage(s.photoUrl);
+            doc.addImage(photoImg, 'JPEG', photoX + 0.5, photoY + 0.5, photoW - 1, photoH - 1);
+            photoLoaded = true;
+          } catch {
+            photoLoaded = false;
+          }
         }
 
-        doc.setTextColor(0);
-        doc.setFontSize(cardsPerPage === 4 ? 9 : 11);
-
-        const drawField = (label: string, value: string, y: number) => {
+        if (!photoLoaded) {
+          doc.setTextColor(148, 163, 184); // slate-400
           doc.setFont('helvetica', 'bold');
-          doc.text(label + ":", col1, y);
+          doc.setFontSize(cardsPerPage === 4 ? 6 : 7.2);
+          doc.text("AFFIX PHOTO", photoX + (photoW / 2), photoY + (photoH / 2) - 1, { align: 'center' });
           doc.setFont('helvetica', 'normal');
-          doc.text(String(value || "---"), col2, y);
-        };
-
-        let currentY = infoY + 5;
-        const fieldGap = cardsPerPage === 4 ? 6 : 8;
-        drawField("STUDENT NAME", s.fullName.toUpperCase(), currentY);
-        currentY += fieldGap;
-        drawField("FATHER NAME", s.fatherName.toUpperCase(), currentY);
-        currentY += fieldGap;
-        drawField("ROLL NUMBER", s.rollNumber || "---", currentY);
-        currentY += fieldGap;
-        drawField("GR NUMBER", s.grNumber || "---", currentY);
-        currentY += fieldGap;
-        drawField("CLASS", String(s.admissionFor || "---"), currentY);
-        currentY += fieldGap;
-        drawField("PHONE", s.phoneNumber || "---", currentY);
-
-        // Divider line for status
-        currentY += 3;
-        doc.setLineWidth(0.1);
-        doc.setDrawColor(150);
-        doc.line(col1, currentY, xOffset + cardWidth - 10, currentY);
-
-        // --- Attendance & Fees Section ---
-        currentY += (cardsPerPage === 4 ? 8 : 11);
-        doc.setFontSize(cardsPerPage === 4 ? 7 : 8);
-        doc.setFont('helvetica', 'bold');
-
-        // Attendance Table
-        const attTableX = col1;
-        const attTableY = currentY;
-        const attCellW = cardsPerPage === 4 ? 10 : 12;
-        const attCellH = cardsPerPage === 4 ? 5.5 : 6; // slightly taller cells
-
-        doc.text("ATTENDANCE STATUS", attTableX + (attCellW * 2), attTableY - 3, { align: 'center' });
-
-        // Table Header
-        doc.setLineWidth(0.4);
-        doc.setDrawColor(0);
-        doc.rect(attTableX, attTableY, attCellW * 4, attCellH * 2);
-        doc.line(attTableX, attTableY + attCellH, attTableX + (attCellW * 4), attTableY + attCellH);
-
-        for (let j = 1; j < 4; j++) {
-          doc.line(attTableX + (attCellW * j), attTableY, attTableX + (attCellW * j), attTableY + (attCellH * 2));
+          doc.setFontSize(cardsPerPage === 4 ? 5 : 5.8);
+          doc.text("Passport Size", photoX + (photoW / 2), photoY + (photoH / 2) + 3.2, { align: 'center' });
         }
 
-        doc.setFontSize(cardsPerPage === 4 ? 6 : 7);
-        doc.text("T.D", attTableX + (attCellW / 2), attTableY + (attCellH * 0.7), { align: 'center' });
-        doc.text("T.P", attTableX + attCellW + (attCellW / 2), attTableY + (attCellH * 0.7), { align: 'center' });
-        doc.text("T.A", attTableX + (attCellW * 2) + (attCellW / 2), attTableY + (attCellH * 0.7), { align: 'center' });
-        doc.text("T.L", attTableX + (attCellW * 3) + (attCellW / 2), attTableY + (attCellH * 0.7), { align: 'center' });
+        // Student Info Fields (Left side)
+        const fieldLeftX = xOffset + 10;
+        const fieldValX = xOffset + (cardsPerPage === 4 ? 36 : 44);
 
-        // Table Values — left blank for manual fill
-        doc.setFont('helvetica', 'normal');
-        doc.text("", attTableX + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
-        doc.text("", attTableX + attCellW + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
-        doc.text("", attTableX + (attCellW * 2) + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
-        doc.text("", attTableX + (attCellW * 3) + (attCellW / 2), attTableY + attCellH + (attCellH * 0.7), { align: 'center' });
+        // Highlighted Roll Number & GR Number Pills
+        const pillY = detailsY + 3;
+        const pillH = cardsPerPage === 4 ? 5.5 : 7;
+        const pillW = cardsPerPage === 4 ? 38 : 46;
+
+        // Roll No Pill
+        doc.setFillColor(238, 242, 255); // indigo-50
+        doc.setDrawColor(199, 210, 254); // indigo-200
+        doc.setLineWidth(0.2);
+        doc.roundedRect(fieldLeftX, pillY, pillW, pillH, 1.2, 1.2, 'FD');
+
+        doc.setTextColor(79, 70, 229); // indigo-600
         doc.setFont('helvetica', 'bold');
+        doc.setFontSize(cardsPerPage === 4 ? 6.2 : 7.2);
+        doc.text("ROLL NO:", fieldLeftX + 2.5, pillY + (pillH * 0.65));
 
-        // Fees Status
-        const feesX = col1 + (attCellW * 4) + (cardsPerPage === 4 ? 8 : 12);
-        doc.setFontSize(cardsPerPage === 4 ? 7 : 8);
-        doc.text("FEES STATUS:", feesX, attTableY + 4);
+        doc.setTextColor(30, 27, 75); // indigo-950
+        doc.setFontSize(cardsPerPage === 4 ? 7.5 : 9);
+        doc.text(String(s.rollNumber || "---"), fieldLeftX + (cardsPerPage === 4 ? 18 : 22), pillY + (pillH * 0.65));
 
-        const checkSize = 4;
-        const drawCheckbox = (x: number, y: number, label: string) => {
-          doc.rect(x, y - 3, checkSize, checkSize);
-          doc.setFont('helvetica', 'normal');
-          doc.text(label, x + checkSize + 2, y);
+        // GR No Pill
+        const grPillX = fieldLeftX + pillW + 4;
+        doc.setFillColor(241, 245, 249); // slate-100
+        doc.setDrawColor(203, 213, 225); // slate-300
+        doc.roundedRect(grPillX, pillY, pillW, pillH, 1.2, 1.2, 'FD');
+
+        doc.setTextColor(71, 85, 105); // slate-600
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(cardsPerPage === 4 ? 6.2 : 7.2);
+        doc.text("G.R NO:", grPillX + 2.5, pillY + (pillH * 0.65));
+
+        doc.setTextColor(15, 23, 42); // slate-900
+        doc.setFontSize(cardsPerPage === 4 ? 7.5 : 9);
+        doc.text(String(s.grNumber || "---"), grPillX + (cardsPerPage === 4 ? 17 : 20), pillY + (pillH * 0.65));
+
+        // Other Detail Rows
+        const drawInfoRow = (label: string, value: string, rowY: number, isBoldValue: boolean = false, valueColor = [15, 23, 42]) => {
+          doc.setTextColor(100, 116, 139); // slate-500
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(cardsPerPage === 4 ? 6.2 : 7.5);
+          doc.text(label.toUpperCase(), fieldLeftX, rowY);
+
+          doc.setTextColor(valueColor[0], valueColor[1], valueColor[2]);
+          doc.setFont('helvetica', isBoldValue ? 'bold' : 'normal');
+          doc.setFontSize(cardsPerPage === 4 ? 7 : 9);
+          doc.text(value, fieldValX, rowY);
         };
 
-        drawCheckbox(feesX + (cardsPerPage === 4 ? 20 : 24), attTableY + 4, "Clear");
-        drawCheckbox(feesX + (cardsPerPage === 4 ? 38 : 46), attTableY + 4, "Not Clear");
+        const rowStep = cardsPerPage === 4 ? 5.2 : 6.4;
+        let currentFieldY = pillY + pillH + (cardsPerPage === 4 ? 4.5 : 5.8);
 
-        doc.setFont('helvetica', 'bold');
-        doc.text("REMAINING FEES:", feesX, attTableY + (cardsPerPage === 4 ? 10 : 12));
+        drawInfoRow("Candidate Name", s.fullName.toUpperCase(), currentFieldY, true, [15, 23, 42]);
+        currentFieldY += rowStep;
+        drawInfoRow("Father's Name", s.fatherName.toUpperCase(), currentFieldY, false, [30, 41, 59]);
+        currentFieldY += rowStep;
+        drawInfoRow("Class / Grade", String(s.admissionFor || "---"), currentFieldY, true, [30, 58, 138]);
+        currentFieldY += rowStep;
+        drawInfoRow("Contact No", s.phoneNumber || "---", currentFieldY, false, [51, 65, 85]);
+        currentFieldY += rowStep;
+        drawInfoRow("Exam Center", "Main Campus - Landhi, Karachi", currentFieldY, false, [71, 85, 105]);
+
+        // 6. Examination Instructions Box (Replaces Fees/Attendance)
+        const rulesY = detailsY + detailsH + 2.5;
+        const rulesH = cardsPerPage === 4 ? 22 : 25;
+
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(226, 232, 240);
         doc.setLineWidth(0.2);
-        doc.line(feesX + (cardsPerPage === 4 ? 25 : 30), attTableY + (cardsPerPage === 4 ? 10.5 : 12.5), xOffset + cardWidth - 10, attTableY + (cardsPerPage === 4 ? 10.5 : 12.5));
+        doc.roundedRect(xOffset + 6, rulesY, cardWidth - 12, rulesH, 1.5, 1.5, 'FD');
 
-        doc.setLineWidth(0.1);
-        doc.setDrawColor(180);
-        doc.line(xOffset + 5, footerY - 5, xOffset + cardWidth - 5, footerY - 5);
+        doc.setTextColor(153, 27, 27); // Crimson title
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(cardsPerPage === 4 ? 5.8 : 7.2);
+        doc.text("EXAMINATION RULES & INSTRUCTIONS FOR CANDIDATE:", xOffset + 9, rulesY + 3.8);
 
-        doc.setFontSize(6);
+        doc.setTextColor(71, 85, 105);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(cardsPerPage === 4 ? 5.2 : 6.5);
+
+        const ruleGap = cardsPerPage === 4 ? 3.6 : 4.2;
+        let ruleY = rulesY + 7.6;
+        doc.text("1. Candidate must bring this Admit Card along with their School ID Card to each examination.", xOffset + 9, ruleY);
+        ruleY += ruleGap;
+        doc.text("2. Report to the designated examination room at least 15 minutes prior to the start time.", xOffset + 9, ruleY);
+        ruleY += ruleGap;
+        doc.text("3. Possession of mobile phones, smart devices, cheat materials, or borrowing stationery is strictly prohibited.", xOffset + 9, ruleY);
+        ruleY += ruleGap;
+        doc.text("4. Any candidate using unfair means will be subject to immediate disciplinary action and paper cancellation.", xOffset + 9, ruleY);
+
+        // 7. System Generated Verification Footer (NO SIGNATURES as requested)
+        const footY = rulesY + rulesH + 2;
+        const footH = cardsPerPage === 4 ? 6.5 : 8;
+
+        doc.setFillColor(241, 245, 249); // slate-100
+        doc.roundedRect(xOffset + 6, footY, cardWidth - 12, footH, 1.2, 1.2, 'F');
+
+        // Crisp Vector Checkmark Badge (never breaks or turns into an apostrophe)
+        const checkCircleX = xOffset + 10.5;
+        const checkCircleY = footY + 4;
+        doc.setFillColor(22, 163, 74); // emerald-600
+        doc.circle(checkCircleX, checkCircleY, 1.8, 'F');
+        doc.setDrawColor(255, 255, 255);
+        doc.setLineWidth(0.4);
+        doc.line(checkCircleX - 0.9, checkCircleY, checkCircleX - 0.2, checkCircleY + 0.8);
+        doc.line(checkCircleX - 0.2, checkCircleY + 0.8, checkCircleX + 1.1, checkCircleY - 0.7);
+
+        doc.setTextColor(30, 41, 59); // slate-800
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(cardsPerPage === 4 ? 5.5 : 6.8);
+        doc.text("SYSTEM-GENERATED DOCUMENT  •  NO SIGNATURE REQUIRED", checkCircleX + 3.8, footY + (footH * 0.44));
+
+        doc.setTextColor(100, 116, 139); // slate-500
         doc.setFont('helvetica', 'italic');
-        const now = new Date();
-        const dateTimeStr = now.toLocaleDateString() + " " + now.toLocaleTimeString();
-        doc.text(`* System-generated admit card. Signature not required.`, cardCenterX, footerY, { align: 'center' });
-        doc.text(`Generated: ${dateTimeStr} | IT Dept`, cardCenterX, footerY + 3.5, { align: 'center' });
+        doc.setFontSize(cardsPerPage === 4 ? 4.8 : 5.8);
+        doc.text(`Official verification active | Issued: ${timestamp} | Al-Ghazali High School Exam Cell`, checkCircleX + 3.8, footY + (footH * 0.82));
       }
 
-      doc.save(`Admit_Cards_${klass}.pdf`);
-      toast.success("PDF Downloaded successfully");
+      doc.save(`Admit_Cards_${klass}_${selectedSession || 'Session'}.pdf`);
+      toast.success("PDF Downloaded successfully!");
     } catch (e) {
       console.error(e);
       toast.error("Failed to generate PDF");
@@ -564,69 +568,111 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 flex flex-col" style={{ height: 'calc(100vh - 80px)' }}>
 
-      {/* Toolbar - Compact & Clean */}
+      {/* Toolbar - Clean, Modern & Professional */}
       <div className="bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-4 shrink-0">
         <div className="flex flex-col lg:flex-row items-end gap-4">
+
           {/* Search & Class Filter */}
           <div className="flex flex-1 items-center gap-3 min-w-0">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-              <input type="text" placeholder="Search student..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+              <input
+                type="text"
+                placeholder="Search by name, roll no, gr no..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+              />
             </div>
-            <select value={klass} onChange={(e) => setKlass(e.target.value)}
-              className="px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/30 min-w-[130px]">
+            <select
+              value={klass}
+              onChange={(e) => setKlass(e.target.value)}
+              className="px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/30 min-w-[130px]"
+            >
               {classes.map(c => <option key={c} value={c}>{c === 'All' ? 'All Classes' : `Class ${c}`}</option>)}
             </select>
           </div>
-          {/* Exam Name */}
+
+          {/* Exam Title */}
           <div className="flex-1 min-w-0">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase mb-1 block">Exam Title</label>
-            <input type="text" placeholder="e.g. Final Term Examination 2024" value={examName} onChange={(e) => setExamName(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+            <label className="text-[10px] font-bold text-zinc-400 uppercase mb-1 block">Exam Title (Admit Card Banner)</label>
+            <input
+              type="text"
+              placeholder="e.g. Final Term Examination 2024-2025"
+              value={examName}
+              onChange={(e) => setExamName(e.target.value)}
+              className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+            />
           </div>
+
           {/* Cards per page toggle */}
           <div className="flex items-center bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700 h-[38px]">
-            <button onClick={() => setCardsPerPage(1)} className={cn("px-3 py-1.5 rounded-md text-xs font-bold transition-all", cardsPerPage === 1 ? "bg-white dark:bg-zinc-800 shadow-sm text-primary" : "text-zinc-500")}>
+            <button
+              onClick={() => setCardsPerPage(1)}
+              className={cn("px-3 py-1.5 rounded-md text-xs font-bold transition-all", cardsPerPage === 1 ? "bg-white dark:bg-zinc-800 shadow-sm text-primary" : "text-zinc-500")}
+            >
               <Layers size={14} className="inline mr-1" />1/A4
             </button>
-            <button onClick={() => setCardsPerPage(2)} className={cn("px-3 py-1.5 rounded-md text-xs font-bold transition-all", cardsPerPage === 2 ? "bg-white dark:bg-zinc-800 shadow-sm text-primary" : "text-zinc-500")}>
+            <button
+              onClick={() => setCardsPerPage(2)}
+              title="2 Cards per A4 page with middle dotted line"
+              className={cn("px-3 py-1.5 rounded-md text-xs font-bold transition-all", cardsPerPage === 2 ? "bg-white dark:bg-zinc-800 shadow-sm text-primary" : "text-zinc-500")}
+            >
               <Layers size={14} className="inline mr-1" />2/A4
             </button>
-            <button onClick={() => setCardsPerPage(4)} className={cn("px-3 py-1.5 rounded-md text-xs font-bold transition-all", cardsPerPage === 4 ? "bg-white dark:bg-zinc-800 shadow-sm text-primary" : "text-zinc-500")}>
+            <button
+              onClick={() => setCardsPerPage(4)}
+              className={cn("px-3 py-1.5 rounded-md text-xs font-bold transition-all", cardsPerPage === 4 ? "bg-white dark:bg-zinc-800 shadow-sm text-primary" : "text-zinc-500")}
+            >
               <Layers size={14} className="inline mr-1" />4/A4
             </button>
           </div>
-          {/* Download */}
-          <button onClick={handleDownloadPDF} disabled={isDownloading || toPrint.length === 0}
-            className="px-5 py-2 bg-zinc-900 dark:bg-white dark:text-zinc-900 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-[0.98] disabled:opacity-40 transition-all shrink-0">
-            {isDownloading ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <FileDown size={16} />}
-            Download PDF ({toPrint.length})
-          </button>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleDownloadPDF}
+              disabled={isDownloading || toPrint.length === 0}
+              className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-40 transition-all shadow-sm"
+            >
+              {isDownloading ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <FileDown size={16} />}
+              Download PDF ({toPrint.length})
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main Content - Fixed height, no page scroll */}
+      {/* Main Content */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
 
         {/* Student List Panel */}
         <div className="lg:col-span-4 xl:col-span-3 bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col min-h-0 overflow-hidden">
           <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 flex items-center justify-between">
-            <h3 className="font-bold text-sm">Select Students ({selectedIds.size || filtered.length})</h3>
+            <div>
+              <h3 className="font-bold text-sm">Select Students</h3>
+              <p className="text-[11px] text-zinc-400">
+                {selectedIds.size > 0 ? `${selectedIds.size} of ${filtered.length} selected` : `All ${filtered.length} students`}
+              </p>
+            </div>
             <div className="flex gap-2">
-              <button onClick={handleSelectAll} className="text-[10px] font-bold text-primary hover:underline uppercase">All</button>
-              <button onClick={handleClearSelection} className="text-[10px] font-bold text-zinc-400 hover:underline uppercase">None</button>
+              <button onClick={handleSelectAll} className="text-[11px] font-bold text-primary hover:underline uppercase">Select All</button>
+              <button onClick={handleClearSelection} className="text-[11px] font-bold text-zinc-400 hover:underline uppercase">Clear</button>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
             {loading ? (
               [...Array(10)].map((_, i) => <div key={i} className="h-12 bg-zinc-50 dark:bg-zinc-900/50 animate-pulse rounded-lg" />)
+            ) : sorted.length === 0 ? (
+              <div className="p-6 text-center text-zinc-400 text-sm">No students found.</div>
             ) : sorted.map(s => (
-              <button key={s._id} onClick={() => toggleSelect(s._id!)}
+              <button
+                key={s._id}
+                onClick={() => toggleSelect(s._id!)}
                 className={cn(
                   "w-full p-2.5 rounded-lg flex items-center gap-3 transition-all text-left group",
                   selectedIds.has(s._id!) ? "bg-primary/10 border border-primary/20" : "hover:bg-zinc-50 dark:hover:bg-zinc-900/50 border border-transparent"
-                )}>
+                )}
+              >
                 <div className={cn(
                   "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
                   selectedIds.has(s._id!) ? "bg-primary border-primary text-white" : "border-zinc-300 dark:border-zinc-700"
@@ -635,7 +681,7 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate">{s.fullName}</p>
-                  <p className="text-[10px] text-zinc-400 truncate">Roll: {s.rollNumber} · GR: {s.grNumber} · Class: {s.admissionFor}</p>
+                  <p className="text-[10px] text-zinc-400 truncate">Roll: {s.rollNumber || '---'} · GR: {s.grNumber || '---'} · Class: {s.admissionFor}</p>
                 </div>
               </button>
             ))}
@@ -643,120 +689,174 @@ const AdminAdmitCards = ({ genderFilter, onLoadingChange }: { genderFilter?: str
         </div>
 
         {/* Preview Panel */}
-        <div className="lg:col-span-8 xl:col-span-9 bg-zinc-50 dark:bg-zinc-900/30 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col min-h-0 overflow-hidden">
-          <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 bg-white/50 dark:bg-zinc-950/50 shrink-0">
-            <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-              <Printer size={14} /> Preview (First 2)
+        <div className="lg:col-span-8 xl:col-span-9 bg-zinc-100/60 dark:bg-zinc-900/30 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col min-h-0 overflow-hidden">
+          <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0 flex items-center justify-between">
+            <h4 className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+              <Printer size={15} /> A4 Print Preview (2 Cards per Page)
             </h4>
+            <div className="flex items-center gap-2 text-xs text-zinc-400 font-medium">
+              <span>A4 Midpoint Dotted Separation</span>
+            </div>
           </div>
+
           <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
             {toPrint.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-zinc-400">
                 <Users size={40} className="mb-3 opacity-20" />
-                <p className="text-sm">Select students to preview</p>
+                <p className="text-sm">Select students to preview admit cards</p>
               </div>
             ) : (
-              <div className="max-w-[580px] mx-auto space-y-6">
-                {toPrint.slice(0, 2).map((s) => (
-                  <div key={s._id} className="bg-white text-black border-2 border-black p-5 relative font-serif overflow-hidden">
-                    {/* Watermark */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-[0.04] pointer-events-none">
-                      <Image src="/logo.png" alt="Watermark" width={224} height={224} className="object-contain" />
-                    </div>
+              <div className="max-w-[620px] mx-auto space-y-5">
+                {toPrint.slice(0, 2).map((s, idx) => {
+                  const key = s.grNumber || s.rollNumber || s._id || 'unknown';
+                  const qrUrl = qrCache[key];
 
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-3 border-b-2 border-red-800 pb-3 relative z-10">
-                      <Image src="/logo.png" alt="Logo" width={56} height={56} />
-                      <div className="text-center flex-1 px-3">
-                        <h2 className="text-xl font-bold tracking-tight text-red-800" style={{ fontFamily: 'serif' }}>AL-GHAZALI HIGH SCHOOL</h2>
-                        <p className="text-[8px] uppercase tracking-widest text-blue-900 font-bold mt-0.5">41/25-28, Area 36-B Landhi, Karachi 75160</p>
-                        <p className="text-[8px] font-bold text-zinc-500">Phone: 0324-8266424</p>
-                      </div>
-                      <div className="w-14 h-14 border border-blue-900 flex flex-col items-center justify-center bg-white rounded-sm">
-                        <div className="bg-blue-50 w-9 h-9 mb-0.5 rounded-sm flex items-center justify-center text-[7px] text-blue-400">QR</div>
-                        <span className="text-[6px] font-black uppercase text-blue-900">GR: {s.grNumber}</span>
-                      </div>
-                    </div>
+                  return (
+                    <React.Fragment key={s._id}>
+                      {/* Clean Dotted Separation Line between Card 1 and Card 2 */}
+                      {idx === 1 && (
+                        <div className="py-2">
+                          <div className="w-full border-t border-dashed border-zinc-400 dark:border-zinc-600" />
+                        </div>
+                      )}
 
-                    {/* Exam Title */}
-                    <div className="bg-red-800 text-white py-1.5 text-center font-black text-xs mb-4 uppercase tracking-[0.15em] relative z-10">
-                      {examName}
-                    </div>
+                      {/* Card Container - Soft, Modern & Professional */}
+                      <div className="bg-white text-zinc-900 rounded-xl border border-zinc-300 shadow-sm relative overflow-hidden font-sans flex flex-col">
 
-                    {/* Student Info */}
-                    <div className="grid grid-cols-12 gap-y-3 text-xs px-1 relative z-10">
-                      <div className="col-span-8 space-y-2.5">
-                        {[
-                          ['STUDENT NAME', s.fullName.toUpperCase()],
-                          ['FATHER NAME', s.fatherName.toUpperCase()],
-                          ['ROLL NO', s.rollNumber],
-                          ['GR NO', s.grNumber],
-                          ['CLASS', s.admissionFor],
-                          ['PHONE', s.phoneNumber],
-                        ].map(([label, val]) => (
-                          <div key={label as string} className="flex gap-2">
-                            <span className="font-bold w-28 shrink-0 text-[11px]">{label}:</span>
-                            <span className="border-b border-dotted border-black flex-1 text-[11px]">{val || '---'}</span>
+                        {/* Top Royal Navy Accent Bar */}
+                        <div className="h-1.5 bg-blue-900 w-full" />
+
+                        {/* Subtle Logo Watermark */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+                          <Image src="/logo.png" alt="Watermark" width={220} height={220} className="object-contain" />
+                        </div>
+
+                        <div className="p-4 sm:p-5 relative z-10 flex-1 flex flex-col">
+
+                          {/* Header: Logo, School Name, QR (Generous padding so it never touches the Exam Banner) */}
+                          <div className="flex items-center justify-between gap-3 pb-3">
+                            <Image src="/logo.png" alt="Logo" width={48} height={48} className="shrink-0 drop-shadow-xs" />
+
+                            <div className="text-center flex-1 min-w-0">
+                              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-blue-950 font-serif leading-tight">
+                                AL-GHAZALI HIGH SCHOOL
+                              </h2>
+                              <p className="text-[9px] uppercase tracking-wider text-zinc-500 font-medium mt-0.5">
+                                41/25-28, Area 36-B Landhi, Karachi 75160, Pakistan
+                              </p>
+                              <p className="text-[9px] font-medium text-zinc-400">
+                                Tel: 0324-8266424 · Web: alghazali.vercel.app · Session: {selectedSession || "2024-2025"}
+                              </p>
+                            </div>
+
+                            <div className="shrink-0 flex flex-col items-center">
+                              {qrUrl ? (
+                                <Image src={qrUrl} alt="QR Code" width={48} height={48} className="rounded border border-zinc-200" />
+                              ) : (
+                                <div className="w-[48px] h-[48px] border border-dashed border-zinc-300 rounded flex items-center justify-center text-[8px] text-zinc-400">
+                                  QR
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                      <div className="col-span-4 flex justify-end">
-                        <div className="w-22 h-26 border-2 border-black flex flex-col items-center justify-center bg-zinc-50" style={{ width: 88, height: 104 }}>
-                          <User size={28} className="text-zinc-200 mb-1" />
-                          <span className="text-[7px] font-bold text-zinc-400 uppercase">Photo</span>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Attendance & Fees */}
-                    <div className="mt-6 pt-5 border-t-2 border-black flex items-start gap-6 px-1 relative z-10">
-                      <div className="w-1/2">
-                        <p className="font-bold text-[9px] mb-3 uppercase tracking-wider text-red-900">Attendance Status</p>
-                        <table className="w-full border-collapse border border-black text-[8px]">
-                          <thead>
-                            <tr className="bg-zinc-100/50">
-                              <th className="border border-black p-1 font-black">T.D</th>
-                              <th className="border border-black p-1 font-black">T.P</th>
-                              <th className="border border-black p-1 font-black">T.A</th>
-                              <th className="border border-black p-1 font-black">T.L</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(() => {
-                              const att = attendanceMap[s.grNumber || ''] || { present: 0, absent: 0, leave: 0, total: 0 };
-                              return (
-                                <tr>
-                                  <td className="border border-black p-1 text-center font-bold text-[9px]">{att.total}</td>
-                                  <td className="border border-black p-1 text-center font-bold text-[9px] text-green-700">{att.present}</td>
-                                  <td className="border border-black p-1 text-center font-bold text-[9px] text-red-700">{att.absent}</td>
-                                  <td className="border border-black p-1 text-center font-bold text-[9px] text-amber-700">{att.leave}</td>
-                                </tr>
-                              );
-                            })()}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="w-1/2 space-y-4 pt-0.5">
-                        <div className="flex items-center gap-3">
-                          <span className="font-bold text-[9px] uppercase tracking-wider">Fees:</span>
-                          <div className="flex gap-3">
-                            <div className="flex items-center gap-1"><div className="w-3.5 h-3.5 border-2 border-black"></div><span className="text-[9px]">Clear</span></div>
-                            <div className="flex items-center gap-1"><div className="w-3.5 h-3.5 border-2 border-black"></div><span className="text-[9px]">Not Clear</span></div>
+                          {/* Exam Title Banner (With clear margin from header above) */}
+                          <div className="mt-1 bg-red-800 text-white py-1 px-3 text-center rounded-md font-bold text-xs uppercase tracking-wider shadow-xs">
+                            {examName || "ANNUAL EXAMINATION"}  •  ADMIT CARD
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-[9px] uppercase tracking-wider shrink-0">Remaining:</span>
-                          <div className="flex-1 border-b-2 border-black h-3"></div>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Footer */}
-                    <div className="mt-4 text-[7px] text-center italic border-t border-zinc-200 pt-1.5 opacity-40 relative z-10">
-                      * System generated admit card · No signature required · {new Date().toLocaleDateString()}
-                    </div>
-                  </div>
-                ))}
+                          {/* Student Info & Photo Section */}
+                          <div className="mt-3 bg-zinc-50/80 rounded-lg p-3 border border-zinc-200/80 grid grid-cols-12 gap-3">
+
+                            {/* Details (Left Side) */}
+                            <div className="col-span-8 space-y-2">
+
+                              {/* Prominent Roll No & GR No Badges */}
+                              <div className="flex items-center gap-2">
+                                <div className="bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                                  <span className="text-[9px] font-bold text-indigo-700 uppercase">Roll No:</span>
+                                  <span className="text-xs font-black text-indigo-950">{s.rollNumber || '---'}</span>
+                                </div>
+                                <div className="bg-zinc-100 border border-zinc-200 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                                  <span className="text-[9px] font-bold text-zinc-600 uppercase">GR No:</span>
+                                  <span className="text-xs font-black text-zinc-900">{s.grNumber || '---'}</span>
+                                </div>
+                              </div>
+
+                              {/* Student Detail Rows */}
+                              <div className="space-y-1 text-xs pt-1">
+                                <div className="flex items-baseline">
+                                  <span className="w-28 shrink-0 text-[10px] font-bold text-zinc-500 uppercase">Candidate Name:</span>
+                                  <span className="font-bold text-zinc-900 text-xs truncate">{s.fullName.toUpperCase()}</span>
+                                </div>
+                                <div className="flex items-baseline">
+                                  <span className="w-28 shrink-0 text-[10px] font-bold text-zinc-500 uppercase">Father&apos;s Name:</span>
+                                  <span className="font-medium text-zinc-800 text-xs truncate">{s.fatherName.toUpperCase()}</span>
+                                </div>
+                                <div className="flex items-baseline">
+                                  <span className="w-28 shrink-0 text-[10px] font-bold text-zinc-500 uppercase">Class / Grade:</span>
+                                  <span className="font-bold text-blue-900 text-xs">{s.admissionFor || '---'}</span>
+                                </div>
+                                <div className="flex items-baseline">
+                                  <span className="w-28 shrink-0 text-[10px] font-bold text-zinc-500 uppercase">Contact No:</span>
+                                  <span className="font-medium text-zinc-700 text-xs">{s.phoneNumber || '---'}</span>
+                                </div>
+                                <div className="flex items-baseline">
+                                  <span className="w-28 shrink-0 text-[10px] font-bold text-zinc-500 uppercase">Exam Center:</span>
+                                  <span className="font-medium text-zinc-600 text-xs">Main Campus - Landhi, Karachi</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Photo Box (Right Side) */}
+                            <div className="col-span-4 flex justify-end items-center">
+                              <div className="w-[84px] h-[102px] rounded-lg border border-zinc-300 bg-white flex flex-col items-center justify-center overflow-hidden shadow-2xs">
+                                {s.photoUrl ? (
+                                  <Image src={s.photoUrl} alt={s.fullName} width={84} height={102} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center p-2 text-center text-zinc-400">
+                                    <User size={24} className="mb-1 text-zinc-300" />
+                                    <span className="text-[7px] font-bold uppercase tracking-wider">Affix Photo</span>
+                                    <span className="text-[6px] text-zinc-400">Passport Size</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Examination Instructions (Clean Executive Box) */}
+                          <div className="mt-2.5 bg-white border border-zinc-200 rounded-lg p-2.5 text-[9px] text-zinc-600">
+                            <p className="font-bold text-red-800 uppercase tracking-wide mb-1 text-[9px]">
+                              Important Examination Rules & Instructions:
+                            </p>
+                            <ul className="space-y-0.5 text-zinc-600 list-disc pl-3 text-[8.5px] leading-tight">
+                              <li>Candidate must bring this Admit Card along with their official School ID Card to every exam.</li>
+                              <li>Report to the designated exam room at least 15 minutes before the exam commences.</li>
+                              <li>Mobile phones, smart devices, unauthorized papers or notes are strictly prohibited in the exam hall.</li>
+                              <li>Any student found using unfair means will be disqualified from the examination immediately.</li>
+                            </ul>
+                          </div>
+
+                          {/* System-Generated Verification (NO SIGNATURES) */}
+                          <div className="mt-2.5 bg-zinc-100 rounded-md p-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1 border border-zinc-200/60">
+                            <div className="flex items-center gap-1.5 text-[9.5px] font-bold text-zinc-800">
+                              <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
+                              <span>SYSTEM-GENERATED DOCUMENT  •  NO SIGNATURE REQUIRED</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-[8.5px] text-zinc-500 italic">
+                              <Clock size={11} className="shrink-0" />
+                              <span>Issued: {formattedTimestamp}</span>
+                            </div>
+                          </div>
+
+                        </div>
+
+                        {/* Bottom Royal Navy Accent Bar (Small line at the very bottom) */}
+                        <div className="h-1 bg-blue-900 w-full mt-auto" />
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
               </div>
             )}
           </div>

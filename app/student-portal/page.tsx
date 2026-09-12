@@ -38,16 +38,105 @@ const formatCnic = (s: string) => {
 
 export default function StylishStudentPortal() {
   const [activeTab, setActiveTab] = useState('Dashboard');
-  const [sessionData, setSessionData] = useState<{ bFormOrCnic: string; grNumber: string } | null>(null)
-  type ScheduleDay = { day: string; periods?: { subject: string; time: string }[] }
-  const [filtered, setFiltered] = useState<Student[]>([])
-  const [matchedSchedule, setMatchedSchedule] = useState<ScheduleDay[] | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [sessionData, setSessionData] = useState<{ bFormOrCnic: string; grNumber: string } | null>(null);
+  const [urlCredentials, setUrlCredentials] = useState<{ bForm: string; gr: string }>({ bForm: '', gr: '' });
+  type ScheduleDay = { day: string; periods?: { subject: string; time: string }[] };
+  const [filtered, setFiltered] = useState<Student[]>([]);
+  const [matchedSchedule, setMatchedSchedule] = useState<ScheduleDay[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Handle Session and Data Fetching
+  // Student Query
+  const studentQuery = `*[_type == "student" && (
+    cnicOrBform == $plainIdentity || cnicOrBform == $formattedIdentity ||
+    fatherCnic == $plainIdentity || fatherCnic == $formattedIdentity ||
+    guardianCnic == $plainIdentity || guardianCnic == $formattedIdentity
+  ) && grNumber == $grNumber]{
+    _id,
+    fullName,
+    fatherName,
+    fatherCnic,
+    dob,
+    rollNumber,
+    grNumber,
+    gender,
+    admissionFor,
+    nationality,
+    medicalCondition,
+    cnicOrBform,
+    email,
+    phoneNumber,
+    whatsappNumber,
+    address,
+    formerEducation,
+    previousInstitute,
+    lastExamPercentage,
+    guardianName,
+    guardianContact,
+    guardianCnic,
+    guardianRelation,
+    issueDate,
+    expiryDate,
+    session,
+    "photoUrl": photo.asset->url
+  }[0]`;
+
+  // Handle Session, QR Auto-login, and Data Fetching
   useEffect(() => {
     const initializePortal = async () => {
       try {
+        // 1. Check for URL query parameters (from QR Code scan or direct link)
+        let urlBform = '';
+        let urlGr = '';
+        if (typeof window !== 'undefined') {
+          const searchParams = new URLSearchParams(window.location.search);
+          urlBform = (searchParams.get('bform') || searchParams.get('cnic') || '').trim();
+          urlGr = (searchParams.get('gr') || '').trim();
+        }
+
+        if (urlBform || urlGr) {
+          setUrlCredentials({ bForm: urlBform, gr: urlGr });
+        }
+
+        // If URL has both B-Form/CNIC and GR Number, attempt instant AUTO-LOGIN!
+        if (urlBform && urlGr) {
+          const cleanIdentity = onlyDigits(urlBform);
+          const formattedIdentity = formatCnic(urlBform);
+          const cleanGrNumber = urlGr.trim();
+
+          const student = await client.fetch(studentQuery, {
+            plainIdentity: cleanIdentity,
+            formattedIdentity: formattedIdentity,
+            grNumber: cleanGrNumber
+          });
+
+          if (student) {
+            const timestamp = Date.now();
+            setSessionData({ bFormOrCnic: cleanIdentity, grNumber: cleanGrNumber });
+            setFiltered([student]);
+            const newSession = {
+              timestamp,
+              bFormOrCnic: cleanIdentity,
+              grNumber: cleanGrNumber,
+              _id: student._id,
+              session: student.session
+            };
+            try {
+              localStorage.setItem('studentSession', JSON.stringify(newSession));
+              localStorage.setItem('studentId', String(student._id));
+            } catch { }
+            toast.success(`Welcome to Student Portal, ${student.fullName}!`);
+            // Clean URL query parameters smoothly without reloading
+            try {
+              window.history.replaceState({}, '', window.location.pathname);
+            } catch { }
+            setIsLoading(false);
+            return;
+          } else {
+            toast.error("Could not auto-login with scanned credentials. Please check details.");
+          }
+        }
+
+        // 2. Check saved localStorage session
         const session = localStorage.getItem('studentSession');
         if (!session) {
           setIsLoading(false);
@@ -60,44 +149,9 @@ export default function StylishStudentPortal() {
         if (now - timestamp < SESSION_DURATION) {
           setSessionData({ bFormOrCnic, grNumber });
 
-          // Fetch only this specific student - Robust Match (Dashed vs Plain)
           const cleanIdentity = onlyDigits(bFormOrCnic);
           const formattedIdentity = formatCnic(bFormOrCnic);
           const cleanGrNumber = grNumber.trim();
-
-          const studentQuery = `*[_type == "student" && (
-            cnicOrBform == $plainIdentity || cnicOrBform == $formattedIdentity ||
-            fatherCnic == $plainIdentity || fatherCnic == $formattedIdentity ||
-            guardianCnic == $plainIdentity || guardianCnic == $formattedIdentity
-          ) && grNumber == $grNumber]{
-            _id,
-            fullName,
-            fatherName,
-            fatherCnic,
-            dob,
-            rollNumber,
-            grNumber,
-            gender,
-            admissionFor,
-            nationality,
-            medicalCondition,
-            cnicOrBform,
-            email,
-            phoneNumber,
-            whatsappNumber,
-            address,
-            formerEducation,
-            previousInstitute,
-            lastExamPercentage,
-            guardianName,
-            guardianContact,
-            guardianCnic,
-            guardianRelation,
-            issueDate,
-            expiryDate,
-            session,
-            "photoUrl": photo.asset->url
-          }[0]`;
 
           const student = await client.fetch(studentQuery, {
             plainIdentity: cleanIdentity,
@@ -109,7 +163,6 @@ export default function StylishStudentPortal() {
             setFiltered([student]);
             try {
               localStorage.setItem('studentId', String(student._id));
-              // Ensure session in localStorage is up to date
               const updatedSession = {
                 timestamp,
                 bFormOrCnic,
@@ -120,7 +173,6 @@ export default function StylishStudentPortal() {
               localStorage.setItem('studentSession', JSON.stringify(updatedSession));
             } catch { }
           } else {
-            // Invalid session data
             localStorage.removeItem('studentSession');
             setSessionData(null);
           }
@@ -202,9 +254,13 @@ export default function StylishStudentPortal() {
         subtitle="Verify your identity to access your academic dashboard."
         type="student"
       >
-        <StudentLoginForm onLoginSuccess={(student) => {
-          setFiltered([student]);
-        }} />
+        <StudentLoginForm
+          initialBForm={urlCredentials.bForm}
+          initialGr={urlCredentials.gr}
+          onLoginSuccess={(student) => {
+            setFiltered([student]);
+          }}
+        />
         <Toaster position="bottom-right" richColors closeButton />
       </AuthLayout>
     )
