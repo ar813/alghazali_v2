@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { LayoutDashboard, Users as UsersIcon, BarChart3, IdCard, Printer, Wallet, FileQuestion, Award, Trophy, Smartphone, UserCheck, CalendarCheck, School } from 'lucide-react';
+import { LayoutDashboard, Users as UsersIcon, BarChart3, IdCard, Printer, Wallet, FileQuestion, Award, Trophy, Smartphone, UserCheck, CalendarCheck, School, ScrollText } from 'lucide-react';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import AccessDeniedDialog from '@/components/Auth/AccessDeniedDialog';
@@ -68,7 +68,7 @@ const AdminPortal = ({
         ];
 
         return [...baseItems];
-    }, []);
+    }, [isSuperAdmin]);
 
     // Effect to handle access denied for non-super admins (not needed anymore for global tabs, but keeping skeleton)
     useEffect(() => {
@@ -161,6 +161,7 @@ const AdminPortal = ({
                         {activeTab === 'mobile-attendance' && <AdminMobileAttendance onLoadingChange={onLoadingChange} />}
                         {activeTab === 'manual-attendance' && <AdminManualAttendance onLoadingChange={onLoadingChange} />}
                         {activeTab === 'attendance-overview' && <AdminAttendanceOverview onLoadingChange={onLoadingChange} />}
+
                     </div>
                 </main>
             </div>

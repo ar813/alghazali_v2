@@ -91,7 +91,7 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
             } else {
                 setFormData({
                     fullName: '', fatherName: '', fatherCnic: '', dob: '', rollNumber: '',
-                    grNumber: '', gender: 'male', admissionFor: '1', nationality: 'pakistani',
+                    grNumber: '', gender: 'male', admissionFor: '1', nationality: 'Pakistani',
                     medicalCondition: 'no', cnicOrBform: '', email: '', phoneNumber: '',
                     whatsappNumber: '', address: '', formerEducation: '', previousInstitute: '',
                     lastExamPercentage: '', guardianName: '', guardianContact: '',
@@ -198,7 +198,10 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
     };
 
     return (
-        <div className="flex flex-col h-full w-full bg-white dark:bg-neutral-950 overflow-hidden font-sans selection:bg-neutral-100 dark:selection:bg-neutral-800">
+        <div 
+            className="flex flex-col w-full bg-white dark:bg-neutral-950 overflow-hidden font-sans selection:bg-neutral-100 dark:selection:bg-neutral-800"
+            style={{ height: '100dvh' }}
+        >
             {/* Simple Header */}
             <header className="flex-shrink-0 flex items-center justify-between px-4 sm:px-8 py-3.5 border-b border-neutral-100 dark:border-neutral-900 bg-white dark:bg-neutral-950 z-30">
                 <div className="flex items-center gap-3">
@@ -257,7 +260,10 @@ const StudentFormContent: React.FC<StudentFormContentProps> = ({ onSave, onCance
             </nav>
 
             {/* Content Area */}
-            <main className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-neutral-950 custom-scrollbar overscroll-contain">
+            <main 
+                className="bg-white dark:bg-neutral-950 custom-scrollbar overscroll-contain"
+                style={{ flex: '1 1 0', overflowY: 'auto', minHeight: 0 }}
+            >
                 <div className="max-w-3xl mx-auto p-5 sm:p-10 pb-20">
                     <AnimatePresence mode="wait">
                         <motion.div

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import serverClient from '@/sanity/lib/serverClient';
 import { verifyAuth, unauthorizedResponse } from '@/lib/api-auth';
+import { dbAdmin } from '@/lib/firebase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,13 @@ export async function POST(req: NextRequest) {
     try {
         const user = await verifyAuth(req);
         if (!user) return unauthorizedResponse();
+
+        // Only super-admin can rename sessions
+        const uid = user.localId || user.uid;
+        const userDoc = await dbAdmin.collection('users').doc(uid).get();
+        if (!userDoc.exists || userDoc.data()?.role !== 'super_admin') {
+            return NextResponse.json({ ok: false, error: 'Only Super Admins can rename sessions.' }, { status: 403 });
+        }
 
         const { oldSession, newSession } = await req.json();
 

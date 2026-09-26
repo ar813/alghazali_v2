@@ -7,7 +7,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, LayoutDashboard, Smartphone, UserCog, ShieldCheck, User } from "lucide-react";
+import { LogOut, LayoutDashboard, Smartphone, UserCog, ShieldCheck, User, Mail, ScrollText } from "lucide-react";
 import { User as FirebaseUser } from "firebase/auth";
 import Link from "next/link";
 import Image from "next/image";
@@ -46,8 +46,8 @@ export function AdminDropdown({ user, role, logout }: AdminDropdownProps) {
                 <DropdownMenuTrigger asChild>
                     <button className="relative outline-none group">
                         <div className={cn(
-                            "h-10 w-10 flex items-center justify-center overflow-hidden transition-all duration-300",
-                            "bg-white border border-gray-100 group-hover:border-emerald-800/30",
+                            "h-10 w-10 rounded-full flex items-center justify-center overflow-hidden transition-all duration-300",
+                            "bg-white border border-gray-200 group-hover:border-emerald-600/50",
                             "shadow-sm group-hover:shadow-md"
                         )}>
                             {photoURL ? (
@@ -56,33 +56,33 @@ export function AdminDropdown({ user, role, logout }: AdminDropdownProps) {
                                     alt="Profile"
                                     width={40}
                                     height={40}
-                                    className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-110"
+                                    className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
                                     unoptimized
                                 />
                             ) : (
-                                <span className="text-[10px] font-black text-emerald-800 label-mono">
+                                <span className="text-xs font-bold text-emerald-800 label-mono">
                                     {initials}
                                 </span>
                             )}
                         </div>
                         {/* Status Indicator */}
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-white p-0.5">
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-white p-0.5 rounded-full">
                             <div className="w-full h-full bg-emerald-500 rounded-full border border-white" />
                         </div>
                     </button>
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent 
-                    className="w-64 p-0 bg-white border border-gray-100 shadow-2xl rounded-none animate-in fade-in zoom-in-95 duration-200" 
+                    className="w-64 p-0 bg-white border border-gray-100 shadow-2xl rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" 
                     align="end" 
                     sideOffset={12}
                 >
                     {/* Premium Header */}
                     <div className="p-5 bg-gray-50/50 border-b border-gray-100">
                         <div className="flex items-center gap-4 mb-4">
-                            <div className="h-12 w-12 shrink-0 bg-white flex items-center justify-center text-emerald-800 font-black text-xs border border-gray-100 shadow-sm label-mono overflow-hidden">
+                            <div className="h-12 w-12 shrink-0 bg-emerald-950 text-emerald-300 rounded-full flex items-center justify-center font-black text-xs border border-emerald-800/30 shadow-sm overflow-hidden">
                                 {photoURL ? (
-                                    <Image src={photoURL} alt="" width={48} height={48} className="object-cover w-full h-full" unoptimized />
+                                    <Image src={photoURL} alt="" width={48} height={48} className="object-cover object-center w-full h-full" unoptimized />
                                 ) : initials}
                             </div>
                             <div className="flex flex-col min-w-0">
@@ -116,12 +116,26 @@ export function AdminDropdown({ user, role, logout }: AdminDropdownProps) {
                             </DropdownMenuItem>
                             
                             {role === "super_admin" && (
-                                <DropdownMenuItem asChild>
-                                    <Link href="/admin/users" className="flex items-center gap-3 px-3 py-2.5 cursor-pointer outline-none transition-colors hover:bg-gray-50 group">
-                                        <UserCog size={16} className="text-gray-400 group-hover:text-emerald-800 transition-colors" />
-                                        <span className="text-xs font-bold uppercase tracking-wider text-gray-600 group-hover:text-gray-900">Manage Users</span>
-                                    </Link>
-                                </DropdownMenuItem>
+                                <>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/admin/emails" className="flex items-center gap-3 px-3 py-2.5 cursor-pointer outline-none transition-colors hover:bg-gray-50 group">
+                                            <Mail size={16} className="text-gray-400 group-hover:text-teal-600 transition-colors" />
+                                            <span className="text-xs font-bold uppercase tracking-wider text-gray-600 group-hover:text-gray-900">Email Sender</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/admin/users" className="flex items-center gap-3 px-3 py-2.5 cursor-pointer outline-none transition-colors hover:bg-gray-50 group">
+                                            <UserCog size={16} className="text-gray-400 group-hover:text-emerald-800 transition-colors" />
+                                            <span className="text-xs font-bold uppercase tracking-wider text-gray-600 group-hover:text-gray-900">Manage Users</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/admin/logs" className="flex items-center gap-3 px-3 py-2.5 cursor-pointer outline-none transition-colors hover:bg-gray-50 group">
+                                            <ScrollText size={16} className="text-gray-400 group-hover:text-amber-600 transition-colors" />
+                                            <span className="text-xs font-bold uppercase tracking-wider text-gray-600 group-hover:text-gray-900">Admin Logs</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                </>
                             )}
 
                             <DropdownMenuItem asChild>

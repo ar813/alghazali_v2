@@ -84,7 +84,7 @@ export default defineType({
       type: 'string',
       options: {
         list: [
-          { title: 'Pakistani', value: 'pakistani' },
+          { title: 'Pakistani', value: 'Pakistani' },
         ],
         layout: 'radio'
       },

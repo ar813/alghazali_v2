@@ -65,7 +65,7 @@ export default function StudentProfile({ student }: { student: Student }) {
                     <InfoCard label="Father CNIC" value={student.fatherCnic || 'N/A'} />
                     <InfoCard label="Date of Birth" value={student.dob} icon={Calendar} />
                     <InfoCard label="Gender" value={student.gender} />
-                    <InfoCard label="Nationality" value={student.nationality} />
+                    <InfoCard label="Nationality" value={student.nationality?.toLowerCase() === 'pakistani' ? 'Pakistani' : student.nationality} />
                     <InfoCard label="CNIC / B-Form" value={student.cnicOrBform} icon={Shield} />
                     <InfoCard label="Medical Condition" value={student.medicalCondition || 'N/A'} icon={Heart} />
                     <InfoCard label="GR Number" value={student.grNumber} icon={Award} />

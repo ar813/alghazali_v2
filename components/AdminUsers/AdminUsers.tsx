@@ -253,8 +253,8 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
 
     // ─── Avatar helper ──────────────────────────────────────────────────────────
     const Avatar = ({ u, size = 10 }: { u: UserData; size?: number }) => (
-        <div className={cn(`w-${size} h-${size} rounded-xl bg-indigo-50 border border-indigo-100 overflow-hidden flex items-center justify-center shrink-0 text-indigo-600 font-bold`, size === 10 ? "text-base" : "text-xl")}>
-            {u.photoURL ? <Image src={u.photoURL} alt="" width={size * 4} height={size * 4} className="w-full h-full object-cover" unoptimized /> : (u.displayName || u.email)[0].toUpperCase()}
+        <div className={cn(`w-${size} h-${size} rounded-full bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 overflow-hidden flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm`, size === 10 ? "text-base" : "text-xl")}>
+            {u.photoURL ? <Image src={u.photoURL} alt="" width={size * 4} height={size * 4} className="w-full h-full object-cover object-center" unoptimized /> : (u.displayName || u.email)[0].toUpperCase()}
         </div>
     );
 

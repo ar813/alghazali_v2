@@ -106,14 +106,14 @@ const About = () => {
                                 <Link
                                     key={i}
                                     href={res.href}
-                                    className="group relative bg-white p-7 border border-[#e5e7eb] transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] hover:border-[#065f46] hover:shadow-[0_20px_40px_-15px_rgba(5,150,105,0.12)] hover:-translate-y-2 active:scale-[0.98] overflow-hidden"
+                                    className="group relative bg-white p-7 border border-[#e5e7eb] transition-all duration-700 [transition-timing-function:cubic-bezier(0.19,1,0.22,1)] hover:border-[#065f46] hover:shadow-[0_20px_40px_-15px_rgba(5,150,105,0.12)] hover:-translate-y-2 active:scale-[0.98] overflow-hidden"
                                 >
                                     {/* Premium Hover Background Sweep */}
                                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
                                     <div className="relative z-10">
                                         <div className="flex items-center justify-between mb-6">
-                                            <div className="p-3 bg-emerald-50 text-[#065f46] transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:bg-[#065f46] group-hover:text-white group-hover:rotate-[8deg] group-hover:scale-110">
+                                            <div className="p-3 bg-emerald-50 text-[#065f46] transition-all duration-700 [transition-timing-function:cubic-bezier(0.19,1,0.22,1)] group-hover:bg-[#065f46] group-hover:text-white group-hover:rotate-[8deg] group-hover:scale-110">
                                                 {res.icon}
                                             </div>
                                             <ArrowRight size={16} className="text-[#d1d5db] group-hover:text-[#065f46] transition-all duration-700 transform group-hover:translate-x-1" />
@@ -121,7 +121,7 @@ const About = () => {
                                         <h4 className="text-lg font-bold text-[#111827] mb-1.5 group-hover:text-[#065f46] transition-colors duration-500 tracking-tight">{res.title}</h4>
                                         <p className="text-xs text-[#6b7280] mb-5 font-medium">{res.label}</p>
                                         <div className="flex items-center gap-2 overflow-hidden h-4">
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#065f46] translate-y-6 group-hover:translate-y-0 transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)]">
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#065f46] translate-y-6 group-hover:translate-y-0 transition-all duration-700 [transition-timing-function:cubic-bezier(0.19,1,0.22,1)]">
                                                 {res.action}
                                             </span>
                                         </div>

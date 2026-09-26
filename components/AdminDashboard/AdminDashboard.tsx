@@ -9,8 +9,11 @@ import SystemStatus from './subcomponents/SystemStatus';
 import HonorRoll from './subcomponents/HonorRoll';
 
 import { useSession } from '@/context/SessionContext';
+import { useAuth } from '@/hooks/use-auth';
 
 const AdminDashboard = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (loading: boolean) => void; genderFilter?: "male" | "female" }) => {
+    // Auth
+    const { isSuperAdmin, gender: adminGender } = useAuth();
     // Stats
     const [totalStudents, setTotalStudents] = useState<number>(0);
     const [students, setStudents] = useState<any[]>([]);
@@ -119,11 +122,15 @@ const AdminDashboard = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (
         if (typeof window !== 'undefined') window.location.hash = id;
     };
 
+    // Gender-based stats visibility: regular admins only see their gender's stats
+    const canSeeMale = isSuperAdmin || adminGender === 'male' || !adminGender;
+    const canSeeFemale = isSuperAdmin || adminGender === 'female' || !adminGender;
+
     const statsConfig = [
         { title: 'Total Students', value: totalStudents.toLocaleString(), icon: Users, color: '' },
         { title: 'Unique Classes', value: (insights.uniqClassCount || 0).toString(), icon: FileBarChart2, color: '' },
-        { title: 'Male', value: (insights.male || 0).toLocaleString(), icon: Activity, color: '' },
-        { title: 'Female', value: (insights.female || 0).toLocaleString(), icon: Activity, color: '' },
+        ...(canSeeMale ? [{ title: 'Male', value: (insights.male || 0).toLocaleString(), icon: Activity, color: '' }] : []),
+        ...(canSeeFemale ? [{ title: 'Female', value: (insights.female || 0).toLocaleString(), icon: Activity, color: '' }] : []),
         { title: 'Medical Cases', value: (insights.medicalYes || 0).toLocaleString(), icon: ShieldCheck, color: '' },
         { title: 'Photos Available', value: (insights.withPhoto || 0).toLocaleString(), icon: TrendingUp, color: '' },
         { title: 'Total Quizzes', value: totalQuizzes.toLocaleString(), icon: Calendar, color: '' },

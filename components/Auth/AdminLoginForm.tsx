@@ -38,7 +38,7 @@ const AdminLoginForm = ({ onLoginSuccess }: AdminLoginFormProps) => {
 
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
-            const { doc, setDoc } = await import('firebase/firestore');
+            const { doc, setDoc, getDoc } = await import('firebase/firestore');
             const { db } = await import('@/lib/firebase');
             const user = userCredential.user;
 
@@ -49,6 +49,24 @@ const AdminLoginForm = ({ onLoginSuccess }: AdminLoginFormProps) => {
                 displayName: user.displayName,
                 lastLoginAt: new Date().toISOString()
             }, { merge: true });
+
+            // Fetch role and gender for logging
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            const userData = userDoc.exists() ? userDoc.data() : {};
+            const userRole = userData.role || 'admin';
+            const userGender = userData.gender || null;
+
+            // Log login action
+            const { logAdminAction } = await import('@/lib/admin-logger');
+            await logAdminAction({
+                uid: user.uid,
+                displayName: user.displayName,
+                email: user.email,
+                role: userRole,
+                gender: userGender,
+                action: 'login',
+                description: `Admin logged in (${user.email})`,
+            });
 
             const sessionData = {
                 timestamp: new Date().getTime(),

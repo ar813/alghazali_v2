@@ -406,7 +406,7 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
           ['Father CNIC', (s as any).fatherCnic],
           ['Date of Birth', (s as any).dob ? new Date((s as any).dob).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''],
           ['Gender', (s as any).gender],
-          ['Nationality', (s as any).nationality],
+          ['Nationality', (s as any).nationality?.toString().toLowerCase() === 'pakistani' ? 'Pakistani' : (s as any).nationality],
           ['Medical Condition', (s as any).medicalCondition],
         ])
         y += sectionGap
@@ -836,7 +836,7 @@ const AdminReports = ({ genderFilter, onLoadingChange }: { genderFilter?: string
         if (selectedColumns.includes('grNumber')) rowData.grNumber = student.grNumber || '—'
         if (selectedColumns.includes('gender')) rowData.gender = (student.gender || '—').toUpperCase()
         if (selectedColumns.includes('admissionFor')) rowData.admissionFor = (student.admissionFor || '—').toUpperCase()
-        if (selectedColumns.includes('nationality')) rowData.nationality = student.nationality || 'PAKISTANI'
+        if (selectedColumns.includes('nationality')) rowData.nationality = (student.nationality || 'Pakistani').toString().toLowerCase() === 'pakistani' ? 'Pakistani' : student.nationality
         if (selectedColumns.includes('medicalCondition')) rowData.medicalCondition = student.medicalCondition || 'NO'
         if (selectedColumns.includes('cnicOrBform')) rowData.cnicOrBform = student.cnicOrBform || '—'
         if (selectedColumns.includes('email')) rowData.email = student.email || '—'
