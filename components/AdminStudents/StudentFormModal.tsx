@@ -56,7 +56,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                         grNumber: '',
                         gender: 'male',
                         admissionFor: '1',
-                        nationality: 'pakistani',
+                        nationality: 'Pakistani',
                         medicalCondition: 'no',
                         cnicOrBform: '',
                         email: '',
@@ -308,7 +308,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                                         <label className="text-sm font-medium text-gray-700">Nationality</label>
                                         <div className="flex gap-4 pt-2">
                                             <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="radio" name="nationality" checked={formData.nationality === 'pakistani'} onChange={() => handleChange('nationality', 'pakistani')} className="text-blue-600 focus:ring-blue-500" />
+                                                <input type="radio" name="nationality" checked={formData.nationality?.toLowerCase() === 'pakistani'} onChange={() => handleChange('nationality', 'Pakistani')} className="text-blue-600 focus:ring-blue-500" />
                                                 <span>Pakistani</span>
                                             </label>
                                         </div>

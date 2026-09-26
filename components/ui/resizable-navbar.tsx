@@ -1,6 +1,6 @@
 "use client";
 import { cn } from "@/lib/utils";
-import { IconMenu2, IconX, IconUser, IconLogout } from "@tabler/icons-react";
+import { IconMenu2, IconX, IconUser, IconLogout, IconMail } from "@tabler/icons-react";
 import {
     motion,
     AnimatePresence,
@@ -379,16 +379,28 @@ export const MobileNavMenu = ({
                                     </div>
                                     <div className="space-y-2">
                                         {userInfo.role === "super_admin" && (
-                                            <a
-                                                href="/admin/users"
-                                                onClick={onClose}
-                                                className="flex h-11 w-full items-center gap-3 rounded-none px-3 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors text-left"
-                                            >
-                                                <div className="flex h-8 w-8 items-center justify-center rounded-none bg-neutral-100 dark:bg-neutral-800">
-                                                    <IconUser size={18} />
-                                                </div>
-                                                <span>Manage Users</span>
-                                            </a>
+                                            <>
+                                                <a
+                                                    href="/admin/emails"
+                                                    onClick={onClose}
+                                                    className="flex h-11 w-full items-center gap-3 rounded-none px-3 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors text-left"
+                                                >
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-none bg-neutral-100 dark:bg-neutral-800">
+                                                        <IconMail size={18} />
+                                                    </div>
+                                                    <span>Email Sender</span>
+                                                </a>
+                                                <a
+                                                    href="/admin/users"
+                                                    onClick={onClose}
+                                                    className="flex h-11 w-full items-center gap-3 rounded-none px-3 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors text-left"
+                                                >
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-none bg-neutral-100 dark:bg-neutral-800">
+                                                        <IconUser size={18} />
+                                                    </div>
+                                                    <span>Manage Users</span>
+                                                </a>
+                                            </>
                                         )}
                                         <button
                                             onClick={userInfo.onLogout}

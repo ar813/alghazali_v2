@@ -17,7 +17,8 @@ export default function AdminSidebarLayout({ children }: { children: React.React
     '/admin/omr',
     '/admin/schedule',
     '/admin/students',
-    '/admin/users'
+    '/admin/users',
+    '/admin/emails'
   ]
 
   // Only show sidebar on specific global admin routes

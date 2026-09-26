@@ -7,11 +7,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Users, Bot, GraduationCap, BookOpen, MessageSquare, 
   Megaphone, FileDigit, CalendarClock, School, LayoutDashboard,
-  ChevronLeft, ChevronRight, Menu, X
+  ChevronLeft, ChevronRight, Menu, X, Mail, QrCode
 } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import { useAuth } from '@/hooks/use-auth'
 
-const navItems = [
+const baseNavItems = [
+  { name: 'QR Attendance', href: '/admin/qr-attendance', icon: QrCode },
   { name: 'Admissions', href: '/admin/admissions', icon: School },
   { name: 'Chatbot', href: '/admin/chatbot', icon: Bot },
   { name: 'Classes', href: '/admin/classes', icon: BookOpen },
@@ -21,11 +23,22 @@ const navItems = [
   { name: 'OMR Generator', href: '/admin/omr', icon: FileDigit },
   { name: 'Schedule', href: '/admin/schedule', icon: CalendarClock },
   { name: 'Students', href: '/admin/students', icon: GraduationCap },
-  { name: 'Users', href: '/admin/users', icon: Users },
 ]
 
 export default function AdminSidebar() {
   const pathname = usePathname()
+  const { role } = useAuth()
+  const isSuperAdmin = role === 'super_admin'
+
+  const navItems = [
+    ...baseNavItems,
+    ...(isSuperAdmin ? [
+      { name: 'Email Sender', href: '/admin/emails', icon: Mail },
+      { name: 'Users', href: '/admin/users', icon: Users },
+    ] : [
+      { name: 'Users', href: '/admin/users', icon: Users },
+    ])
+  ]
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 

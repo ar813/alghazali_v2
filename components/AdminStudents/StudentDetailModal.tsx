@@ -54,7 +54,10 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, onClos
     if (!student) return null;
 
     return (
-        <div className="h-full w-full bg-white dark:bg-neutral-950 overflow-y-auto custom-scrollbar font-sans selection:bg-neutral-100 dark:selection:bg-neutral-800">
+        <div 
+        className="w-full bg-white dark:bg-neutral-950 overflow-y-auto overscroll-contain custom-scrollbar font-sans selection:bg-neutral-100 dark:selection:bg-neutral-800"
+        style={{ height: '100dvh', WebkitOverflowScrolling: 'touch' }}
+    >
             {/* 1. Header - No longer fixed */}
             <header className="flex items-center justify-between px-6 py-5 border-b border-neutral-100 dark:border-neutral-900 bg-white dark:bg-neutral-950">
                 <div className="flex items-center gap-4">
@@ -145,7 +148,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, onClos
                         <DetailItem label="Date of Birth" value={student.dob} icon={Calendar} />
                         <DetailItem label="CNIC / B-Form" value={student.cnicOrBform} icon={Hash} copyable />
                         <DetailItem label="Father CNIC" value={(student as any).fatherCnic} icon={Hash} copyable />
-                        <DetailItem label="Nationality" value={student.nationality} icon={MapPin} />
+                        <DetailItem label="Nationality" value={student.nationality?.toLowerCase() === 'pakistani' ? 'Pakistani' : student.nationality} icon={MapPin} />
                         <DetailItem label="Medical Data" value={student.medicalCondition} icon={Shield} />
                     </div>
 

@@ -26,6 +26,7 @@ import {
   Drawer,
   DrawerOverlay,
   DrawerContent,
+  DrawerBody,
   Menu,
   MenuButton,
   MenuList,
@@ -170,7 +171,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
       grNumber: str(s.grNumber),
       gender: str(s.gender),
       admissionFor: str(s.admissionFor),
-      nationality: str(s.nationality),
+      nationality: str(s.nationality).toLowerCase() === 'pakistani' ? 'Pakistani' : str(s.nationality),
       medicalCondition: str(s.medicalCondition),
       cnicOrBform: str(s.cnicOrBform),
       email: str(s.email),
@@ -650,7 +651,7 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
             grNumber: s(6),
             gender: s(7) || 'male',
             admissionFor: s(8) || '1',
-            nationality: s(9) || 'pakistani',
+            nationality: s(9) || 'Pakistani',
             medicalCondition: s(10) || 'no',
             cnicOrBform: s(11),
             email: s(12),
@@ -1051,9 +1052,10 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
         isOpen={showAddModal || !!editingStudent}
         onClose={() => { setShowAddModal(false); setEditingStudent(null); }}
         size="full"
+        blockScrollOnMount={false}
       >
         <DrawerOverlay className="backdrop-blur-md bg-black/40" />
-        <DrawerContent className="bg-white dark:bg-neutral-950 p-0 m-0 w-full max-w-full overflow-x-hidden">
+        <DrawerContent p={0} m={0}>
           <StudentFormContent
             initialData={editingStudent}
             loading={editingStudent ? editLoading : createLoading}
@@ -1067,9 +1069,10 @@ const AdminStudents = ({ onLoadingChange, genderFilter }: { onLoadingChange?: (l
         isOpen={!!clickedStudent}
         onClose={() => setClickedStudent(null)}
         size="full"
+        blockScrollOnMount={false}
       >
         <DrawerOverlay className="backdrop-blur-md bg-black/40" />
-        <DrawerContent className="bg-white dark:bg-neutral-950 p-0 m-0 w-full max-w-full overflow-x-hidden">
+        <DrawerContent p={0} m={0}>
           <StudentDetailModal
             student={clickedStudent}
             onClose={() => setClickedStudent(null)}

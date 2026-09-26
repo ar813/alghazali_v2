@@ -85,11 +85,11 @@ const Sidebar = ({ items, activeTab, onTabChange, loading, isStudent }: SidebarP
                 animate={{ opacity: 1 }}
                 className="flex items-center gap-3"
               >
-                <div className="w-8 h-8 bg-neutral-900 dark:bg-white rounded-lg flex items-center justify-center shadow-sm overflow-hidden">
+                <div className="w-8 h-8 bg-neutral-900 dark:bg-white rounded-full flex items-center justify-center shadow-sm overflow-hidden border border-neutral-200 dark:border-neutral-800">
                   {photoURL ? (
-                    <Image src={photoURL} alt="" width={32} height={32} className="w-full h-full object-contain" unoptimized />
+                    <Image src={photoURL} alt="" width={32} height={32} className="w-full h-full object-cover object-center" unoptimized />
                   ) : (
-                    <span className="text-white dark:text-neutral-900 font-bold text-sm">AG</span>
+                    <span className="text-white dark:text-neutral-900 font-bold text-xs">AG</span>
                   )}
                 </div>
                 <div className="flex flex-col">
@@ -168,12 +168,12 @@ const Sidebar = ({ items, activeTab, onTabChange, loading, isStudent }: SidebarP
                     src={photoURL}
                     width={32}
                     height={32}
-                    className="h-8 w-8 shrink-0 rounded-xl object-contain shadow-sm border border-neutral-200 dark:border-neutral-700 bg-white"
+                    className="h-8 w-8 shrink-0 rounded-full object-cover object-center shadow-sm border border-neutral-200 dark:border-neutral-700 bg-neutral-900"
                     alt="Avatar"
                     unoptimized
                   />
                 ) : (
-                  <div className="h-8 w-8 shrink-0 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-300 font-bold text-xs border border-neutral-200 dark:border-neutral-700">
+                  <div className="h-8 w-8 shrink-0 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-300 font-bold text-xs border border-neutral-200 dark:border-neutral-700">
                     {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
                   </div>
                 )}

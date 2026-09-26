@@ -11,9 +11,17 @@ interface Props {
   src: string
   onCancel: () => void
   onCropped: (blob: Blob) => void
+  aspect?: number
+  cropShape?: 'rect' | 'round'
 }
 
-const ImageCropper = ({ src: initialSrc, onCancel, onCropped }: Props) => {
+const ImageCropper = ({ 
+  src: initialSrc, 
+  onCancel, 
+  onCropped, 
+  aspect = 3 / 4, 
+  cropShape = 'rect' 
+}: Props) => {
   const [imageSrc, setImageSrc] = useState(initialSrc)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [rotation, setRotation] = useState(0)
@@ -80,12 +88,21 @@ const ImageCropper = ({ src: initialSrc, onCancel, onCropped }: Props) => {
   }
 
   const handleDone = async () => {
+    if (!croppedAreaPixels) {
+      toast.error('Please adjust the crop area first')
+      return
+    }
     setLoading(true)
     try {
       const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels, rotation)
-      if (croppedBlob) onCropped(croppedBlob)
-    } catch (e) {
-      console.error(e)
+      if (croppedBlob) {
+        onCropped(croppedBlob)
+      } else {
+        toast.error('Could not generate cropped image')
+      }
+    } catch (e: any) {
+      console.error('Crop error:', e)
+      toast.error(e?.message || 'Error processing crop. Please try another image.')
     } finally {
       setLoading(false)
     }
@@ -109,7 +126,9 @@ const ImageCropper = ({ src: initialSrc, onCancel, onCropped }: Props) => {
           crop={crop}
           rotation={rotation}
           zoom={zoom}
-          aspect={3 / 4}
+          aspect={aspect}
+          cropShape={cropShape}
+          showGrid={true}
           onCropChange={setCrop}
           onRotationChange={setRotation}
           onCropComplete={onCropComplete}

@@ -43,6 +43,12 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // Admin Logs — any admin can write (create) logs, only super admins can read/delete
+    match /admin_logs/{logId} {
+      allow create: if isAdmin();
+      allow read, delete: if isSuperAdmin();
+    }
+
     // Default rule for other collections (Students, Results, etc.)
     // Admin: Read only
     // Super Admin: Read & Write

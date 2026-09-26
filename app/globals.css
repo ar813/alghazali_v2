@@ -7,6 +7,34 @@
     scroll-behavior: smooth;
   }
 
+  /* ─── Lock background page scroll when any Chakra Drawer/Modal is open ─── */
+  /* Only lock body scroll — do NOT touch html height or overflow, as it breaks drawer internal scroll */
+  body:has(.chakra-portal [role="dialog"]),
+  body.chakra-ui__modal-open {
+    overflow: hidden !important;
+  }
+
+  /* Ensure Chakra DrawerContent children that self-manage scroll work correctly */
+  [data-focus-lock-disabled] > [role="dialog"] > * {
+    height: 100dvh;
+  }
+
+  /* Custom Slim Scrollbar Utility */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.3);
+    border-radius: 9999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.5);
+  }
+
   ::selection {
     background-color: #059669;
     color: #fff;
