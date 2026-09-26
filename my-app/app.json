@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "Al Ghazali High School",
+    "slug": "attendance-manager",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo.png",
+    "userInterfaceStyle": "light",
+    "jsEngine": "hermes",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "notification": {
+      "color": "#059669"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.attendance.manager",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.VIBRATE",
+        "android.permission.INTERNET",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f054047d-9080-4974-aa2f-51ce7b94694d"
+      }
+    },
+    "plugins": [
+      "expo-audio",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Al Ghazali High School to access your camera",
+          "microphonePermission": "Allow Al Ghazali High School to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ],
+      "expo-secure-store",
+      "expo-asset"
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f054047d-9080-4974-aa2f-51ce7b94694d"
+    }
+  }
+}
