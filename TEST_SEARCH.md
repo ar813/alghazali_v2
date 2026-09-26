@@ -3,7 +3,7 @@
 ## Manual Testing Steps:
 
 1. Visit http://localhost:3000
-2. Look for the "Search" link in the navigation bar
+2. Look for the "Search" link in the navigation bar, kia hoa yaar
 3. Click on the "Search" link
 4. Verify that you land on the search page with the title "Student Information Search"
 5. Verify that the search form has:
