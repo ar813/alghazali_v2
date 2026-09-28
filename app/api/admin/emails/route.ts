@@ -9,6 +9,25 @@ import {
 import { generateFullEmailHtml, PRESET_EMAIL_TEMPLATES } from "@/lib/email-templates";
 import { markdownToPlainText } from "@/lib/email-markdown";
 
+/**
+ * Minifies email HTML to stay under Gmail's 102KB clip limit.
+ * - Strips non-MSO HTML comments
+ * - Collapses whitespace between tags
+ * - Removes blank lines
+ */
+function minifyEmailHtml(html: string): string {
+  return html
+    // Remove non-MSO HTML comments
+    .replace(/<!--(?!\[if)(?!<!\/)[\s\S]*?-->/g, '')
+    // Collapse whitespace between tags
+    .replace(/>\s+</g, '><')
+    // Collapse multiple spaces into one
+    .replace(/ {2,}/g, ' ')
+    // Remove blank lines
+    .replace(/\n\s*\n/g, '\n')
+    .trim();
+}
+
 async function verifySuperAdmin(req: NextRequest) {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -39,7 +58,7 @@ async function verifySuperAdmin(req: NextRequest) {
 }
 
 /**
- * GET: Fetches provider statuses, template presets, and sent email logs
+ * GET: Fetches provider statuses, template presets, custom templates, and sent email logs
  */
 export async function GET(req: NextRequest) {
   try {
@@ -52,12 +71,28 @@ export async function GET(req: NextRequest) {
     }
 
     const providerStatus = getProviderStatus();
-    const logs = await getRecentEmailLogs(30);
+    const logs = await getRecentEmailLogs(50);
+
+    // Fetch custom templates from Firestore
+    let customTemplates: any[] = [];
+    try {
+      const snap = await dbAdmin
+        .collection("saved_email_templates")
+        .orderBy("createdAt", "desc")
+        .get();
+      customTemplates = snap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+    } catch (tmplErr) {
+      console.error("Error fetching custom templates:", tmplErr);
+    }
 
     return NextResponse.json({
       ok: true,
       providerStatus,
       templates: PRESET_EMAIL_TEMPLATES,
+      customTemplates,
       logs,
     });
   } catch (error: any) {
@@ -144,13 +179,21 @@ export async function POST(req: NextRequest) {
       provider === "nodemailer" ? "nodemailer" : "resend";
 
     // Compile Markdown to responsive inline email HTML
-    const emailHtml = generateFullEmailHtml({
+    const rawEmailHtml = generateFullEmailHtml({
       title: subject,
       preheader: preheader || subject,
       markdownContent,
       headerBadge: headerBadge || "OFFICIAL NOTIFICATION",
       themeColor: themeColor || "#0d9488",
+      includeBanner: Boolean(body.includeBanner),
+      bannerUrl: body.bannerUrl || "https://alghazali.vercel.app/email_data_format/333.jpg",
+      isUrdu: Boolean(body.isUrdu),
     });
+
+    // Minify HTML to stay under Gmail's 102KB clip limit
+    const emailHtml = minifyEmailHtml(rawEmailHtml);
+    const htmlSizeKB = Buffer.byteLength(emailHtml, 'utf8') / 1024;
+    console.log(`[Email] HTML size after minification: ${htmlSizeKB.toFixed(1)}KB`);
 
     const plainText = markdownToPlainText(markdownContent);
 
@@ -186,6 +229,56 @@ export async function POST(req: NextRequest) {
     console.error("POST /api/admin/emails error:", error);
     return NextResponse.json(
       { ok: false, error: error.message || "An unexpected error occurred." },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE: Deletes one or all email dispatch logs from Firestore
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const { isSuper } = await verifySuperAdmin(req);
+    if (!isSuper) {
+      return NextResponse.json(
+        { ok: false, error: "Access Denied: Super Admin privileges required." },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(req.url);
+    const logId = searchParams.get("logId");
+    const clearAll = searchParams.get("clearAll") === "true";
+
+    if (clearAll) {
+      const snap = await dbAdmin.collection("email_logs").get();
+      const batch = dbAdmin.batch();
+      snap.docs.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+
+      return NextResponse.json({
+        ok: true,
+        message: "All email dispatch audit logs cleared successfully.",
+      });
+    }
+
+    if (logId) {
+      await dbAdmin.collection("email_logs").doc(logId).delete();
+      return NextResponse.json({
+        ok: true,
+        message: "Email dispatch log deleted successfully.",
+      });
+    }
+
+    return NextResponse.json(
+      { ok: false, error: "Missing logId or clearAll parameter." },
+      { status: 400 }
+    );
+  } catch (error: any) {
+    console.error("DELETE /api/admin/emails error:", error);
+    return NextResponse.json(
+      { ok: false, error: error.message || "Failed to delete email logs." },
       { status: 500 }
     );
   }

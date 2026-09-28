@@ -310,33 +310,55 @@ export interface FullEmailOptions {
   themeColor?: string;
   schoolName?: string;
   schoolTagline?: string;
+  includeBanner?: boolean;
+  bannerUrl?: string;
+  isUrdu?: boolean;
 }
 
 /**
  * Wraps converted markdown HTML inside a responsive, modern email framework.
- * Compatible with Gmail, Outlook, Apple Mail, and mobile clients.
+ * Compatible with Gmail (Desktop & Web), Outlook, Apple Mail, and mobile clients.
+ * Supports Urdu Nastaleeq typography and academic stationery watermark background.
  */
 export function generateFullEmailHtml(options: FullEmailOptions): string {
   const {
     title,
     preheader = 'Official notification from Al-Ghazali High School',
     markdownContent,
-    headerBadge = 'OFFICIAL COMMUNICATION',
+    headerBadge = 'OFFICIAL NOTIFICATION',
     themeColor = '#0d9488',
     schoolName = 'AL-GHAZALI HIGH SCHOOL',
     schoolTagline = 'Excellence in Islamic & Modern Education',
+    includeBanner = false,
+    bannerUrl = 'https://alghazali.vercel.app/email_data_format/333.jpg',
+    isUrdu = false,
   } = options;
+
+  // Auto-detect Urdu script if unicode characters in 0600-06FF range are found
+  const isUrduContent = isUrdu || /[\u0600-\u06FF]/.test(markdownContent);
 
   const contentHtml = markdownToEmailHtml(markdownContent, { themeColor });
 
+  // Educational background color (Gmail-safe: bgcolor attribute + solid CSS background-color)
+  // Note: Gmail strips background-image on body/center/table — use bgcolor HTML attribute instead.
+  // The pattern tile is served from our public folder as a PNG so Gmail can load it via <img>.
+  const eduBgColor = '#eef2f7';
+  // Hosted tile URL — Gmail can render background-image on <td> when it's an external HTTPS URL
+  const eduBgTileUrl = 'https://alghazali.vercel.app/email_data_format/edu-bg-tile.png';
+
   return `<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="${isUrduContent ? 'ur' : 'en'}" dir="${isUrduContent ? 'rtl' : 'ltr'}" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no, address=no, email=no, date=no, url=no">
   <title>${escapeXml(title)}</title>
+  <!-- Google Fonts: Noto Nastaliq Urdu & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!--[if mso]>
   <noscript>
     <xml>
@@ -347,124 +369,154 @@ export function generateFullEmailHtml(options: FullEmailOptions): string {
   </noscript>
   <![endif]-->
   <style type="text/css">
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap');
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
     img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
-    body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; }
-    @media screen and (max-width: 620px) {
-      .email-container { width: 100% !important; margin: 0 auto !important; border-radius: 8px !important; }
+    body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: ${eduBgColor}; font-family: ${isUrduContent ? "'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', 'Urdu Typesetting', Tahoma, sans-serif" : "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"}; color: #334155; }
+    .email-outer-bg { background-color: ${eduBgColor}; background-image: url('${eduBgTileUrl}'); background-repeat: repeat; background-size: 120px 120px; }
+    .email-body-content { ${isUrduContent ? "direction: rtl !important; text-align: right !important; line-height: 2.2 !important; font-size: 16.5px !important; font-family: 'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', 'Urdu Typesetting', Tahoma, sans-serif !important;" : "line-height: 1.68 !important; font-size: 15px !important;"} }
+    @media screen and (max-width: 660px) {
+      .email-container { width: 100% !important; max-width: 100% !important; margin: 0 auto !important; border-radius: 8px !important; }
       .fluid-padding { padding-left: 18px !important; padding-right: 18px !important; }
-      .header-title { font-size: 18px !important; }
+      .header-title { font-size: 19px !important; }
     }
   </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155;">
+<body style="margin: 0; padding: 0; background-color: ${eduBgColor}; font-family: ${isUrduContent ? "'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', 'Urdu Typesetting', Tahoma, sans-serif" : "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"}; color: #334155;">
 
   <!-- Hidden Preheader Text for Inbox snippet -->
-  <div style="display: none; font-size: 1px; color: #f1f5f9; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+  <div style="display: none; font-size: 1px; color: #f4f6f8; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all;">
     ${escapeXml(preheader)} &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
   </div>
 
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f1f5f9; min-height: 100%;">
-    <tr>
-      <td align="center" style="padding: 24px 8px;">
+  <center style="width: 100%; background-color: ${eduBgColor}; text-align: left;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="email-outer-bg" style="min-height: 100%; background-color: ${eduBgColor}; background-image: url('${eduBgTileUrl}'); background-repeat: repeat; background-size: 120px 120px;" bgcolor="${eduBgColor}">
+      <tr>
+        <td align="center" valign="top" class="email-outer-bg" style="padding: 24px 12px; background-color: ${eduBgColor}; background-image: url('${eduBgTileUrl}'); background-repeat: repeat;" bgcolor="${eduBgColor}">
 
-        <!-- Main Email Container (Max 600px) -->
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 600px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); border: 1px solid #e2e8f0;">
+          <!--[if mso]>
+          <table role="presentation" align="center" border="0" cellpadding="0" cellspacing="0" width="650"><tr><td>
+          <![endif]-->
 
-          <!-- Top Brand Accent Bar -->
-          <tr>
-            <td style="background-color: ${themeColor}; height: 6px; font-size: 0; line-height: 0;">&nbsp;</td>
-          </tr>
+          <!-- Main Email Container (Desktop 650px) -->
+          <table role="presentation" align="center" border="0" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 650px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.05); overflow: hidden;">
 
-          <!-- Header Section with Real School Logo -->
-          <tr>
-            <td class="fluid-padding" style="padding: 30px 36px 22px 36px; border-bottom: 1px solid #f1f5f9; text-align: left;">
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tr>
-                  <td valign="middle" align="left">
-                    <!-- Badge -->
-                    <div style="display: inline-block; padding: 4px 12px; background-color: #f8fafc; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: ${themeColor}; margin-bottom: 10px; border: 1px solid #e2e8f0;">
-                      ${escapeXml(headerBadge)}
-                    </div>
-                    <!-- School Name -->
-                    <div class="header-title" style="font-size: 21px; font-weight: 800; color: #0f172a; letter-spacing: -0.01em; margin: 0 0 4px 0; line-height: 1.25;">
-                      ${escapeXml(schoolName)}
-                    </div>
-                    <!-- Tagline -->
-                    <div style="font-size: 13px; color: #64748b; font-weight: 500;">
-                      ${escapeXml(schoolTagline)}
-                    </div>
-                  </td>
-                  <td align="right" valign="middle" style="width: 64px; padding-left: 12px;">
-                    <div style="width: 58px; height: 58px; border-radius: 12px; background-color: #ffffff; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 4px;">
-                      <img src="https://alghazali.vercel.app/logo.png" alt="Al-Ghazali High School" width="50" height="50" style="width: 50px; height: 50px; object-fit: contain; display: block; border: 0;" />
-                    </div>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+            <!-- Top Brand Accent Bar -->
+            <tr>
+              <td style="background-color: ${themeColor}; height: 6px; font-size: 0; line-height: 0; border-top-left-radius: 15px; border-top-right-radius: 15px;">&nbsp;</td>
+            </tr>
 
-          <!-- Email Content Body -->
-          <tr>
-            <td class="fluid-padding" style="padding: 32px 36px; font-size: 15px; line-height: 1.68; color: #334155; text-align: left;">
-              ${contentHtml}
-            </td>
-          </tr>
+            <!-- Header Section with School Logo -->
+            <tr>
+              <td class="fluid-padding" style="padding: 24px 32px 18px 32px; border-bottom: 1px solid #f1f5f9;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td valign="middle" style="text-align: ${isUrduContent ? 'right' : 'left'};" dir="${isUrduContent ? 'rtl' : 'ltr'}">
+                      <div style="display: inline-block; padding: 4px 12px; background-color: #f8fafc; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: ${isUrduContent ? '0.02em' : '0.08em'}; color: ${themeColor}; margin-bottom: 8px; border: 1px solid #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
+                        ${escapeXml(headerBadge)}
+                      </div>
+                      <div class="header-title" style="font-size: 21px; font-weight: 800; color: #0f172a; letter-spacing: -0.01em; margin: 0 0 3px 0; line-height: 1.25; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
+                        ${escapeXml(schoolName)}
+                      </div>
+                      <div style="font-size: 13px; color: #64748b; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
+                        ${escapeXml(schoolTagline)}
+                      </div>
+                    </td>
+                    <td align="right" valign="middle" style="width: 64px; padding-left: 14px;">
+                      <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td align="center" valign="middle" style="width: 56px; height: 56px; border-radius: 14px; background-color: #ffffff; border: 2px solid #e2e8f0; padding: 4px;">
+                            <img src="https://alghazali.vercel.app/logo.png" alt="Al-Ghazali High School" width="46" height="46" style="width: 46px; height: 46px; object-fit: contain; display: block; border: 0;" />
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
 
-          <!-- Pre-Footer Support Box -->
-          <tr>
-            <td class="fluid-padding" style="padding: 0 36px 28px 36px;">
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px;">
-                <tr>
-                  <td style="font-size: 13px; color: #64748b; line-height: 1.5;">
-                    <strong style="color: #0f172a;">Official Assistance:</strong> If you have any questions or require verification regarding this official communication, please reach out via our online portal or front desk helpline.
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+            <!-- Flush Optimized Top Banner -->
+            ${includeBanner ? `
+            <tr>
+              <td style="padding: 16px 20px 4px 20px; text-align: center;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td align="center" style="padding: 0;">
+                      <a href="https://alghazali.vercel.app" target="_blank" rel="noopener noreferrer" style="display: block; text-decoration: none; border: 0;">
+                        <img src="${bannerUrl}" alt="Al-Ghazali High School" width="608" style="width: 100%; max-width: 100%; height: auto; display: block; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05); outline: none; text-decoration: none;" />
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>` : ''}
 
-          <!-- Footer Section -->
-          <tr>
-            <td class="fluid-padding" style="padding: 24px 36px 30px 36px; background-color: #0f172a; text-align: center; color: #94a3b8; font-size: 12px; line-height: 1.6;">
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tr>
-                  <td align="center" style="padding-bottom: 12px;">
-                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
-                      <tr>
-                        <td valign="middle" style="padding-right: 10px;">
-                          <img src="https://alghazali.vercel.app/logo.png" alt="Logo" width="28" height="28" style="width: 28px; height: 28px; object-fit: contain; display: block; border: 0;" />
-                        </td>
-                        <td valign="middle">
-                          <span style="color: #ffffff; font-weight: 800; font-size: 14px; letter-spacing: 0.05em;">AL-GHAZALI HIGH SCHOOL</span>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center" style="padding-bottom: 12px; color: #94a3b8; font-size: 12px;">
-                    📍 Karachi, Sindh, Pakistan &nbsp;|&nbsp; 🌐 <a href="https://alghazali.vercel.app" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">alghazali.vercel.app</a>
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center" style="border-top: 1px solid #1e293b; padding-top: 14px; font-size: 11px; color: #64748b; line-height: 1.5;">
-                    This is an automated system notification dispatched via the Super Admin Command Portal.<br />
-                    &copy; ${new Date().getFullYear()} Al-Ghazali High School. All rights reserved.
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+            <!-- Email Content Body -->
+            <tr>
+              <td class="fluid-padding email-body-content" style="padding: 22px 32px 28px 32px; color: #334155; text-align: ${isUrduContent ? 'right' : 'left'};" dir="${isUrduContent ? 'rtl' : 'ltr'}">
+                ${contentHtml}
+              </td>
+            </tr>
 
-        </table>
-        <!-- End Main Email Container -->
+            <!-- Pre-Footer Support Box -->
+            <tr>
+              <td class="fluid-padding" style="padding: 0 32px 24px 32px;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px;" dir="${isUrduContent ? 'rtl' : 'ltr'}">
+                  <tr>
+                    <td style="font-size: 13px; color: #64748b; line-height: 1.6; text-align: ${isUrduContent ? 'right' : 'left'}; ${isUrduContent ? "font-family: 'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', Tahoma, sans-serif; font-size: 15px;" : ""}">
+                      <strong style="color: #0f172a;">${isUrduContent ? 'سرکاری معاونت:' : 'Official Assistance:'}</strong> ${isUrduContent ? 'اگر آپ کو اس نوٹیفکیشن کی تصدیق یا مزید رہنمائی درکار ہو تو براہِ کرم ہمارے اسکول پورٹل یا ہیلپ لائن سے رابطہ کریں۔' : 'If you have any questions or require verification regarding this official communication, please reach out via our online parent portal or front desk helpline.'}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
 
-      </td>
-    </tr>
-  </table>
+            <!-- Footer Section -->
+            <tr>
+              <td class="fluid-padding" style="padding: 24px 32px 28px 32px; background-color: #0f172a; text-align: center; color: #94a3b8; font-size: 12px; line-height: 1.6; border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td align="center" style="padding-bottom: 12px;">
+                      <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                        <tr>
+                          <td valign="middle" style="padding-right: 10px;">
+                            <img src="https://alghazali.vercel.app/logo.png" alt="Logo" width="28" height="28" style="width: 28px; height: 28px; object-fit: contain; display: block; border: 0;" />
+                          </td>
+                          <td valign="middle">
+                            <span style="color: #ffffff; font-weight: 800; font-size: 14px; letter-spacing: 0.05em;">AL-GHAZALI HIGH SCHOOL</span>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align="center" style="padding-bottom: 12px; color: #94a3b8; font-size: 12px;">
+                      📍 Karachi, Sindh, Pakistan &nbsp;|&nbsp; 🌐 <a href="https://alghazali.vercel.app" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">alghazali.vercel.app</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align="center" style="border-top: 1px solid #1e293b; padding-top: 14px; font-size: 11px; color: #64748b; line-height: 1.5;">
+                      This is an automated system notification dispatched via the Super Admin Command Portal.<br />
+                      &copy; ${new Date().getFullYear()} Al-Ghazali High School. All rights reserved.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+          </table>
+          <!-- End Main Email Container -->
+
+          <!--[if mso]>
+          </td></tr></table>
+          <![endif]-->
+
+        </td>
+      </tr>
+    </table>
+  </center>
 
 </body>
 </html>`;
