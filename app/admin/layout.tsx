@@ -14,6 +14,12 @@ export const metadata: Metadata = {
   }
 }
 
+// The admin portal is a private, auth-gated area. Never prerender it at build
+// time — a statically generated shell is served from the Vercel edge cache and
+// goes stale the moment a new deploy ships, forcing a manual hard reload.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default function AdminLayout({
   children,
 }: {

@@ -1,10 +1,10 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
 import { syncOfflineAttendanceData, getOfflineQueue } from '@/lib/offline-attendance';
-import { Wifi, WifiOff, Download, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Wifi, WifiOff, Download, RefreshCw, CheckCircle2, RotateCcw } from 'lucide-react';
 
 interface PWAContextType {
     isOnline: boolean;
@@ -33,6 +33,8 @@ export default function AdminPWAProvider({ children }: { children: React.ReactNo
     const [pendingSyncCount, setPendingSyncCount] = useState(0);
     const [isSyncing, setIsSyncing] = useState(false);
     const [showBanner, setShowBanner] = useState(false);
+    const [updateReady, setUpdateReady] = useState(false);
+    const waitingWorkerRef = useRef<ServiceWorker | null>(null);
 
     // Refresh pending count
     const updatePendingCount = useCallback(() => {
@@ -67,15 +69,65 @@ export default function AdminPWAProvider({ children }: { children: React.ReactNo
         updatePendingCount();
 
         // 1. Register Service Worker scoped to /admin
-        if ('serviceWorker' in navigator) {
+        // Skipped in local dev: Next.js dev chunks under /_next/static/ are not
+        // content-hashed, so a cache-first worker would replay the previous
+        // build and mask source edits. Production chunks are hashed, so the
+        // cache stays safe there.
+        const isLocalDev = ['localhost', '127.0.0.1', '[::1]', '0.0.0.0'].includes(
+            window.location.hostname
+        );
+
+        if ('serviceWorker' in navigator && !isLocalDev) {
             navigator.serviceWorker
                 .register('/admin-sw.js', { scope: '/admin' })
                 .then((registration) => {
                     console.log('[PWA] Admin Service Worker registered with scope:', registration.scope);
+
+                    // Check for a newer deployed build on every visit so the
+                    // admin is never stuck on a previous release.
+                    registration.update().catch(() => { /* offline: retry next visit */ });
+
+                    // A worker that is already downloaded and waiting means a
+                    // fresh build is staged. Surface it instead of reloading
+                    // out from under the admin, which would discard in-progress
+                    // form input.
+                    if (registration.waiting && navigator.serviceWorker.controller) {
+                        waitingWorkerRef.current = registration.waiting;
+                        setUpdateReady(true);
+                    }
+
+                    registration.addEventListener('updatefound', () => {
+                        const installing = registration.installing;
+                        if (!installing) return;
+                        installing.addEventListener('statechange', () => {
+                            if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                                waitingWorkerRef.current = installing;
+                                setUpdateReady(true);
+                            }
+                        });
+                    });
                 })
                 .catch((err) => {
                     console.warn('[PWA] Service Worker registration failed:', err);
                 });
+
+            let reloading = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (reloading) return;
+                reloading = true;
+                window.location.reload();
+            });
+        } else if (isLocalDev) {
+            // Drop any worker a previous local session installed, so a stale
+            // cache can never outlive the dev server.
+            navigator.serviceWorker
+                ?.getRegistrations()
+                .then((regs) => Promise.all(regs.map((reg) => reg.unregister())))
+                .then(() => caches?.keys?.())
+                .then((keys) =>
+                    Promise.all((keys || []).map((key) => caches.delete(key)))
+                )
+                .catch(() => { /* dev-only cleanup, ignore failures */ });
         }
 
         // 2. Online / Offline listeners
@@ -134,6 +186,29 @@ export default function AdminPWAProvider({ children }: { children: React.ReactNo
             toast.success("Admin App installed successfully!");
         }
     };
+
+    // Activate the waiting worker (which triggers controllerchange -> reload).
+    const applyUpdate = () => {
+        const waiting = waitingWorkerRef.current;
+        if (waiting) {
+            waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        window.location.reload();
+    };
+
+    useEffect(() => {
+        if (!updateReady) return;
+        toast('A new version of the Admin Portal is available.', {
+            id: 'admin-update-available',
+            duration: Infinity,
+            closeButton: true,
+            icon: <RotateCcw className="w-4 h-4 text-teal-500" />,
+            action: {
+                label: 'Reload',
+                onClick: applyUpdate,
+            },
+        });
+    }, [updateReady]);
 
     return (
         <PWAContext.Provider

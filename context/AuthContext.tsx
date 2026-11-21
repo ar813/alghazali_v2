@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User, signOut, updateProfile } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
+import { logAdminAction } from "@/lib/admin-logger";
 
 interface AuthContextType {
     user: User | null;
@@ -99,6 +100,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const logout = async () => {
         try {
+            const current = auth.currentUser;
+            if (current) {
+                await logAdminAction({
+                    uid: current.uid,
+                    displayName: current.displayName,
+                    email: current.email,
+                    role,
+                    gender,
+                    action: "logout",
+                    description: `Admin "${current.displayName || current.email || current.uid}" logged out of the portal`,
+                    session: typeof window !== "undefined" ? window.location.pathname.split("/")[2] || null : null,
+                });
+            }
             await signOut(auth);
             localStorage.removeItem("adminSession");
         } catch (error) {
@@ -117,10 +131,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
         if (!res.ok) throw new Error("Failed to update name on server");
         setUser({ ...auth.currentUser } as User);
+        await logAdminAction({
+            uid: auth.currentUser.uid,
+            displayName: newName.trim(),
+            email: auth.currentUser.email,
+            role,
+            gender,
+            action: "profile_name_updated",
+            description: `Updated display name to "${newName.trim()}"`,
+        });
     };
 
     const updateEmail = async (newEmail: string, newPassword: string) => {
         if (!auth.currentUser) return;
+        const oldEmail = auth.currentUser.email;
         const token = await auth.currentUser.getIdToken();
         const res = await fetch("/api/auth/profile", {
             method: "PUT",
@@ -129,6 +153,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
         if (!res.ok) throw new Error("Failed to update email on server");
         setUser({ ...auth.currentUser } as User);
+        await logAdminAction({
+            uid: auth.currentUser.uid,
+            displayName: auth.currentUser.displayName,
+            email: auth.currentUser.email,
+            role,
+            gender,
+            action: "profile_email_updated",
+            description: `Changed sign-in email${oldEmail ? ` from "${oldEmail}"` : ""} to "${newEmail}"`,
+        });
     };
 
     const updatePassword = async (newPassword: string) => {
@@ -140,6 +173,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             body: JSON.stringify({ password: newPassword })
         });
         if (!res.ok) throw new Error("Failed to update password on server");
+        setUser({ ...auth.currentUser } as User);
+        await logAdminAction({
+            uid: auth.currentUser.uid,
+            displayName: auth.currentUser.displayName,
+            email: auth.currentUser.email,
+            role,
+            gender,
+            action: "profile_password_updated",
+            description: "Changed account password",
+        });
     };
 
     const updateGender = async (newGender: "male" | "female") => {
@@ -152,6 +195,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
         if (!res.ok) throw new Error("Failed to update gender on server");
         setGender(newGender);
+        await logAdminAction({
+            uid: auth.currentUser.uid,
+            displayName: auth.currentUser.displayName,
+            email: auth.currentUser.email,
+            role,
+            gender: newGender,
+            action: "profile_gender_updated",
+            description: `Updated gender to "${newGender}"`,
+        });
     };
 
     const completeProfileSetup = async (name: string, email: string, password: string) => {
@@ -223,6 +275,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (!res.ok) throw new Error("Failed to sync photo on server");
         setPhotoURL(base64Photo);
         setUser({ ...auth.currentUser } as User);
+        await logAdminAction({
+            uid: auth.currentUser.uid,
+            displayName: auth.currentUser.displayName,
+            email: auth.currentUser.email,
+            role,
+            gender,
+            action: "profile_photo_updated",
+            description: "Updated profile photo",
+        });
     };
 
     const removePhoto = async () => {
@@ -237,6 +298,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (!res.ok) throw new Error("Failed to remove photo on server");
         setPhotoURL(null);
         setUser({ ...auth.currentUser } as User);
+        await logAdminAction({
+            uid: auth.currentUser.uid,
+            displayName: auth.currentUser.displayName,
+            email: auth.currentUser.email,
+            role,
+            gender,
+            action: "profile_photo_removed",
+            description: "Removed profile photo",
+        });
     };
 
     const value = {

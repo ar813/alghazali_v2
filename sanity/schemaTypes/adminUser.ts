@@ -55,6 +55,47 @@ export default defineType({
             description: 'Optional: If this user is a class teacher, specify the class.',
         }),
         defineField({
+            name: 'employeeId',
+            title: 'Employee ID',
+            type: 'string',
+            description: 'Optional internal staff identifier, e.g. EMP-014.',
+        }),
+        defineField({
+            name: 'fatherName',
+            title: "Father's Name",
+            type: 'string',
+            description: 'Optional. Used on letters and record exports.',
+        }),
+        defineField({
+            name: 'cnic',
+            title: 'CNIC',
+            type: 'string',
+            description: 'Optional. National identity number, 13 digits, e.g. 42101-1234567-1.',
+        }),
+        defineField({
+            name: 'phoneNumber',
+            title: 'Phone Number',
+            type: 'string',
+            description: 'Optional contact number, e.g. 0300-1234567.',
+        }),
+        defineField({
+            name: 'gender',
+            title: 'Gender',
+            type: 'string',
+            options: {
+                list: [
+                    { title: 'Male', value: 'male' },
+                    { title: 'Female', value: 'female' },
+                ],
+            },
+        }),
+        defineField({
+            name: 'photoURL',
+            title: 'Profile Photo',
+            type: 'string',
+            description: 'Data URL or remote URL of the admin avatar.',
+        }),
+        defineField({
             name: 'lastSyncedAt',
             title: 'Last Synced At',
             type: 'datetime',

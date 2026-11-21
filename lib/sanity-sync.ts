@@ -18,6 +18,10 @@ interface AdminUserData {
     photoURL?: string | null;
     designation?: string;
     assignedClass?: string | null;
+    employeeId?: string;
+    fatherName?: string;
+    cnic?: string;
+    phoneNumber?: string;
 }
 
 export const syncAdminToSanity = async (userData: AdminUserData) => {
@@ -39,6 +43,10 @@ export const syncAdminToSanity = async (userData: AdminUserData) => {
             photoURL: userData.photoURL || null,
             designation: userData.designation || null,
             assignedClass: userData.assignedClass || null,
+            employeeId: userData.employeeId || null,
+            fatherName: userData.fatherName || null,
+            cnic: userData.cnic || null,
+            phoneNumber: userData.phoneNumber || null,
             lastSyncedAt: new Date().toISOString(),
         });
 
@@ -75,6 +83,10 @@ export const patchAdminInSanity = async (uid: string, updates: Partial<AdminUser
         if (updates.photoURL !== undefined) patch.set({ photoURL: updates.photoURL });
         if (updates.designation !== undefined) patch.set({ designation: updates.designation });
         if (updates.assignedClass !== undefined) patch.set({ assignedClass: updates.assignedClass });
+        if (updates.employeeId !== undefined) patch.set({ employeeId: updates.employeeId });
+        if (updates.fatherName !== undefined) patch.set({ fatherName: updates.fatherName });
+        if (updates.cnic !== undefined) patch.set({ cnic: updates.cnic });
+        if (updates.phoneNumber !== undefined) patch.set({ phoneNumber: updates.phoneNumber });
 
         patch.set({ lastSyncedAt: new Date().toISOString() });
 

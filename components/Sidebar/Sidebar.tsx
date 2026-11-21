@@ -7,6 +7,7 @@ import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { LucideIcon, PanelLeftClose, PanelLeftOpen, Loader2 } from "lucide-react";
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { useAuth } from "@/hooks/use-auth";
 import LogoutConfirmationDialog from "../Auth/LogoutConfirmationDialog";
 
@@ -14,6 +15,7 @@ interface SidebarItem {
   id: string;
   label: string;
   icon: LucideIcon;
+  href?: string;
 }
 
 interface SidebarProps {
@@ -40,6 +42,7 @@ const Sidebar = ({ items, activeTab, onTabChange, loading, isStudent }: SidebarP
 
   const { user, logout, photoURL } = useAuth();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const pathname = usePathname();
 
   // useEffect removed as we use global auth context
 
@@ -55,15 +58,16 @@ const Sidebar = ({ items, activeTab, onTabChange, loading, isStudent }: SidebarP
 
   const links = items.map((item) => ({
     label: item.label,
-    href: `#${item.id}`,
+    href: item.href || `#${item.id}`,
+    isExternal: Boolean(item.href),
     icon: (
-      activeTab === item.id && loading ? (
+      !item.href && activeTab === item.id && loading ? (
         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600 dark:text-blue-400" />
       ) : (
         <item.icon
           className={cn(
             "h-4 w-4 shrink-0 transition-colors duration-200",
-            activeTab === item.id
+            (item.href ? pathname.startsWith(item.href) : activeTab === item.id)
               ? "text-neutral-900 dark:text-white"
               : "text-neutral-500 dark:text-neutral-400 group-hover/item:text-neutral-700 dark:group-hover/item:text-neutral-200"
           )}
@@ -113,13 +117,17 @@ const Sidebar = ({ items, activeTab, onTabChange, loading, isStudent }: SidebarP
           {/* Navigation Links - Clean List */}
           <div className={cn("flex flex-col gap-0.5 transition-all duration-300", open ? "px-3" : "px-0")}>
             {links.map((link, idx) => {
-              const isActive = activeTab === link.href.replace('#', '');
+              const isActive = link.isExternal
+                ? pathname.startsWith(link.href)
+                : activeTab === link.href.replace('#', '');
               return (
                 <div
                   key={idx}
                   onClick={() => {
-                    const id = link.href.replace('#', '');
-                    onTabChange(id);
+                    if (!link.isExternal) {
+                      const id = link.href.replace('#', '');
+                      onTabChange(id);
+                    }
                   }}
                   className={cn(
                     "cursor-pointer rounded-lg transition-all duration-200 group/item relative flex items-center",

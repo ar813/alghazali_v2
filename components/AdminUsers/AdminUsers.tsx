@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
-import { Trash2, Shield, UserCog, Search, Plus, X, AlertCircle, Edit3, Loader2, Mail, RefreshCw, Clock, Eye, EyeOff, Camera, Upload, ChevronRight } from "lucide-react";
+import { Trash2, Shield, Search, Plus, Loader2, Mail, RefreshCw, Clock, Edit3 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import DeletePhotoConfirmationDialog from "@/components/Auth/DeletePhotoConfirmationDialog";
+import { useAuth } from "@/hooks/use-auth";
 import { client } from "@/sanity/lib/client";
 import { getAllClassesQuery } from "@/sanity/lib/queries";
+import UserEditorDrawer, { UserEditorPayload } from "@/components/AdminUsers/UserEditorDrawer";
 
 interface UserData {
     uid: string;
@@ -22,102 +23,28 @@ interface UserData {
     createdAt?: string;
     designation?: string;
     assignedClass?: string;
-}
-
-const compressImage = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (e) => {
-            const img = new window.Image();
-            img.src = e.target?.result as string;
-            img.onload = () => {
-                const canvas = document.createElement("canvas");
-                const MAX = 400;
-                let { width, height } = img;
-                if (width > height) { if (width > MAX) { height *= MAX / width; width = MAX; } }
-                else { if (height > MAX) { width *= MAX / height; height = MAX; } }
-                canvas.width = width; canvas.height = height;
-                canvas.getContext("2d")?.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL("image/jpeg", 0.7));
-            };
-            img.onerror = reject;
-        };
-        reader.onerror = reject;
-    });
-
-// ─── Shared field styles ───────────────────────────────────────────────────────
-const field = "w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all placeholder:text-neutral-400";
-const label = "block text-[11px] font-bold text-neutral-500 uppercase tracking-widest mb-1.5";
-
-// ─── Slide-up modal wrapper (mobile bottom-sheet, desktop center) ──────────────
-function SlideModal({ open, onClose, title, subtitle, children, footer }: {
-    open: boolean; onClose: () => void; title: string; subtitle?: string;
-    children: React.ReactNode; footer?: React.ReactNode;
-}) {
-    if (!open) return null;
-    return (
-        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center sm:pt-16 sm:pb-4 sm:px-4">
-            {/* backdrop */}
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-            {/* panel */}
-            <div className="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[calc(100vh-6rem)] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
-                {/* drag handle (mobile only) */}
-                <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
-                    <div className="w-10 h-1 bg-neutral-200 rounded-full" />
-                </div>
-                {/* header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 shrink-0">
-                    <div>
-                        <h3 className="text-base font-bold text-neutral-900">{title}</h3>
-                        {subtitle && <p className="text-xs text-neutral-500 mt-0.5">{subtitle}</p>}
-                    </div>
-                    <button onClick={onClose} className="p-2 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-all">
-                        <X size={18} />
-                    </button>
-                </div>
-                {/* scrollable body */}
-                <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 space-y-4">
-                    {children}
-                </div>
-                {/* sticky footer */}
-                {footer && (
-                    <div className="shrink-0 px-5 py-4 border-t border-neutral-100 bg-white rounded-b-2xl">
-                        {footer}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
+    employeeId?: string;
+    fatherName?: string;
+    cnic?: string;
+    phoneNumber?: string;
+    passwordChangedAt?: string;
 }
 
 const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
     const [users, setUsers] = useState<UserData[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const currentUserUid = auth.currentUser?.uid;
+    // Prefer the reactive auth user so the anti-lockout guards never race the
+    // first render (auth.currentUser can still be undefined there).
+    const { user: authUser } = useAuth();
+    const currentUserUid = authUser?.uid ?? auth.currentUser?.uid;
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const [fetchedClasses, setFetchedClasses] = useState<string[]>([]);
 
-    // Add form
-    const [showAdd, setShowAdd] = useState(false);
-    const [addName, setAddName] = useState(""); const [addEmail, setAddEmail] = useState("");
-    const [addPass, setAddPass] = useState(""); const [showAddPass, setShowAddPass] = useState(false);
-    const [addRole, setAddRole] = useState<"admin" | "super_admin">("admin");
-    const [addDesig, setAddDesig] = useState("Admin"); const [addClass, setAddClass] = useState("");
-    const [addGender, setAddGender] = useState<"male" | "female" | "">("");
-
-    // Edit form
-    const [showEdit, setShowEdit] = useState(false);
+    // Add / Edit drawer
+    const [editorOpen, setEditorOpen] = useState(false);
+    const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
     const [editUser, setEditUser] = useState<UserData | null>(null);
-    const [editName, setEditName] = useState(""); const [editEmail, setEditEmail] = useState("");
-    const [editPass, setEditPass] = useState(""); const [showEditPass, setShowEditPass] = useState(false);
-    const [editRole, setEditRole] = useState<"admin" | "super_admin">("admin");
-    const [editDesig, setEditDesig] = useState("Admin"); const [editClass, setEditClass] = useState("");
-    const [editGender, setEditGender] = useState<"male" | "female" | "">("");
-    const [editPhoto, setEditPhoto] = useState("");
-    const [showRemovePhoto, setShowRemovePhoto] = useState(false);
 
     // Delete
     const [showDel, setShowDel] = useState(false);
@@ -154,57 +81,61 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
 
     const getToken = () => auth.currentUser?.getIdToken();
 
-    const handleAddUser = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        try {
-            const res = await fetch("/api/admin/users", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${await getToken()}` },
-                body: JSON.stringify({ email: addEmail, password: addPass, displayName: addName, role: addRole, gender: addGender, designation: addDesig, assignedClass: addRole === "admin" ? addClass : null }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
-            toast.success("User added successfully");
-            setShowAdd(false);
-            setAddName(""); setAddEmail(""); setAddPass(""); setAddRole("admin"); setAddDesig("Admin"); setAddClass(""); setAddGender("");
-            fetchUsers();
-        } catch (e: any) { toast.error(e.message); }
-        finally { setIsSubmitting(false); }
+    // ── Drawer open helpers ──────────────────────────────────────────────────
+    const openCreate = () => {
+        setEditUser(null);
+        setEditorMode("create");
+        setEditorOpen(true);
     };
 
     const openEdit = (u: UserData) => {
-        setEditUser(u); setEditName(u.displayName || ""); setEditEmail(u.email || "");
-        setEditRole(u.role || "admin"); setEditDesig(u.designation || "Admin");
-        setEditClass(u.assignedClass || ""); setEditGender(u.gender || "");
-        setEditPhoto(u.photoURL || ""); setEditPass(""); setShowEditPass(false);
-        setShowEdit(true);
+        setEditUser(u);
+        setEditorMode("edit");
+        setEditorOpen(true);
     };
 
-    const handleUpdateUser = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!editUser) return;
+    // ── Create / Update ───────────────────────────────────────────────────────
+    const submitUser = async (payload: UserEditorPayload) => {
         setIsSubmitting(true);
         try {
+            const isEdit = editorMode === "edit" && !!payload.uid;
+
+            // The password only ever travels on create. Changing an existing
+            // one goes through the verified flow in ChangePasswordDialog.
+            const shared = {
+                email: payload.email,
+                displayName: payload.displayName,
+                role: payload.role,
+                gender: payload.gender,
+                photoURL: payload.photoURL,
+                designation: payload.designation,
+                assignedClass: payload.assignedClass,
+                employeeId: payload.employeeId,
+                fatherName: payload.fatherName,
+                cnic: payload.cnic,
+                phoneNumber: payload.phoneNumber,
+            };
+
             const res = await fetch("/api/admin/users", {
-                method: "PUT",
+                method: isEdit ? "PUT" : "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${await getToken()}` },
-                body: JSON.stringify({ uid: editUser.uid, displayName: editName, email: editEmail, role: editRole, gender: editGender, photoURL: editPhoto, designation: editDesig, assignedClass: editRole === "admin" ? editClass : null, ...(editPass ? { password: editPass } : {}) }),
+                body: JSON.stringify(
+                    isEdit ? { uid: payload.uid, ...shared } : { ...shared, password: payload.password }
+                ),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
-            toast.success("Profile updated");
-            setShowEdit(false); setEditUser(null);
-            fetchUsers();
-        } catch (e: any) { toast.error(e.message); }
-        finally { setIsSubmitting(false); }
-    };
 
-    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > 2 * 1024 * 1024) { toast.error("Image must be < 2MB"); return; }
-        try { setEditPhoto(await compressImage(file)); } catch { toast.error("Failed to process image"); }
+            toast.success(isEdit ? "Profile updated" : "User added successfully");
+            setEditorOpen(false);
+            setEditUser(null);
+            fetchUsers();
+        } catch (e: any) {
+            toast.error(e.message);
+            throw e;
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleQuickRoleChange = async (u: UserData) => {
@@ -276,7 +207,7 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                             className="p-2.5 border border-neutral-200 rounded-xl text-neutral-500 hover:bg-neutral-50 disabled:opacity-50 transition-all">
                             <RefreshCw size={18} className={cn(isRefreshing && "animate-spin")} />
                         </button>
-                        <button onClick={() => setShowAdd(true)}
+                        <button onClick={openCreate}
                             className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-indigo-600/20 active:scale-95">
                             <Plus size={16} /> Add User
                         </button>
@@ -364,161 +295,17 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                 })}
             </div>
 
-            {/* ══ ADD USER MODAL ══════════════════════════════════════════════════════ */}
-            <SlideModal open={showAdd} onClose={() => setShowAdd(false)} title="Add User" subtitle="Create a new admin account"
-                footer={
-                    <button form="add-form" type="submit" disabled={isSubmitting}
-                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all disabled:opacity-60 flex items-center justify-center gap-2 active:scale-[0.98]">
-                        {isSubmitting ? <><Loader2 size={16} className="animate-spin" />Adding…</> : "Create Account"}
-                    </button>
-                }>
-                <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex gap-2.5 text-sm text-amber-800">
-                    <AlertCircle size={16} className="shrink-0 text-amber-500 mt-0.5" />
-                    <p>Account creation is permanent. Use correct details.</p>
-                </div>
-                <form id="add-form" onSubmit={handleAddUser} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2">
-                            <label className={label}>Full Name</label>
-                            <input required value={addName} onChange={e => setAddName(e.target.value)} placeholder="Arsalan Ahmed" className={field} />
-                        </div>
-                        <div>
-                            <label className={label}>Role</label>
-                            <select value={addRole} onChange={e => setAddRole(e.target.value as any)} className={cn(field, "cursor-pointer")}>
-                                <option value="admin">Regular Admin</option>
-                                <option value="super_admin">Super Admin</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className={label}>Designation</label>
-                            <select value={addDesig} onChange={e => setAddDesig(e.target.value)} className={cn(field, "cursor-pointer")}>
-                                <option>Admin</option><option>Teacher</option><option>Staff</option><option>Principal</option>
-                            </select>
-                        </div>
-                        {addRole === "admin" && (
-                            <div className="col-span-2">
-                                <label className={label}>Class Teacher Of</label>
-                                <select value={addClass} onChange={e => setAddClass(e.target.value)} className={cn(field, "cursor-pointer")}>
-                                    <option value="">None</option>
-                                    {fetchedClasses.map(c => <option key={c} value={c}>Class {c}</option>)}
-                                </select>
-                            </div>
-                        )}
-                        <div className="col-span-2">
-                            <label className={label}>Gender</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {(["male", "female"] as const).map(g => (
-                                    <button key={g} type="button" onClick={() => setAddGender(g)}
-                                        className={cn("py-2.5 rounded-xl text-sm font-semibold border transition-all capitalize",
-                                            addGender === g ? (g === "male" ? "bg-sky-500 text-white border-sky-500" : "bg-pink-500 text-white border-pink-500") : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100")}>
-                                        {g}
-                                    </button>
-                                ))}
-                            </div>
-                            <p className="text-[10px] text-neutral-400 mt-1.5">Regular admins see only their gender's student data.</p>
-                        </div>
-                        <div className="col-span-2">
-                            <label className={label}>Email Address</label>
-                            <input type="email" required value={addEmail} onChange={e => setAddEmail(e.target.value)} placeholder="admin@alghazali.edu" className={field} />
-                        </div>
-                        <div className="col-span-2">
-                            <label className={label}>Password</label>
-                            <div className="relative">
-                                <input type={showAddPass ? "text" : "password"} required minLength={6} value={addPass} onChange={e => setAddPass(e.target.value)} placeholder="At least 6 characters" className={cn(field, "pr-11")} />
-                                <button type="button" onClick={() => setShowAddPass(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600">
-                                    {showAddPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </SlideModal>
-
-            {/* ══ EDIT USER MODAL ═════════════════════════════════════════════════════ */}
-            <SlideModal open={showEdit && !!editUser} onClose={() => setShowEdit(false)} title="Edit User" subtitle={`Editing ${editUser?.displayName || "admin"}`}
-                footer={
-                    <button form="edit-form" type="submit" disabled={isSubmitting}
-                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all disabled:opacity-60 flex items-center justify-center gap-2 active:scale-[0.98]">
-                        {isSubmitting ? <><Loader2 size={16} className="animate-spin" />Saving…</> : "Save Changes"}
-                    </button>
-                }>
-                {editUser && (
-                    <form id="edit-form" onSubmit={handleUpdateUser} className="space-y-4">
-                        {/* avatar */}
-                        <div className="flex flex-col items-center gap-3 pb-2">
-                            <div className="relative">
-                                <div className="w-20 h-20 rounded-2xl bg-indigo-50 border border-indigo-100 overflow-hidden flex items-center justify-center text-indigo-600 text-2xl font-bold">
-                                    {editPhoto ? <Image src={editPhoto} alt="" width={80} height={80} className="w-full h-full object-cover" unoptimized /> : (editName || editEmail)[0]?.toUpperCase()}
-                                </div>
-                                <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute -bottom-2 -right-2 p-1.5 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 active:scale-90 transition-all">
-                                    <Camera size={13} />
-                                </button>
-                            </div>
-                            {editPhoto && (
-                                <button type="button" onClick={() => setShowRemovePhoto(true)} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
-                                    <Trash2 size={11} /> Remove photo
-                                </button>
-                            )}
-                            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="col-span-2">
-                                <label className={label}>Full Name</label>
-                                <input required value={editName} onChange={e => setEditName(e.target.value)} className={field} />
-                            </div>
-                            <div className="col-span-2">
-                                <label className={label}>Email</label>
-                                <input type="email" required value={editEmail} onChange={e => setEditEmail(e.target.value)} className={field} />
-                            </div>
-                            <div className="col-span-2">
-                                <label className={label}>New Password (blank = keep current)</label>
-                                <div className="relative">
-                                    <input type={showEditPass ? "text" : "password"} minLength={6} value={editPass} onChange={e => setEditPass(e.target.value)} placeholder="Min 6 characters" className={cn(field, "pr-11")} />
-                                    <button type="button" onClick={() => setShowEditPass(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600">
-                                        {showEditPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                                    </button>
-                                </div>
-                            </div>
-                            <div>
-                                <label className={label}>Role</label>
-                                <select value={editRole} onChange={e => setEditRole(e.target.value as any)} disabled={editUser.uid === currentUserUid} className={cn(field, "cursor-pointer disabled:opacity-50")}>
-                                    <option value="admin">Regular Admin</option>
-                                    <option value="super_admin">Super Admin</option>
-                                </select>
-                                {editUser.uid === currentUserUid && <p className="text-[10px] text-amber-600 mt-1">Cannot demote yourself.</p>}
-                            </div>
-                            <div>
-                                <label className={label}>Designation</label>
-                                <select value={editDesig} onChange={e => setEditDesig(e.target.value)} className={cn(field, "cursor-pointer")}>
-                                    <option>Admin</option><option>Teacher</option><option>Staff</option><option>Principal</option>
-                                </select>
-                            </div>
-                            {editRole === "admin" && (
-                                <div className="col-span-2">
-                                    <label className={label}>Class Teacher Of</label>
-                                    <select value={editClass} onChange={e => setEditClass(e.target.value)} className={cn(field, "cursor-pointer")}>
-                                        <option value="">None</option>
-                                        {fetchedClasses.map(c => <option key={c} value={c}>Class {c}</option>)}
-                                    </select>
-                                </div>
-                            )}
-                            <div className="col-span-2">
-                                <label className={label}>Gender</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {(["male", "female"] as const).map(g => (
-                                        <button key={g} type="button" onClick={() => setEditGender(g)}
-                                            className={cn("py-2.5 rounded-xl text-sm font-semibold border transition-all capitalize",
-                                                editGender === g ? (g === "male" ? "bg-sky-500 text-white border-sky-500" : "bg-pink-500 text-white border-pink-500") : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100")}>
-                                            {g}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                )}
-            </SlideModal>
+            {/* ══ ADD / EDIT USER DRAWER ════════════════════════════════════════════ */}
+            <UserEditorDrawer
+                open={editorOpen}
+                mode={editorMode}
+                user={editUser}
+                classes={fetchedClasses}
+                isSelf={!!editUser && editUser.uid === currentUserUid}
+                isSubmitting={isSubmitting}
+                onClose={() => { setEditorOpen(false); setEditUser(null); }}
+                onSubmit={submitUser}
+            />
 
             {/* ══ DELETE CONFIRM ══════════════════════════════════════════════════════ */}
             {showDel && delUser && (
@@ -548,15 +335,9 @@ const AdminUsers = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) 
                     </div>
                 </div>
             )}
-
-            <DeletePhotoConfirmationDialog
-                open={showRemovePhoto} onOpenChange={setShowRemovePhoto}
-                onConfirm={() => { setEditPhoto(""); setShowRemovePhoto(false); }}
-                title="Remove Profile Photo"
-                description={`Remove photo for ${editUser?.displayName || "this user"}?`}
-            />
         </>
     );
 };
 
 export default AdminUsers;
+

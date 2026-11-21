@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Access Denied: Super Admin privileges required." }, { status: 403 });
         }
 
-        const { email, password, displayName, role, gender, photoURL, designation, assignedClass } = await req.json();
+        const { email, password, displayName, role, gender, photoURL, designation, assignedClass,
+            employeeId, fatherName, cnic, phoneNumber } = await req.json();
 
         if (!email || !password) {
             return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
@@ -46,6 +47,10 @@ export async function POST(req: NextRequest) {
             photoURL: photoURL || null,
             designation: designation || null,
             assignedClass: assignedClass || null,
+            employeeId: employeeId || null,
+            fatherName: fatherName || null,
+            cnic: cnic || null,
+            phoneNumber: phoneNumber || null,
             createdAt: new Date().toISOString(),
             profileSetupRequired: true,  // Force first-time profile setup
         });
@@ -60,6 +65,10 @@ export async function POST(req: NextRequest) {
             photoURL: photoURL || null,
             designation: designation || null,
             assignedClass: assignedClass || null,
+            employeeId: employeeId || null,
+            fatherName: fatherName || null,
+            cnic: cnic || null,
+            phoneNumber: phoneNumber || null,
         });
 
         return NextResponse.json({
@@ -118,10 +127,21 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: "Access Denied: Super Admin privileges required." }, { status: 403 });
         }
 
-        const { uid, email, password, displayName, role, gender, photoURL, designation, assignedClass } = await req.json();
+        const { uid, email, displayName, role, gender, photoURL, designation, assignedClass,
+            employeeId, fatherName, cnic, phoneNumber } = await req.json();
 
         if (!uid) {
             return NextResponse.json({ error: "User UID is required." }, { status: 400 });
+        }
+
+        // Passwords are intentionally NOT accepted here. Changing one requires
+        // proving the acting admin's own current password first, which only
+        // `/api/admin/users/password` does.
+        if ("password" in (await req.clone().json().catch(() => ({})))) {
+            return NextResponse.json(
+                { error: "Use the change password flow to update a password." },
+                { status: 400 }
+            );
         }
 
         // --- ANTI-LOCKOUT SAFEGUARD ---
@@ -137,7 +157,6 @@ export async function PUT(req: NextRequest) {
         // 1. Update Firebase Authentication
         const updateData: any = {};
         if (email) updateData.email = email;
-        if (password) updateData.password = password;
         if (displayName) updateData.displayName = displayName;
 
         if (Object.keys(updateData).length > 0) {
@@ -153,6 +172,10 @@ export async function PUT(req: NextRequest) {
         if (photoURL !== undefined) firestoreUpdate.photoURL = photoURL;
         if (designation !== undefined) firestoreUpdate.designation = designation;
         if (assignedClass !== undefined) firestoreUpdate.assignedClass = assignedClass;
+        if (employeeId !== undefined) firestoreUpdate.employeeId = employeeId;
+        if (fatherName !== undefined) firestoreUpdate.fatherName = fatherName;
+        if (cnic !== undefined) firestoreUpdate.cnic = cnic;
+        if (phoneNumber !== undefined) firestoreUpdate.phoneNumber = phoneNumber;
 
         if (Object.keys(firestoreUpdate).length > 0) {
             await dbAdmin.collection("users").doc(uid).update(firestoreUpdate);
@@ -167,6 +190,10 @@ export async function PUT(req: NextRequest) {
         if (photoURL !== undefined) sanityUpdates.photoURL = photoURL;
         if (designation !== undefined) sanityUpdates.designation = designation;
         if (assignedClass !== undefined) sanityUpdates.assignedClass = assignedClass;
+        if (employeeId !== undefined) sanityUpdates.employeeId = employeeId;
+        if (fatherName !== undefined) sanityUpdates.fatherName = fatherName;
+        if (cnic !== undefined) sanityUpdates.cnic = cnic;
+        if (phoneNumber !== undefined) sanityUpdates.phoneNumber = phoneNumber;
 
         if (Object.keys(sanityUpdates).length > 0) {
             await patchAdminInSanity(uid, sanityUpdates);

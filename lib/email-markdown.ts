@@ -46,55 +46,28 @@ function extractButtonAttributes(attrString: string): { url: string; label: stri
 export function renderEmailButton(label: string, url: string, themeColor: string = '#0d9488'): string {
   const safeUrl = escapeHtml(url);
   const safeLabel = escapeHtml(label);
-  // Compact bulletproof button — works in Gmail, Outlook, Apple Mail, Yahoo
-  return `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin:20px 0;text-align:center;"><tr><td align="center"><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td align="center" bgcolor="${themeColor}" style="border-radius:10px;background-color:${themeColor};"><a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:13px 28px;font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;">${safeLabel} &rarr;</a></td></tr></table></td></tr></table>`;
-}
-
-/**
- * Parses banner attributes like: url="..." alt="..." link="..."
- */
-export function extractBannerAttributes(attrString: string = ''): { url: string; alt: string; link?: string } {
-  const decoded = attrString
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'");
-
-  const urlMatch = decoded.match(/url=["']([^"']*)["']/i) || decoded.match(/src=["']([^"']*)["']/i) || decoded.match(/url=([^"'\s]+)/i);
-  const altMatch = decoded.match(/alt=["']([^"']*)["']/i) || decoded.match(/alt=([^"'\s]+)/i);
-  const linkMatch = decoded.match(/link=["']([^"']*)["']/i) || decoded.match(/href=["']([^"']*)["']/i);
-
-  let url = urlMatch ? urlMatch[1].trim() : 'https://alghazali.vercel.app/email_data_format/333.jpg';
-  if (url.startsWith('/')) {
-    url = `https://alghazali.vercel.app${url}`;
-  }
-  const alt = altMatch ? altMatch[1].trim() : 'Al-Ghazali High School Banner';
-  const link = linkMatch ? linkMatch[1].trim() : undefined;
-
-  return { url, alt, link };
-}
-
-/**
- * Bulletproof email banner with rounded corners and optional link
- */
-export function renderEmailBanner(
-  imageUrl: string = 'https://alghazali.vercel.app/email_data_format/333.jpg',
-  alt: string = 'Al-Ghazali High School Banner',
-  linkUrl?: string
-): string {
-  let finalUrl = imageUrl || 'https://alghazali.vercel.app/email_data_format/333.jpg';
-  if (finalUrl.startsWith('/')) {
-    finalUrl = `https://alghazali.vercel.app${finalUrl}`;
-  }
-  const safeImgUrl = escapeHtml(finalUrl);
-  const safeAlt = escapeHtml(alt);
-  const safeLink = linkUrl ? escapeHtml(linkUrl) : '';
-
-  const imgTag = `<img src="${safeImgUrl}" alt="${safeAlt}" width="570" style="width: 100%; max-width: 100%; height: auto; display: block; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06); outline: none; text-decoration: none;" />`;
 
   return `
-<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 20px 0; text-align: center;">
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 24px 0; text-align: center;">
   <tr>
-    <td align="center" style="padding: 0;">
-      ${safeLink ? `<a href="${safeLink}" target="_blank" rel="noopener noreferrer" style="display: block; text-decoration: none; border: 0;">${imgTag}</a>` : imgTag}
+    <td align="center" style="padding: 6px 0;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+        <tr>
+          <td align="center" style="border-radius: 10px; background-color: ${themeColor}; box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.12);">
+            <!--[if mso]>
+            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeUrl}" style="height:44px;v-text-anchor:middle;width:240px;" arcsize="20%" stroke="f" fillcolor="${themeColor}">
+            <w:anchorlock/>
+            <center style="color:#ffffff;font-family:sans-serif;font-size:15px;font-weight:bold;">${safeLabel} &rarr;</center>
+            </v:roundrect>
+            <![endif]-->
+            <!--[if !mso]><!-->
+            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 13px 30px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14.5px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 10px; border: 1px solid ${themeColor}; letter-spacing: 0.01em;">
+              ${safeLabel} &nbsp;&rarr;
+            </a>
+            <!--<![endif]-->
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>
@@ -163,19 +136,13 @@ function parseInline(text: string, themeColor: string): string {
     `<mark style="background-color: #fef08a; color: #854d0e; padding: 1px 4px; border-radius: 2px;">$1</mark>`
   );
 
-  // 9. Standard Images: ![alt](url)
-  output = output.replace(
-    /!\[([^\]]*)\]\(([^)]+)\)/g,
-    `<img src="$2" alt="$1" style="max-width: 100%; height: auto; border-radius: 12px; display: block; margin: 16px auto; border: 1px solid #e2e8f0;" />`
-  );
-
-  // 10. Standard Links: [label](url)
+  // 9. Standard Links: [label](url)
   output = output.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
     `<a href="$2" target="_blank" rel="noopener noreferrer" style="color: ${themeColor}; font-weight: 600; text-decoration: underline;">$1</a>`
   );
 
-  // 11. Restore extracted buttons
+  // 10. Restore extracted buttons
   buttonHolders.forEach((btnHtml, idx) => {
     output = output.replace(`___BTN_HOLDER_${idx}___`, btnHtml);
   });
@@ -227,21 +194,24 @@ export function markdownToEmailHtml(markdown: string, options: MarkdownOptions =
 
   const flushTable = () => {
     if (inTable && tableRows.length > 0) {
-      let tableHtml = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;font-size:14px;">`;
+      let tableHtml = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0; border-collapse: collapse; width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; font-size: 14px;">`;
+      
       tableRows.forEach((row, rowIndex) => {
         const isHeader = rowIndex === 0;
-        const rowBg = isHeader ? '#f8fafc' : rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc';
-        tableHtml += `<tr style="background-color:${rowBg};border-bottom:${isHeader ? '2px solid #cbd5e1' : '1px solid #e2e8f0'};">` ;
+        tableHtml += `<tr style="${isHeader ? 'background-color: #f8fafc; border-bottom: 2px solid #cbd5e1;' : rowIndex % 2 === 0 ? 'background-color: #ffffff; border-bottom: 1px solid #e2e8f0;' : 'background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;'}">`;
+        
         row.forEach(cell => {
           const content = parseInline(cell.trim(), themeColor);
           if (isHeader) {
-            tableHtml += `<th style="padding:10px 12px;text-align:left;font-weight:700;color:#0f172a;border-right:1px solid #e2e8f0;">${content}</th>`;
+            tableHtml += `<th style="padding: 12px 14px; text-align: left; font-weight: 700; color: #0f172a; border-right: 1px solid #e2e8f0;">${content}</th>`;
           } else {
-            tableHtml += `<td style="padding:10px 12px;text-align:left;color:#334155;border-right:1px solid #e2e8f0;">${content}</td>`;
+            tableHtml += `<td style="padding: 12px 14px; text-align: left; color: #334155; border-right: 1px solid #e2e8f0;">${content}</td>`;
           }
         });
+
         tableHtml += `</tr>`;
       });
+
       tableHtml += `</table>`;
       htmlBlocks.push(tableHtml);
       tableRows = [];
@@ -278,10 +248,21 @@ export function markdownToEmailHtml(markdown: string, options: MarkdownOptions =
       }
 
       const bodyHtml = calloutBuffer
-        .map(line => `<p style="margin:0 0 6px 0;font-size:14px;line-height:1.6;color:#334155;">${parseInline(line, themeColor)}</p>`)
+        .map(line => `<p style="margin: 0 0 6px 0; font-size: 14px; line-height: 1.6; color: #334155;">${parseInline(line, themeColor)}</p>`)
         .join('');
 
-      htmlBlocks.push(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;background-color:${bgColor};border-left:4px solid ${borderColor};border-radius:8px;border:1px solid #e2e8f0;border-left-width:4px;border-left-color:${borderColor};"><tr><td style="padding:14px 18px;"><div style="font-weight:700;font-size:14px;color:${titleColor};margin-bottom:6px;">${icon} ${title}</div><div>${bodyHtml}</div></td></tr></table>`);
+      htmlBlocks.push(`
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 18px 0; background-color: ${bgColor}; border-left: 4px solid ${borderColor}; border-radius: 8px; border-top: 1px solid ${bgColor}; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+          <tr>
+            <td style="padding: 14px 18px;">
+              <div style="font-weight: 700; font-size: 14px; color: ${titleColor}; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <span>${icon}</span> <span>${title}</span>
+              </div>
+              <div>${bodyHtml}</div>
+            </td>
+          </tr>
+        </table>
+      `.trim());
 
       calloutBuffer = [];
       inCallout = null;
@@ -318,17 +299,6 @@ export function markdownToEmailHtml(markdown: string, options: MarkdownOptions =
       flushCallout();
       const { url, label } = extractButtonAttributes(buttonBlockMatch[1]);
       htmlBlocks.push(renderEmailButton(label, url, themeColor));
-      continue;
-    }
-
-    // Standalone Banner Block :::banner ... :::
-    const bannerBlockMatch = trimmed.match(/^:::banner(?:\s+(.*?))?:::$/i);
-    if (bannerBlockMatch) {
-      flushList();
-      flushTable();
-      flushCallout();
-      const { url, alt, link } = extractBannerAttributes(bannerBlockMatch[1] || "");
-      htmlBlocks.push(renderEmailBanner(url, alt, link));
       continue;
     }
 
@@ -396,22 +366,33 @@ export function markdownToEmailHtml(markdown: string, options: MarkdownOptions =
     if (trimmed.startsWith('# ')) {
       flushList();
       const content = parseInline(trimmed.slice(2), themeColor);
-      const isFirst = htmlBlocks.length === 0;
-      htmlBlocks.push(`<h1 style="font-size:22px;font-weight:800;color:#0f172a;margin:${isFirst ? '4px' : '22px'} 0 12px 0;line-height:1.3;letter-spacing:-0.02em;">${content}</h1>`);
+      htmlBlocks.push(`
+        <h1 style="font-size: 23px; font-weight: 800; color: #0f172a; margin: 28px 0 14px 0; line-height: 1.3; letter-spacing: -0.02em;">
+          ${content}
+        </h1>
+      `.trim());
       continue;
     }
 
     if (trimmed.startsWith('## ')) {
       flushList();
       const content = parseInline(trimmed.slice(3), themeColor);
-      htmlBlocks.push(`<h2 style="font-size:19px;font-weight:700;color:#0f172a;margin:22px 0 10px 0;line-height:1.35;padding-bottom:6px;border-bottom:1px solid #e2e8f0;">${content}</h2>`);
+      htmlBlocks.push(`
+        <h2 style="font-size: 19px; font-weight: 700; color: #0f172a; margin: 24px 0 12px 0; line-height: 1.35; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0;">
+          ${content}
+        </h2>
+      `.trim());
       continue;
     }
 
     if (trimmed.startsWith('### ')) {
       flushList();
       const content = parseInline(trimmed.slice(4), themeColor);
-      htmlBlocks.push(`<h3 style="font-size:16px;font-weight:700;color:#1e293b;margin:18px 0 8px 0;line-height:1.4;">${content}</h3>`);
+      htmlBlocks.push(`
+        <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 20px 0 10px 0; line-height: 1.4;">
+          ${content}
+        </h3>
+      `.trim());
       continue;
     }
 
@@ -420,7 +401,11 @@ export function markdownToEmailHtml(markdown: string, options: MarkdownOptions =
       flushList();
       const quoteText = trimmed.replace(/^>\s?/, '');
       const content = parseInline(quoteText, themeColor);
-      htmlBlocks.push(`<div style="background-color:#f8fafc;border-left:4px solid ${themeColor};padding:12px 18px;margin:14px 0;border-radius:4px;font-style:italic;color:#334155;font-size:14.5px;line-height:1.6;">${content}</div>`);
+      htmlBlocks.push(`
+        <div style="background-color: #f8fafc; border-left: 4px solid ${themeColor}; padding: 12px 18px; margin: 16px 0; border-radius: 4px; font-style: italic; color: #334155; font-size: 14.5px; line-height: 1.6;">
+          ${content}
+        </div>
+      `.trim());
       continue;
     }
 
@@ -429,10 +414,10 @@ export function markdownToEmailHtml(markdown: string, options: MarkdownOptions =
       if (inList !== 'ul') {
         flushList();
         inList = 'ul';
-        htmlBlocks.push(`<ul style="margin:10px 0 14px 0;padding-left:22px;color:#334155;font-size:15px;line-height:1.65;">`);
+        htmlBlocks.push(`<ul style="margin: 12px 0 16px 0; padding-left: 22px; color: #334155; font-size: 15px; line-height: 1.65;">`);
       }
       const itemText = trimmed.replace(/^[-*]\s+/, '');
-      htmlBlocks.push(`<li style="margin-bottom:6px;">${parseInline(itemText, themeColor)}</li>`);
+      htmlBlocks.push(`<li style="margin-bottom: 6px;">${parseInline(itemText, themeColor)}</li>`);
       continue;
     }
 
@@ -441,17 +426,21 @@ export function markdownToEmailHtml(markdown: string, options: MarkdownOptions =
       if (inList !== 'ol') {
         flushList();
         inList = 'ol';
-        htmlBlocks.push(`<ol style="margin:10px 0 14px 0;padding-left:22px;color:#334155;font-size:15px;line-height:1.65;">`);
+        htmlBlocks.push(`<ol style="margin: 12px 0 16px 0; padding-left: 22px; color: #334155; font-size: 15px; line-height: 1.65;">`);
       }
       const itemText = trimmed.replace(/^\d+\.\s+/, '');
-      htmlBlocks.push(`<li style="margin-bottom:6px;">${parseInline(itemText, themeColor)}</li>`);
+      htmlBlocks.push(`<li style="margin-bottom: 6px;">${parseInline(itemText, themeColor)}</li>`);
       continue;
     }
 
     // Regular Paragraph
     flushList();
     const content = parseInline(trimmed, themeColor);
-    htmlBlocks.push(`<p style="margin:0 0 14px 0;font-size:15px;line-height:1.68;color:#334155;">${content}</p>`);
+    htmlBlocks.push(`
+      <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.68; color: #334155;">
+        ${content}
+      </p>
+    `.trim());
   }
 
   flushList();
@@ -459,7 +448,7 @@ export function markdownToEmailHtml(markdown: string, options: MarkdownOptions =
   flushTable();
   flushCallout();
 
-  return htmlBlocks.join('');
+  return htmlBlocks.join('\n');
 }
 
 /**
@@ -472,8 +461,6 @@ export function markdownToPlainText(markdown: string): string {
       const { url, label } = extractButtonAttributes(attrs);
       return `${label}: ${url}`;
     })
-    .replace(/:::banner[\s\S]*?:::/gi, '')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '$1')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`([^`]+)`/g, '$1')

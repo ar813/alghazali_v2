@@ -12,6 +12,9 @@ import {
     Timestamp,
     startAfter,
     getDocs,
+    deleteDoc,
+    doc,
+    writeBatch,
 } from "firebase/firestore";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -23,9 +26,9 @@ import {
     User,
     Clock,
     ChevronDown,
+    ChevronUp,
     Download,
     Trash2,
-    AlertTriangle,
     LogIn,
     LogOut,
     FolderPlus,
@@ -42,8 +45,14 @@ import {
     Eye,
     Settings,
     Bell,
+    Send,
+    ImageUp,
+    ImageOff,
+    Image,
+    Save,
+    Edit3,
+    Monitor,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -54,6 +63,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { logAdminAction } from "@/lib/admin-logger";
 
 interface LogEntry {
     id: string;
@@ -68,6 +78,17 @@ interface LogEntry {
     meta?: Record<string, any>;
     timestamp: Timestamp | null;
     userAgent?: string | null;
+    ip?: string | null;
+    device?: {
+        browser?: string | null;
+        os?: string | null;
+        language?: string | null;
+        platform?: string | null;
+        screenWidth?: number | null;
+        screenHeight?: number | null;
+        isMobile?: boolean | null;
+        referrer?: string | null;
+    } | null;
 }
 
 const ACTION_ICONS: Record<string, React.ElementType> = {
@@ -84,6 +105,12 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
     fee_recorded: FileText,
     fee_deleted: Trash2,
     profile_updated: Settings,
+    profile_name_updated: Settings,
+    profile_email_updated: Mail,
+    profile_password_updated: Lock,
+    profile_gender_updated: User,
+    profile_photo_updated: Image,
+    profile_photo_removed: ImageOff,
     user_created: UserPlus,
     user_deleted: UserMinus,
     user_role_changed: Shield,
@@ -91,12 +118,28 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
     admit_card_printed: Printer,
     report_exported: BarChart2,
     email_sent: Mail,
+    email_test_sent: Mail,
+    email_bulk_sent: Send,
+    email_log_deleted: Trash2,
+    email_logs_cleared: Trash2,
+    banner_uploaded: ImageUp,
+    banner_deleted: ImageOff,
+    banner_used: Image,
+    template_saved: Save,
+    template_deleted: Trash2,
+    template_used: FileText,
     notice_published: Bell,
+    notice_deleted: Trash2,
+    notice_cleared: Trash2,
+    notice_edited: Edit3,
     page_visited: Eye,
     attendance_taken: Activity,
     quiz_created: FileText,
     quiz_deleted: Trash2,
     result_announced: BarChart2,
+    logs_exported: Download,
+    log_deleted: Trash2,
+    logs_cleared: Trash2,
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -113,6 +156,12 @@ const ACTION_COLORS: Record<string, string> = {
     fee_recorded: "bg-purple-100 text-purple-700",
     fee_deleted: "bg-red-100 text-red-700",
     profile_updated: "bg-indigo-100 text-indigo-700",
+    profile_name_updated: "bg-indigo-100 text-indigo-700",
+    profile_email_updated: "bg-indigo-100 text-indigo-700",
+    profile_password_updated: "bg-indigo-100 text-indigo-700",
+    profile_gender_updated: "bg-indigo-100 text-indigo-700",
+    profile_photo_updated: "bg-indigo-100 text-indigo-700",
+    profile_photo_removed: "bg-indigo-100 text-indigo-700",
     user_created: "bg-teal-100 text-teal-700",
     user_deleted: "bg-red-100 text-red-700",
     user_role_changed: "bg-violet-100 text-violet-700",
@@ -120,12 +169,29 @@ const ACTION_COLORS: Record<string, string> = {
     admit_card_printed: "bg-pink-100 text-pink-700",
     report_exported: "bg-yellow-100 text-yellow-700",
     email_sent: "bg-blue-100 text-blue-700",
+    email_test_sent: "bg-blue-100 text-blue-700",
+    email_bulk_sent: "bg-blue-100 text-blue-700",
+    email_log_deleted: "bg-red-100 text-red-700",
+    email_logs_cleared: "bg-red-100 text-red-700",
+    banner_uploaded: "bg-sky-100 text-sky-700",
+    banner_deleted: "bg-rose-100 text-rose-700",
+    banner_used: "bg-cyan-100 text-cyan-700",
+    template_saved: "bg-emerald-100 text-emerald-700",
+    template_deleted: "bg-red-100 text-red-700",
+    template_used: "bg-teal-100 text-teal-700",
     notice_published: "bg-amber-100 text-amber-700",
+    notice_deleted: "bg-red-100 text-red-700",
+    notice_cleared: "bg-red-100 text-red-700",
+    notice_edited: "bg-amber-100 text-amber-700",
     page_visited: "bg-gray-100 text-gray-600",
     attendance_taken: "bg-lime-100 text-lime-700",
+    logs_exported: "bg-yellow-100 text-yellow-700",
+    log_deleted: "bg-red-100 text-red-700",
+    logs_cleared: "bg-red-100 text-red-700",
 };
 
 const PAGE_SIZE = 50;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function formatTimestamp(ts: Timestamp | null): string {
     if (!ts) return "—";
@@ -155,17 +221,38 @@ function ActionBadge({ action }: { action: string }) {
     );
 }
 
+function DeviceLine({ log }: { log: LogEntry }) {
+    const d = log.device;
+    const parts: string[] = [];
+    if (d?.browser) parts.push(d.browser);
+    if (d?.os) parts.push(d.os);
+    if (d?.isMobile) parts.push("Mobile");
+    if (d?.screenWidth && d?.screenHeight) parts.push(`${d.screenWidth}×${d.screenHeight}`);
+    if (parts.length === 0 && log.userAgent) parts.push(log.userAgent.split(" ").slice(0, 2).join(" "));
+    if (parts.length === 0) return null;
+    return (
+        <span className="flex items-center gap-1">
+            <Monitor size={10} />
+            {parts.join(" · ")}
+        </span>
+    );
+}
+
 export default function AdminLogs({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) {
-    const { isSuperAdmin, user } = useAuth();
+    const { isSuperAdmin, user, role } = useAuth();
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [filterAction, setFilterAction] = useState<string>("all");
     const [filterRole, setFilterRole] = useState<string>("all");
     const [filterGender, setFilterGender] = useState<string>("all");
+    const [filterDate, setFilterDate] = useState<"all" | "today" | "7d">("all");
     const [lastDoc, setLastDoc] = useState<any>(null);
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [expandedMeta, setExpandedMeta] = useState<Set<string>>(new Set());
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [clearing, setClearing] = useState(false);
 
     const fetchLogs = useCallback(() => {
         setLoading(true);
@@ -231,8 +318,46 @@ export default function AdminLogs({ onLoadingChange }: { onLoadingChange?: (load
         }
     };
 
+    const inDateRange = (ts: Timestamp | null, mode: "all" | "today" | "7d"): boolean => {
+        if (mode === "all" || !ts) return mode === "all";
+        const d = ts.toDate();
+        if (mode === "today") return d.toDateString() === new Date().toDateString();
+        return d.getTime() >= Date.now() - 7 * DAY_MS;
+    };
+
+    // Client-side filtering
+    const filteredLogs = logs.filter((log) => {
+        const searchLower = search.toLowerCase();
+        const matchesSearch =
+            !search ||
+            (log.displayName || "").toLowerCase().includes(searchLower) ||
+            (log.email || "").toLowerCase().includes(searchLower) ||
+            log.action.toLowerCase().includes(searchLower) ||
+            log.description.toLowerCase().includes(searchLower) ||
+            (log.session || "").toLowerCase().includes(searchLower) ||
+            JSON.stringify(log.meta || {}).toLowerCase().includes(searchLower);
+
+        const matchesAction = filterAction === "all" || log.action === filterAction;
+        const matchesRole = filterRole === "all" || log.role === filterRole;
+        const matchesGender = filterGender === "all" || log.gender === filterGender;
+        const matchesDate = inDateRange(log.timestamp, filterDate);
+
+        return matchesSearch && matchesAction && matchesRole && matchesGender && matchesDate;
+    });
+
+    // Unique action types for filter dropdown
+    const uniqueActions = Array.from(new Set(logs.map((l) => l.action))).sort();
+
+    // Summary stats from everything loaded
+    const stats = {
+        total: logs.length,
+        today: logs.filter((l) => inDateRange(l.timestamp, "today")).length,
+        admins: new Set(logs.filter((l) => l.uid || l.email).map((l) => l.uid || l.email)).size,
+        actions: new Set(logs.map((l) => l.action)).size,
+    };
+
     const exportCSV = () => {
-        const headers = ["Timestamp", "User", "Email", "Role", "Gender", "Action", "Description", "Session"];
+        const headers = ["Timestamp", "User", "Email", "Role", "Gender", "Action", "Description", "Session", "Browser", "Device", "IP"];
         const rows = filteredLogs.map((l) => [
             formatTimestamp(l.timestamp),
             l.displayName || "—",
@@ -242,6 +367,9 @@ export default function AdminLogs({ onLoadingChange }: { onLoadingChange?: (load
             l.action,
             l.description,
             l.session || "—",
+            l.device?.browser || "—",
+            [l.device?.os, l.device?.screenWidth && l.device?.screenHeight ? `${l.device.screenWidth}×${l.device.screenHeight}` : null].filter(Boolean).join(" ") || "—",
+            l.ip || "—",
         ]);
         const csvContent = [headers, ...rows]
             .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
@@ -254,28 +382,94 @@ export default function AdminLogs({ onLoadingChange }: { onLoadingChange?: (load
         a.click();
         URL.revokeObjectURL(url);
         toast.success("Logs exported!");
+        if (user?.uid) {
+            logAdminAction({
+                uid: user.uid,
+                displayName: user.displayName,
+                email: user.email,
+                role,
+                action: "logs_exported",
+                description: `Exported ${filteredLogs.length} log entries to CSV`,
+                meta: { count: filteredLogs.length, filters: { search, filterAction, filterRole, filterGender, filterDate } },
+            });
+        }
     };
 
-    // Client-side filtering
-    const filteredLogs = logs.filter((log) => {
-        const searchLower = search.toLowerCase();
-        const matchesSearch =
-            !search ||
-            (log.displayName || "").toLowerCase().includes(searchLower) ||
-            (log.email || "").toLowerCase().includes(searchLower) ||
-            log.action.toLowerCase().includes(searchLower) ||
-            log.description.toLowerCase().includes(searchLower) ||
-            (log.session || "").toLowerCase().includes(searchLower);
+    const deleteLog = async (id: string) => {
+        if (!confirm("Delete this log entry permanently?")) return;
+        setDeletingId(id);
+        try {
+            await deleteDoc(doc(db, "admin_logs", id));
+            setLogs((prev) => prev.filter((l) => l.id !== id));
+            toast.success("Log entry deleted.");
+            if (user?.uid) {
+                logAdminAction({
+                    uid: user.uid,
+                    displayName: user.displayName,
+                    email: user.email,
+                    role,
+                    action: "log_deleted",
+                    description: `Deleted an admin log entry (${id})`,
+                    meta: { logId: id },
+                });
+            }
+        } catch (err) {
+            console.error("Failed to delete log:", err);
+            toast.error("Failed to delete log entry.");
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
-        const matchesAction = filterAction === "all" || log.action === filterAction;
-        const matchesRole = filterRole === "all" || log.role === filterRole;
-        const matchesGender = filterGender === "all" || log.gender === filterGender;
+    const clearOldLogs = async () => {
+        if (!confirm("Delete ALL admin logs older than 90 days? This cannot be undone.")) return;
+        setClearing(true);
+        try {
+            const cutoff = new Date(Date.now() - 90 * DAY_MS);
+            let total = 0;
+            // Delete in batches until nothing older remains.
+            for (let pass = 0; pass < 50; pass++) {
+                const q = query(
+                    collection(db, "admin_logs"),
+                    orderBy("timestamp", "asc"),
+                    where("timestamp", "<", cutoff),
+                    limit(400)
+                );
+                const snap = await getDocs(q);
+                if (snap.empty) break;
+                const batch = writeBatch(db);
+                snap.docs.forEach((d) => batch.delete(d.ref));
+                await batch.commit();
+                total += snap.size;
+            }
+            toast.success(`Deleted ${total} old log entr${total === 1 ? "y" : "ies"} (older than 90 days).`);
+            if (user?.uid) {
+                logAdminAction({
+                    uid: user.uid,
+                    displayName: user.displayName,
+                    email: user.email,
+                    role,
+                    action: "logs_cleared",
+                    description: `Cleared ${total} admin log entries older than 90 days`,
+                    meta: { count: total },
+                });
+            }
+        } catch (err) {
+            console.error("Failed to clear old logs:", err);
+            toast.error("Failed to clear old logs.");
+        } finally {
+            setClearing(false);
+        }
+    };
 
-        return matchesSearch && matchesAction && matchesRole && matchesGender;
-    });
-
-    // Unique action types for filter dropdown
-    const uniqueActions = Array.from(new Set(logs.map((l) => l.action))).sort();
+    const toggleMeta = (id: string) => {
+        setExpandedMeta((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
 
     // Only super admins can see this
     if (!isSuperAdmin) {
@@ -300,12 +494,16 @@ export default function AdminLogs({ onLoadingChange }: { onLoadingChange?: (load
                     <h3 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
                         <Activity size={20} className="text-violet-600" />
                         Admin Activity Logs
+                        <span className="ml-1 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            LIVE
+                        </span>
                     </h3>
                     <p className="text-xs text-neutral-500 mt-0.5">
                         Real-time log of all admin actions across the system
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <Button
                         variant="outline"
                         size="sm"
@@ -316,22 +514,61 @@ export default function AdminLogs({ onLoadingChange }: { onLoadingChange?: (load
                         <Download size={13} className="mr-1" />
                         Export CSV
                     </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearOldLogs}
+                        disabled={clearing}
+                        className="text-xs"
+                    >
+                        {clearing ? (
+                            <RefreshCw size={13} className="mr-1 animate-spin" />
+                        ) : (
+                            <Trash2 size={13} className="mr-1" />
+                        )}
+                        Clear &gt;90 days
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={fetchLogs}
+                        disabled={loading}
+                        className="text-xs"
+                    >
+                        <RefreshCw size={13} className="mr-1" />
+                        Refresh
+                    </Button>
                 </div>
             </div>
 
+            {/* Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                    { label: "Logs loaded", value: stats.total, color: "text-violet-600 bg-violet-50 border-violet-100" },
+                    { label: "Logged today", value: stats.today, color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
+                    { label: "Active admins", value: stats.admins, color: "text-sky-600 bg-sky-50 border-sky-100" },
+                    { label: "Action types", value: stats.actions, color: "text-amber-600 bg-amber-50 border-amber-100" },
+                ].map((s) => (
+                    <div key={s.label} className={`rounded-xl border p-3 ${s.color}`}>
+                        <div className="text-xl font-bold leading-none">{s.value}</div>
+                        <div className="text-[11px] font-medium mt-1 opacity-80">{s.label}</div>
+                    </div>
+                ))}
+            </div>
+
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col lg:flex-row gap-2">
                 <div className="relative flex-1">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
                     <Input
-                        placeholder="Search by user, action, description..."
+                        placeholder="Search by user, action, description, meta..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="pl-8 text-sm h-9"
                     />
                 </div>
                 <Select value={filterAction} onValueChange={setFilterAction}>
-                    <SelectTrigger className="w-full sm:w-40 h-9 text-sm">
+                    <SelectTrigger className="w-full lg:w-40 h-9 text-sm">
                         <Filter size={13} className="mr-1 text-neutral-400" />
                         <SelectValue placeholder="Action" />
                     </SelectTrigger>
@@ -345,7 +582,7 @@ export default function AdminLogs({ onLoadingChange }: { onLoadingChange?: (load
                     </SelectContent>
                 </Select>
                 <Select value={filterRole} onValueChange={setFilterRole}>
-                    <SelectTrigger className="w-full sm:w-36 h-9 text-sm">
+                    <SelectTrigger className="w-full lg:w-36 h-9 text-sm">
                         <SelectValue placeholder="Role" />
                     </SelectTrigger>
                     <SelectContent>
@@ -355,7 +592,7 @@ export default function AdminLogs({ onLoadingChange }: { onLoadingChange?: (load
                     </SelectContent>
                 </Select>
                 <Select value={filterGender} onValueChange={setFilterGender}>
-                    <SelectTrigger className="w-full sm:w-32 h-9 text-sm">
+                    <SelectTrigger className="w-full lg:w-32 h-9 text-sm">
                         <SelectValue placeholder="Gender" />
                     </SelectTrigger>
                     <SelectContent>
@@ -364,16 +601,41 @@ export default function AdminLogs({ onLoadingChange }: { onLoadingChange?: (load
                         <SelectItem value="female">Female</SelectItem>
                     </SelectContent>
                 </Select>
+                <div className="inline-flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl w-full lg:w-auto">
+                    {([
+                        { value: "all", label: "All" },
+                        { value: "today", label: "Today" },
+                        { value: "7d", label: "7 days" },
+                    ] as const).map((opt) => (
+                        <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setFilterDate(opt.value)}
+                            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                                filterDate === opt.value
+                                    ? "bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white shadow-sm"
+                                    : "text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
+                            }`}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* Stats bar */}
+            {/* Status line */}
             <div className="flex flex-wrap gap-3 text-xs text-neutral-500">
                 <span className="bg-neutral-100 px-2.5 py-1 rounded-full font-medium">
-                    {filteredLogs.length} logs shown
+                    {filteredLogs.length} log{filteredLogs.length === 1 ? "" : "s"} shown
                 </span>
                 {search && (
                     <span className="bg-violet-50 text-violet-600 px-2.5 py-1 rounded-full font-medium">
                         Filtered by: &quot;{search}&quot;
+                    </span>
+                )}
+                {filterDate !== "all" && (
+                    <span className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-medium">
+                        Date: {filterDate === "today" ? "Today" : "Last 7 days"}
                     </span>
                 )}
             </div>
@@ -400,7 +662,7 @@ export default function AdminLogs({ onLoadingChange }: { onLoadingChange?: (load
                     </div>
                     <p className="text-sm font-semibold text-neutral-600">No logs found</p>
                     <p className="text-xs text-neutral-400 mt-1">
-                        {search || filterAction !== "all" || filterRole !== "all" || filterGender !== "all"
+                        {search || filterAction !== "all" || filterRole !== "all" || filterGender !== "all" || filterDate !== "all"
                             ? "Try adjusting your filters"
                             : "Admin activity will appear here once actions are performed"}
                     </p>
@@ -410,6 +672,8 @@ export default function AdminLogs({ onLoadingChange }: { onLoadingChange?: (load
                     {filteredLogs.map((log) => {
                         const Icon = ACTION_ICONS[log.action] || Activity;
                         const colorClass = ACTION_COLORS[log.action] || "bg-gray-100 text-gray-600";
+                        const isExpanded = expandedMeta.has(log.id);
+                        const hasMeta = !!log.meta && Object.keys(log.meta).length > 0;
                         return (
                             <div
                                 key={log.id}
@@ -456,12 +720,53 @@ export default function AdminLogs({ onLoadingChange }: { onLoadingChange?: (load
                                                     Session: {log.session}
                                                 </span>
                                             )}
+                                            <DeviceLine log={log} />
+                                            {log.ip && (
+                                                <span className="flex items-center gap-1">
+                                                    <Monitor size={10} />
+                                                    {log.ip}
+                                                </span>
+                                            )}
                                             <span className="flex items-center gap-1">
                                                 <Clock size={10} />
                                                 {formatTimestamp(log.timestamp)}
                                             </span>
                                         </div>
+
+                                        {hasMeta && (
+                                            <div className="mt-2">
+                                                {isExpanded ? (
+                                                    <pre className="text-[11px] bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-lg p-2.5 overflow-x-auto max-h-48">
+                                                        {JSON.stringify(log.meta, null, 2)}
+                                                    </pre>
+                                                ) : null}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleMeta(log.id)}
+                                                    className="flex items-center gap-1 text-[11px] text-violet-600 hover:text-violet-700 font-semibold mt-1"
+                                                >
+                                                    {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                                                    {isExpanded ? "Hide details" : "Show details"}
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
+
+                                    {/* Delete */}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => deleteLog(log.id)}
+                                        disabled={deletingId === log.id}
+                                        className="p-1.5 h-7 w-7 text-neutral-400 hover:text-red-600 flex-shrink-0"
+                                        title="Delete this log entry"
+                                    >
+                                        {deletingId === log.id ? (
+                                            <RefreshCw size={13} className="animate-spin" />
+                                        ) : (
+                                            <Trash2 size={13} />
+                                        )}
+                                    </Button>
                                 </div>
                             </div>
                         );

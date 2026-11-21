@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { LayoutDashboard, Users as UsersIcon, BarChart3, IdCard, Printer, Wallet, FileQuestion, Award, Trophy, Smartphone, UserCheck, CalendarCheck, School, ScrollText } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { LayoutDashboard, Users as UsersIcon, BarChart3, IdCard, Printer, Wallet, FileQuestion, Award, Trophy, Smartphone, UserCheck, CalendarCheck, School, ScrollText, Mail } from 'lucide-react';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import AccessDeniedDialog from '@/components/Auth/AccessDeniedDialog';
-import { useMobileNav } from '@/contexts/MobileNavContext';
+import { useMobileNav, PortalNavItem } from '@/contexts/MobileNavContext';
 import LogoutConfirmationDialog from '@/components/Auth/LogoutConfirmationDialog';
 
 // Lazy load admin components
@@ -46,13 +47,14 @@ const AdminPortal = ({
     });
     const [showAccessDenied, setShowAccessDenied] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const router = useRouter();
 
     // Get mobile nav context for unified navigation
     const { setPortalNavConfig, clearPortalNav } = useMobileNav();
 
     // Sidebar items definition
-    const sidebarItems = useMemo(() => {
-        const baseItems = [
+    const sidebarItems = useMemo<PortalNavItem[]>(() => {
+        const baseItems: PortalNavItem[] = [
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { id: 'students', label: 'Students', icon: UsersIcon },
             { id: 'reports', label: 'Reports', icon: BarChart3 },
@@ -67,7 +69,13 @@ const AdminPortal = ({
             { id: 'attendance-overview', label: 'Attendance Audit', icon: CalendarCheck },
         ];
 
-        return [...baseItems];
+        return [
+            ...baseItems,
+            ...(isSuperAdmin ? ([
+                { id: 'emails', label: 'Email Sender', icon: Mail, href: '/admin/emails' },
+                { id: 'logs', label: 'Admin Logs', icon: ScrollText, href: '/admin/logs' },
+            ] as PortalNavItem[]) : []),
+        ];
     }, [isSuperAdmin]);
 
     // Effect to handle access denied for non-super admins (not needed anymore for global tabs, but keeping skeleton)
@@ -82,6 +90,11 @@ const AdminPortal = ({
             items: sidebarItems,
             activeId: activeTab,
             onItemClick: (id: string) => {
+                const item = sidebarItems.find(i => i.id === id);
+                if (item?.href) {
+                    router.push(item.href);
+                    return;
+                }
                 setActiveTab(id as any);
                 if (typeof window !== 'undefined') window.location.hash = id;
             }

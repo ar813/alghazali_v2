@@ -10,6 +10,7 @@ import NoticeList from './NoticeList';
 import EditNoticeModal from './EditNoticeModal';
 import { useAuth } from '@/hooks/use-auth';
 import OTPVerificationModal from '@/components/Security/OTPVerificationModal';
+import { logAdminAction } from '@/lib/admin-logger';
 
 const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) => {
   const [students, setStudents] = useState<Student[]>([])
@@ -20,7 +21,7 @@ const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
   const [editing, setEditing] = useState<any | null>(null)
 
   // OTP State
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const [showOTPModal, setShowOTPModal] = useState(false)
   const [otpAction, setOtpAction] = useState<{ type: 'deleteAll', label: string } | null>(null)
 
@@ -70,6 +71,17 @@ const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
       if (json?.ok) {
         toast.success('Notice published successfully')
         loadNotices()
+        if (user?.uid) {
+          logAdminAction({
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            role,
+            action: 'notice_published',
+            description: `Published notice "${formData?.title || 'Untitled'}"`,
+            meta: { title: formData?.title || null, isEvent: Boolean(formData?.isEvent) },
+          })
+        }
       } else {
         toast.error(json?.error || 'Failed to publish notice')
       }
@@ -87,6 +99,17 @@ const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
       if (json?.ok) {
         setItems(prev => prev.filter(i => i._id !== id))
         toast.success('Notice deleted permanentely')
+        if (user?.uid) {
+          logAdminAction({
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            role,
+            action: 'notice_deleted',
+            description: `Deleted a notice (${id})`,
+            meta: { noticeId: id },
+          })
+        }
       }
     } finally { setWorkingId(null) }
   }
@@ -109,6 +132,16 @@ const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
         toast.success('All notices cleared')
         setShowOTPModal(false)
         setOtpAction(null)
+        if (user?.uid) {
+          logAdminAction({
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            role,
+            action: 'notice_cleared',
+            description: 'Cleared all notices from the board',
+          })
+        }
       }
     } finally { setLoading(false) }
   }
@@ -149,6 +182,17 @@ const AdminNotice = ({ onLoadingChange }: { onLoadingChange?: (loading: boolean)
             setItems(prev => prev.map(i => i._id === updated._id ? { ...i, ...updated } : i))
             setEditing(null)
             toast.success('Changes saved successfully')
+            if (user?.uid) {
+              logAdminAction({
+                uid: user.uid,
+                displayName: user.displayName,
+                email: user.email,
+                role,
+                action: 'notice_edited',
+                description: `Edited notice "${updated?.title || 'Untitled'}"`,
+                meta: { noticeId: updated?._id || null, title: updated?.title || null },
+              })
+            }
           }}
         />
       )}

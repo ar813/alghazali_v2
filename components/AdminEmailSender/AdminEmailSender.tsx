@@ -3,9 +3,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { auth, db, storage } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -54,6 +53,8 @@ import {
   EmailTemplateConfig,
   generateFullEmailHtml,
 } from "@/lib/email-templates";
+import { DEFAULT_BANNER_URL, DEFAULT_BANNER_NAME } from "@/lib/email-banner";
+import { logAdminAction } from "@/lib/admin-logger";
 
 interface ProviderStatus {
   resend: {
@@ -104,12 +105,25 @@ interface SavedTemplate {
   markdownContent: string;
   includeBanner?: boolean;
   bannerUrl?: string;
+  bannerLink?: string;
   isUrdu?: boolean;
   createdAt: string;
   createdBy?: {
     email?: string;
     displayName?: string;
   };
+}
+
+interface SavedBanner {
+  id: string;
+  name: string;
+  url: string;
+  linkUrl?: string;
+  width?: number | null;
+  height?: number | null;
+  sizeKB?: number;
+  mime?: string;
+  createdAt: string;
 }
 
 export default function AdminEmailSender() {
@@ -137,9 +151,16 @@ export default function AdminEmailSender() {
 
   // Banner State (Device Storage, URL, Default)
   const [includeBanner, setIncludeBanner] = useState(false);
-  const [bannerUrl, setBannerUrl] = useState("https://alghazali.vercel.app/email_data_format/333.jpg");
+  const [bannerUrl, setBannerUrl] = useState(DEFAULT_BANNER_URL);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Saved Banner Library (Firestore + Sanity CDN)
+  const [savedBanners, setSavedBanners] = useState<SavedBanner[]>([]);
+  const [isLoadingBanners, setIsLoadingBanners] = useState(false);
+  const [bannersError, setBannersError] = useState("");
+  const [bannerNameInput, setBannerNameInput] = useState("");
+  const [selectedBannerId, setSelectedBannerId] = useState<string | null>(null);
 
   // Recipients State
   const [recipientMode, setRecipientMode] = useState<"manual" | "users">("manual");
@@ -263,9 +284,43 @@ export default function AdminEmailSender() {
     }
   };
 
+  // Fetch the saved banner library (metadata only references public CDN URLs)
+  const fetchSavedBanners = async () => {
+    try {
+      setIsLoadingBanners(true);
+      setBannersError("");
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+
+      const res = await fetch("/api/admin/emails/banners", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (data.ok) {
+        setSavedBanners(data.banners || []);
+      } else {
+        setBannersError(data.error || "Failed to load saved banners.");
+      }
+    } catch (err) {
+      console.error("Failed to load saved banners:", err);
+      setBannersError("Could not connect to load saved banners. Check your connection and retry.");
+    } finally {
+      setIsLoadingBanners(false);
+    }
+  };
+
+  // Wait for Firebase auth before populating the portal so a refresh right
+  // after login never leaves the banner library (or logs) empty.
+  const initialDataLoadedRef = useRef(false);
   useEffect(() => {
+    if (!user || initialDataLoadedRef.current) return;
+    initialDataLoadedRef.current = true;
     fetchStatusAndLogs();
-  }, []);
+    fetchSavedBanners();
+  }, [user]);
 
   // Add Manual Email
   const handleAddEmail = () => {
@@ -342,10 +397,24 @@ export default function AdminEmailSender() {
       setBannerUrl(template.bannerUrl);
       setCustomBannerInput(template.bannerUrl);
     }
+    if (template.bannerLink) {
+      setBannerLinkInput(template.bannerLink);
+    }
     if (typeof template.isUrdu === "boolean") {
       setIsUrduMode(template.isUrdu);
     }
     toast.success(`Loaded custom template "${template.name}".`);
+    if (user?.uid) {
+      logAdminAction({
+        uid: user.uid,
+        displayName: user.displayName,
+        email: user.email,
+        role: "super_admin",
+        action: "template_used",
+        description: `Loaded custom email template "${template.name}"`,
+        meta: { templateId: template.id, templateName: template.name },
+      });
+    }
   };
 
   // Save current email as a template in Firestore DB
@@ -383,6 +452,7 @@ export default function AdminEmailSender() {
           markdownContent,
           includeBanner,
           bannerUrl,
+          bannerLink: bannerLinkInput,
           isUrdu: isUrduMode,
         }),
       });
@@ -393,6 +463,21 @@ export default function AdminEmailSender() {
         setCustomTemplates([data.template, ...customTemplates]);
         setSaveTemplateModal(false);
         setTemplateNameInput("");
+        if (user?.uid) {
+          logAdminAction({
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            role: "super_admin",
+            action: "template_saved",
+            description: `Saved email template "${templateNameInput.trim()}"`,
+            meta: {
+              templateName: templateNameInput.trim(),
+              category: templateCategoryInput,
+              includeBanner,
+            },
+          });
+        }
       } else {
         toast.error(data.error || "Failed to save template.");
       }
@@ -423,6 +508,17 @@ export default function AdminEmailSender() {
       if (data.ok) {
         toast.success(`Template "${name}" deleted.`);
         setCustomTemplates(customTemplates.filter((t) => t.id !== templateId));
+        if (user?.uid) {
+          logAdminAction({
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            role: "super_admin",
+            action: "template_deleted",
+            description: `Deleted email template "${name}"`,
+            meta: { templateId, templateName: name },
+          });
+        }
       } else {
         toast.error(data.error || "Failed to delete template.");
       }
@@ -433,62 +529,170 @@ export default function AdminEmailSender() {
   };
 
   // Upload custom banner from device storage
-  const handleDeviceBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDeviceBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputEl = e.target;
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const inputEl = e.target;
+    // Quick client-side guards; the API re-validates everything.
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Image file size should be less than 8MB.");
+      if (inputEl) inputEl.value = "";
+      return;
+    }
 
-    // Check size limit (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Image file size should be less than 10MB.");
+    if (!["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.type.toLowerCase())) {
+      toast.error("Please choose a JPG, PNG or WEBP image.");
       if (inputEl) inputEl.value = "";
       return;
     }
 
     setIsUploadingBanner(true);
-    toast.loading("Reading banner from device...", { id: "banner-upload" });
+    toast.loading("Uploading & optimizing banner...", { id: "banner-upload" });
 
-    // Step 1: Read as data URL immediately (works instantly, no network needed)
-    const reader = new FileReader();
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Authentication expired. Please log in again.");
 
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
+      const form = new FormData();
+      form.append("file", file);
+      form.append("name", bannerNameInput.trim() || file.name.replace(/\.[^.]+$/, ""));
+      form.append("linkUrl", bannerLinkInput.trim());
 
-      // Immediately attach the local data URL — user sees it right away
-      setBannerUrl(dataUrl);
-      setCustomBannerInput(dataUrl);
+      const res = await fetch("/api/admin/emails/banners", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: form,
+      });
+
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Upload failed.");
+
+      // We always receive a short public CDN URL back — never base64.
+      setBannerUrl(data.banner.url);
+      setCustomBannerInput(data.banner.url);
       setIncludeBanner(true);
+      setSelectedBannerId(data.banner.id);
+      if (data.banner.linkUrl) setBannerLinkInput(data.banner.linkUrl);
+      setSavedBanners((prev) => [
+        data.banner,
+        ...prev.filter((b) => b.id !== data.banner.id),
+      ]);
+      toast.success(data.message || "Banner ready!", { id: "banner-upload" });
+      if (user?.uid) {
+        await logAdminAction({
+          uid: user.uid,
+          displayName: user.displayName,
+          email: user.email,
+          role: "super_admin",
+          action: "banner_uploaded",
+          description: `Uploaded banner "${data.banner.name}" (${data.banner.sizeKB} KB)`,
+          meta: {
+            bannerId: data.banner.id,
+            bannerName: data.banner.name,
+            bannerUrl: data.banner.url,
+            sizeKB: data.banner.sizeKB,
+            width: data.banner.width,
+            height: data.banner.height,
+          },
+        });
+      }
+    } catch (err: any) {
+      console.error("Banner upload error:", err);
+      toast.error(err.message || "Failed to upload the banner. Please try again.", {
+        id: "banner-upload",
+      });
+    } finally {
       setIsUploadingBanner(false);
       if (inputEl) inputEl.value = "";
-      toast.success("Banner attached from device!", { id: "banner-upload" });
+    }
+  };
 
-      // Step 2: Try Firebase Storage upload silently in background (upgrade to permanent URL)
-      // We don't block on this — if it fails, local data URL still works for preview
-      (async () => {
-        try {
-          const storageRef = ref(
-            storage,
-            `email_banners/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`
-          );
-          const snapshot = await uploadBytes(storageRef, file);
-          const downloadUrl = await getDownloadURL(snapshot.ref);
-          setBannerUrl(downloadUrl);
-          setCustomBannerInput(downloadUrl);
-          toast.success("Banner also saved to cloud for emails!", { id: "banner-cloud" });
-        } catch {
-          // Silent fail — local data URL is already attached, that's fine for preview
+  // Apply a saved banner from the library to the current email
+  const handleUseBanner = (banner: SavedBanner) => {
+    setBannerUrl(banner.url);
+    setCustomBannerInput(banner.url);
+    setIncludeBanner(true);
+    setSelectedBannerId(banner.id);
+    if (banner.linkUrl) setBannerLinkInput(banner.linkUrl);
+    toast.success(`Selected banner "${banner.name}".`);
+    if (user?.uid) {
+      logAdminAction({
+        uid: user.uid,
+        displayName: user.displayName,
+        email: user.email,
+        role: "super_admin",
+        action: "banner_used",
+        description: `Selected saved banner "${banner.name}" for an email`,
+        meta: { bannerId: banner.id, bannerName: banner.name, bannerUrl: banner.url },
+      });
+    }
+  };
+
+  // Re-apply the built-in official banner from the library
+  const handleUseDefaultBanner = () => {
+    setBannerUrl(DEFAULT_BANNER_URL);
+    setCustomBannerInput(DEFAULT_BANNER_URL);
+    setIncludeBanner(true);
+    setSelectedBannerId(null);
+    toast.success("Default: Al-Ghazali High School Banner selected.");
+    if (user?.uid) {
+      logAdminAction({
+        uid: user.uid,
+        displayName: user.displayName,
+        email: user.email,
+        role: "super_admin",
+        action: "banner_used",
+        description: "Switched email back to the default official banner",
+        meta: { bannerName: "default", bannerUrl: DEFAULT_BANNER_URL },
+      });
+    }
+  };
+
+  // Delete a saved banner from the library (Firestore doc + CDN asset)
+  const handleDeleteBanner = async (bannerId: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete banner "${name}"? This also removes it from the image CDN.`)) return;
+
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+
+      const res = await fetch(`/api/admin/emails/banners?id=${bannerId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (data.ok) {
+        toast.success(`Banner "${name}" deleted.`);
+        setSavedBanners((prev) => prev.filter((b) => b.id !== bannerId));
+        if (selectedBannerId === bannerId) {
+          setSelectedBannerId(null);
+          setBannerUrl(DEFAULT_BANNER_URL);
+          setCustomBannerInput(DEFAULT_BANNER_URL);
         }
-      })();
-    };
-
-    reader.onerror = () => {
-      toast.error("Failed to read image file. Please try again.", { id: "banner-upload" });
-      setIsUploadingBanner(false);
-      if (inputEl) inputEl.value = "";
-    };
-
-    reader.readAsDataURL(file);
+        if (user?.uid) {
+          logAdminAction({
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            role: "super_admin",
+            action: "banner_deleted",
+            description: `Deleted saved banner "${name}"`,
+            meta: { bannerId, bannerName: name },
+          });
+        }
+      } else {
+        toast.error(data.error || "Failed to delete banner.");
+      }
+    } catch (err: any) {
+      console.error("Delete banner error:", err);
+      toast.error("Error deleting banner.");
+    }
   };
 
   // Helper to insert text at textarea cursor position
@@ -564,7 +768,18 @@ export default function AdminEmailSender() {
 
   // Insert official banner
   const handleInsertBanner = () => {
-    const url = customBannerInput.trim() || bannerUrl || "https://alghazali.vercel.app/email_data_format/333.jpg";
+    const rawUrl = customBannerInput.trim() || bannerUrl || DEFAULT_BANNER_URL;
+
+    // Never inline base64 into the markdown body — it doubles the email payload
+    // and gets stripped by the server guard anyway.
+    if (/^data:/i.test(rawUrl)) {
+      toast.error(
+        "Inline base64 banners are not supported in the email body. Upload the banner through the banner manager so it becomes a public image URL first."
+      );
+      return;
+    }
+
+    const url = rawUrl;
     const link = bannerLinkInput.trim() || "https://alghazali.vercel.app";
     insertAtCursor(`\n:::banner url="${url}" link="${link}" :::\n`);
     setBannerModalOpen(false);
@@ -655,6 +870,7 @@ export default function AdminEmailSender() {
           fromName,
           includeBanner,
           bannerUrl,
+          bannerLink: bannerLinkInput,
           isUrdu: isUrduMode,
         }),
       });
@@ -667,6 +883,27 @@ export default function AdminEmailSender() {
             ? `Test email sent to ${targetRecipients[0]} via ${provider.toUpperCase()}!`
             : `Success! Email broadcasted to ${targetRecipients.length} recipient(s) via ${provider.toUpperCase()}.`
         );
+        if (user?.uid) {
+          await logAdminAction({
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            role: "super_admin",
+            action: isTest ? "email_test_sent" : "email_bulk_sent",
+            description: isTest
+              ? `Test email "${subject}" sent to ${targetRecipients[0]} via ${provider.toUpperCase()}`
+              : `Email "${subject}" broadcasted to ${targetRecipients.length} recipient(s) via ${provider.toUpperCase()}`,
+            meta: {
+              provider,
+              recipients: targetRecipients.length,
+              subject,
+              isTest,
+              includeBanner,
+              isUrdu: isUrduMode,
+              usedBanner: bannerUrl === DEFAULT_BANNER_URL ? "default" : bannerUrl,
+            },
+          });
+        }
         setConfirmSendModal(false);
         fetchStatusAndLogs();
       } else {
@@ -689,7 +926,8 @@ export default function AdminEmailSender() {
     headerBadge: headerBadge || "OFFICIAL NOTIFICATION",
     themeColor: themeColor || "#0d9488",
     includeBanner,
-    bannerUrl: bannerUrl || "https://alghazali.vercel.app/email_data_format/333.jpg",
+    bannerUrl: bannerUrl || DEFAULT_BANNER_URL,
+    bannerLink: bannerLinkInput || "https://alghazali.vercel.app",
     isUrdu: isUrduMode,
   });
 
@@ -1257,9 +1495,13 @@ export default function AdminEmailSender() {
                       Email Banner Image Management
                     </div>
                     <div className="text-[11px] text-neutral-500 max-w-md truncate">
-                      {bannerUrl.includes("333.jpg")
-                        ? "Default: Al-Ghazali High School Banner (333.jpg)"
-                        : `Custom: ${bannerUrl}`}
+                      {(() => {
+                        const activeBanner = savedBanners.find((b) => b.id === selectedBannerId);
+                        if (activeBanner) return `Selected: ${activeBanner.name}`;
+                        if (bannerUrl === DEFAULT_BANNER_URL || bannerUrl.includes("333.jpg"))
+                          return DEFAULT_BANNER_NAME;
+                        return "Custom banner from URL";
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -1307,6 +1549,148 @@ export default function AdminEmailSender() {
                     {includeBanner ? "Header Banner: Active" : "Enable Header Banner"}
                   </button>
                 </div>
+              </div>
+
+              {/* SAVED BANNERS LIBRARY (Firestore + Sanity CDN) */}
+              <div className="border-t border-neutral-200 dark:border-neutral-800 pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                    <Layers size={12} className="text-teal-600 dark:text-teal-400" />
+                    Saved Banner Library
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 font-bold">
+                      {savedBanners.length}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isUploadingBanner ? (
+                      <span className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold animate-pulse">
+                        Optimizing &amp; uploading...
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={fetchSavedBanners}
+                        disabled={isLoadingBanners}
+                        className="text-[10px] px-2 py-0.5 rounded-md border border-neutral-200 dark:border-neutral-800 text-neutral-500 dark:text-neutral-400 hover:text-teal-600 dark:hover:text-teal-400 hover:border-teal-500 flex items-center gap-1 transition-colors"
+                        title="Refresh saved banners"
+                      >
+                        <RefreshCw size={11} className={cn(isLoadingBanners && "animate-spin")} />
+                        Refresh
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {bannersError && !isLoadingBanners && (
+                  <div className="text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg px-2 py-1.5 mb-2">
+                    {bannersError}
+                  </div>
+                )}
+
+                {isLoadingBanners ? (
+                  <div className="flex items-center gap-2 text-xs text-neutral-400 py-2">
+                    <RefreshCw size={13} className="animate-spin" />
+                    Loading saved banners...
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                    {/* DEFAULT OFFICIAL BANNER (always available from the library) */}
+                    <div
+                      key="default-banner"
+                      className={cn(
+                        "group rounded-lg border overflow-hidden bg-white dark:bg-neutral-900",
+                        selectedBannerId === null && bannerUrl === DEFAULT_BANNER_URL
+                          ? "border-teal-500 ring-2 ring-teal-500/30"
+                          : "border-neutral-200 dark:border-neutral-800"
+                      )}
+                    >
+                      <div className="relative h-16 bg-neutral-100 dark:bg-neutral-950">
+                        <img
+                          src={DEFAULT_BANNER_URL}
+                          alt={DEFAULT_BANNER_NAME}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "/email_data_format/333.jpg";
+                          }}
+                        />
+                        <span className="absolute top-1 left-1 text-[8px] px-1 py-0.5 rounded bg-black/60 text-white font-bold">
+                          Default
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-1 px-1.5 py-1">
+                        <button
+                          type="button"
+                          onClick={handleUseDefaultBanner}
+                          className="min-w-0 flex-1 text-[10px] font-semibold text-neutral-700 dark:text-neutral-300 hover:text-teal-600 dark:hover:text-teal-400 text-left truncate"
+                          title={`Use ${DEFAULT_BANNER_NAME}`}
+                        >
+                          {DEFAULT_BANNER_NAME}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleUseDefaultBanner}
+                          className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 font-bold hover:bg-teal-100"
+                        >
+                          Use
+                        </button>
+                      </div>
+                    </div>
+
+                    {savedBanners.length === 0 ? (
+                      <div className="col-span-full text-[11px] text-neutral-400 italic py-1.5">
+                        No saved banners yet. Upload one above and it will appear here for reuse. Every upload is stored as a public image URL — no more broken email links.
+                      </div>
+                    ) : (
+                      savedBanners.map((banner) => (
+                        <div
+                          key={banner.id}
+                          className={cn(
+                            "group rounded-lg border overflow-hidden bg-white dark:bg-neutral-900",
+                            selectedBannerId === banner.id
+                              ? "border-teal-500 ring-2 ring-teal-500/30"
+                              : "border-neutral-200 dark:border-neutral-800"
+                          )}
+                        >
+                          <div className="relative h-16 bg-neutral-100 dark:bg-neutral-950">
+                            <img
+                              src={banner.url}
+                              alt={banner.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = "/email_data_format/333.jpg";
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteBanner(banner.id, banner.name)}
+                              className="absolute top-1 right-1 p-1 rounded-md bg-black/60 text-white opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity"
+                              title={`Delete "${banner.name}"`}
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between gap-1 px-1.5 py-1">
+                            <button
+                              type="button"
+                              onClick={() => handleUseBanner(banner)}
+                              className="min-w-0 flex-1 text-[10px] font-semibold text-neutral-700 dark:text-neutral-300 hover:text-teal-600 dark:hover:text-teal-400 text-left truncate"
+                              title={`Use "${banner.name}"`}
+                            >
+                              {banner.name}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUseBanner(banner)}
+                              className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 font-bold hover:bg-teal-100"
+                            >
+                              Use
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2238,9 +2622,9 @@ export default function AdminEmailSender() {
                       <button
                         type="button"
                         onClick={() => {
-                          const def = "https://alghazali.vercel.app/email_data_format/333.jpg";
-                          setCustomBannerInput(def);
-                          setBannerUrl(def);
+                          setCustomBannerInput(DEFAULT_BANNER_URL);
+                          setBannerUrl(DEFAULT_BANNER_URL);
+                          setSelectedBannerId(null);
                           toast.info("Selected default official banner.");
                         }}
                         className="flex-1 py-2 px-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 hover:bg-neutral-100 text-xs font-semibold text-neutral-700 dark:text-neutral-300 flex items-center justify-center gap-1.5 transition-colors"
@@ -2266,8 +2650,22 @@ export default function AdminEmailSender() {
                         onChange={(e) => {
                           setCustomBannerInput(e.target.value);
                           setBannerUrl(e.target.value);
+                          setSelectedBannerId(null);
                         }}
                         placeholder="https://example.com/banner.jpg"
+                        className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-xs outline-none focus:border-teal-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1">
+                        Banner Name <span className="font-normal text-neutral-400">(saved with upload)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={bannerNameInput}
+                        onChange={(e) => setBannerNameInput(e.target.value)}
+                        placeholder={bannerUrl === DEFAULT_BANNER_URL ? "Al-Ghazali Official Banner" : "Admissions Banner 2026"}
                         className="w-full px-3.5 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-xs outline-none focus:border-teal-500"
                       />
                     </div>

@@ -10,7 +10,6 @@ import {
     Camera, 
     Trash2, 
     Upload, 
-    X, 
     User as UserIcon, 
     ShieldCheck, 
     Mail, 
@@ -32,7 +31,7 @@ import {
     DrawerBody,
 } from "@chakra-ui/react";
 import DeletePhotoConfirmationDialog from './DeletePhotoConfirmationDialog';
-import ImageCropper from '@/components/ImageCropper/ImageCropper';
+import ImageCropperDialog from '@/components/ImageCropper/ImageCropperDialog';
 
 interface ProfileUpdateDialogProps {
     open: boolean;
@@ -142,7 +141,6 @@ const ProfileUpdateDialog = ({ open, onOpenChange }: ProfileUpdateDialogProps) =
         const file = new File([croppedBlob], "avatar.jpg", { type: "image/jpeg" });
         setSelectedFile(file);
         setPreviewUrl(URL.createObjectURL(croppedBlob));
-        setShowCropper(false);
         toast.success("Avatar cropped! Click 'Save' to update.");
     };
 
@@ -578,42 +576,15 @@ const ProfileUpdateDialog = ({ open, onOpenChange }: ProfileUpdateDialogProps) =
                 onConfirm={handleRemovePhoto}
             />
 
-            {/* Bulletproof Non-Freezing Image Cropper Modal */}
-            {showCropper && cropSource && (
-                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-                    <div 
-                        className="fixed inset-0 bg-black/80 backdrop-blur-md" 
-                        onClick={() => setShowCropper(false)} 
-                    />
-                    
-                    <div className="relative z-10 w-full max-w-md bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-neutral-200 dark:border-neutral-800 animate-in zoom-in-95 duration-200">
-                        <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between bg-neutral-50 dark:bg-neutral-900">
-                            <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600">
-                                    <Crop size={15} />
-                                </div>
-                                <span className="text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-white">
-                                    Crop & Adjust Avatar
-                                </span>
-                            </div>
-                            <button 
-                                type="button"
-                                onClick={() => setShowCropper(false)} 
-                                className="p-1.5 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-500 transition-colors"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-                        <ImageCropper
-                            src={cropSource}
-                            aspect={1}
-                            cropShape="round"
-                            onCropped={handleCropComplete}
-                            onCancel={() => setShowCropper(false)}
-                        />
-                    </div>
-                </div>
-            )}
+            {/* Portalled cropper — always stacked above this drawer on mobile & desktop */}
+            <ImageCropperDialog
+                open={showCropper}
+                onClose={() => setShowCropper(false)}
+                src={cropSource}
+                aspect={1}
+                cropShape="round"
+                onCropped={handleCropComplete}
+            />
         </>
     );
 };

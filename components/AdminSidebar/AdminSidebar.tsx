@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Users, Bot, GraduationCap, BookOpen, MessageSquare, 
   Megaphone, FileDigit, CalendarClock, School, LayoutDashboard,
-  ChevronLeft, ChevronRight, Menu, X, Mail, QrCode
+  ChevronLeft, ChevronRight, Menu, X, Mail, QrCode, ScrollText
 } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { useAuth } from '@/hooks/use-auth'
@@ -34,6 +34,7 @@ export default function AdminSidebar() {
     ...baseNavItems,
     ...(isSuperAdmin ? [
       { name: 'Email Sender', href: '/admin/emails', icon: Mail },
+      { name: 'Admin Logs', href: '/admin/logs', icon: ScrollText },
       { name: 'Users', href: '/admin/users', icon: Users },
     ] : [
       { name: 'Users', href: '/admin/users', icon: Users },

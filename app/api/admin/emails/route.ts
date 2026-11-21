@@ -8,6 +8,14 @@ import {
 } from "@/lib/email-service";
 import { generateFullEmailHtml, PRESET_EMAIL_TEMPLATES } from "@/lib/email-templates";
 import { markdownToPlainText } from "@/lib/email-markdown";
+import {
+  DEFAULT_BANNER_URL,
+  MAX_EMAIL_HTML_BYTES,
+  sanitizeBannerUrl,
+  stripInlineDataUriBanners,
+} from "@/lib/email-banner";
+
+export const dynamic = "force-dynamic";
 
 /**
  * Minifies email HTML to stay under Gmail's 102KB clip limit.
@@ -58,7 +66,7 @@ async function verifySuperAdmin(req: NextRequest) {
 }
 
 /**
- * GET: Fetches provider statuses, template presets, custom templates, and sent email logs
+ * GET: Fetches provider statuses, template presets, and sent email logs
  */
 export async function GET(req: NextRequest) {
   try {
@@ -178,15 +186,32 @@ export async function POST(req: NextRequest) {
     const validatedProvider: EmailProvider =
       provider === "nodemailer" ? "nodemailer" : "resend";
 
+    // A banner must be a public HTTPS URL. Base64 data-URIs inflate the HTML
+    // past Gmail's 102KB clip limit and render as a broken image in clients.
+    const bannerCheck = sanitizeBannerUrl(body.bannerUrl);
+    if (!bannerCheck.ok) {
+      return NextResponse.json(
+        { ok: false, error: bannerCheck.reason },
+        { status: 400 }
+      );
+    }
+    const bannerUrl = body.includeBanner ? bannerCheck.url : DEFAULT_BANNER_URL;
+
+    // A :::banner block in the body can inline a second copy of the image on
+    // top of the header banner. Strip any that carry base64 data-URIs.
+    const { markdown: safeMarkdown, removed: strippedBanners } =
+      stripInlineDataUriBanners(markdownContent);
+
     // Compile Markdown to responsive inline email HTML
     const rawEmailHtml = generateFullEmailHtml({
       title: subject,
       preheader: preheader || subject,
-      markdownContent,
+      markdownContent: safeMarkdown,
       headerBadge: headerBadge || "OFFICIAL NOTIFICATION",
       themeColor: themeColor || "#0d9488",
       includeBanner: Boolean(body.includeBanner),
-      bannerUrl: body.bannerUrl || "https://alghazali.vercel.app/email_data_format/333.jpg",
+      bannerUrl,
+      bannerLink: body.bannerLink || undefined,
       isUrdu: Boolean(body.isUrdu),
     });
 
@@ -195,7 +220,27 @@ export async function POST(req: NextRequest) {
     const htmlSizeKB = Buffer.byteLength(emailHtml, 'utf8') / 1024;
     console.log(`[Email] HTML size after minification: ${htmlSizeKB.toFixed(1)}KB`);
 
-    const plainText = markdownToPlainText(markdownContent);
+    // Hard gate: never report success for a message the inbox will clip.
+    const htmlSizeBytes = Buffer.byteLength(emailHtml, 'utf8');
+    if (htmlSizeBytes > MAX_EMAIL_HTML_BYTES) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `This email is ${htmlSizeKB.toFixed(0)}KB, which exceeds the ${Math.round(
+            MAX_EMAIL_HTML_BYTES / 1024
+          )}KB limit. Gmail clips anything past 102KB, so the recipient would only see a truncated "View entire message" stub. Shorten the body, remove images, or split the mailing into two emails.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    if (strippedBanners > 0) {
+      console.warn(
+        `[Email] Stripped ${strippedBanners} inline base64 banner block(s) from the markdown body.`
+      );
+    }
+
+    const plainText = markdownToPlainText(safeMarkdown);
 
     // Send email via unified dispatcher
     const result = await sendUnifiedEmail({

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authAdmin, dbAdmin } from "@/lib/firebase-admin";
+import { sanitizeBannerUrl } from "@/lib/email-banner";
+
+export const dynamic = "force-dynamic";
 
 async function verifySuperAdmin(req: NextRequest) {
   const authHeader = req.headers.get("Authorization");
@@ -88,6 +91,8 @@ export async function POST(req: NextRequest) {
       markdownContent,
       includeBanner = false,
       bannerUrl = "https://alghazali.vercel.app/email_data_format/333.jpg",
+      isUrdu = false,
+      bannerLink = "https://alghazali.vercel.app",
     } = body;
 
     if (!name || !name.trim()) {
@@ -104,6 +109,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // A data-URI banner would exceed Firestore's 1MiB per-document limit and
+    // inflate emails past Gmail's clip limit. Only public HTTPS URLs are kept.
+    const bannerCheck = sanitizeBannerUrl(bannerUrl);
+    if (!bannerCheck.ok) {
+      return NextResponse.json(
+        { ok: false, error: bannerCheck.reason },
+        { status: 400 }
+      );
+    }
+    const safeUrl = bannerCheck.url;
+    const safeLink =
+      typeof bannerLink === "string" && /^https:\/\//i.test(bannerLink.trim())
+        ? bannerLink.trim()
+        : "https://alghazali.vercel.app";
+
     const templateData = {
       name: name.trim(),
       category,
@@ -114,7 +134,9 @@ export async function POST(req: NextRequest) {
       themeColor,
       markdownContent,
       includeBanner: Boolean(includeBanner),
-      bannerUrl,
+      bannerUrl: safeUrl,
+      isUrdu: Boolean(isUrdu),
+      bannerLink: safeLink,
       createdAt: new Date().toISOString(),
       createdBy: {
         uid: user.uid,
